@@ -1,0 +1,86 @@
+name: Publish book
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    name: Build and publish (Codeberg + GitHub Pages)
+    runs-on: linux-amd64-nuc
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust (mdbook is a Rust binary)
+        run: |
+          rustup update stable
+          rustup default stable
+
+      # Cache key: bump the suffix (-v1 → -v2 → ...) to force a clean rebuild
+      # of mdbook + mdbook-mermaid. Do this when:
+      #   - upgrading either tool to a new major/minor version,
+      #   - changing the rustup toolchain,
+      #   - adding/removing a preprocessor under [preprocessor.*] in book.toml,
+      #   - the cache appears stale (mysterious build failures with no source change).
+      - name: Cache cargo registry + mdbook binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cargo/bin
+          key: ${{ runner.os }}-mdbook-v1
+
+      - name: Install mdbook + mdbook-mermaid (if not cached)
+        run: |
+          mkdir -p .cargo/bin
+          if [ ! -x .cargo/bin/mdbook ] || [ ! -x .cargo/bin/mdbook-mermaid ]; then
+            CARGO_INSTALL_ROOT=$(pwd)/.cargo cargo install mdbook mdbook-mermaid --locked
+          fi
+
+      - name: Build book
+        run: uv run build.py
+
+      # ---- Codeberg pages branch (primary host) -------------------------------
+
+      - name: Write Codeberg SSH key
+        env:
+          CODEBERG_SSH_KEY: ${{ secrets.CODEBERG_SSH_KEY }}
+        run: |
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$CODEBERG_SSH_KEY" > "$HOME/.ssh/id_codeberg"
+          chmod 600 "$HOME/.ssh/id_codeberg"
+
+      - name: Push dist to Codeberg pages branch
+        env:
+          CODEBERG_USER: ${{ secrets.CODEBERG_USER }}
+        run: |
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_codeberg -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          rm -rf dist/.git  # in case a previous step left one behind
+          cd dist
+          git init -q -b pages
+          git config user.name "Forgejo CI"
+          git config user.email "ci@pi.local"
+          git add -A
+          git commit -q -m "Publish — ${GITHUB_SHA::7} $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git remote add codeberg "git@codeberg.org:$CODEBERG_USER/intro-book-python.git"
+          git push -fq codeberg pages
+
+      # ---- GitHub Pages mirror (failover host) --------------------------------
+
+      - name: Write GitHub SSH key
+        env:
+          GITHUB_SSH_KEY: ${{ secrets.GITHUB_SSH_KEY }}
+        run: |
+          printf '%s\n' "$GITHUB_SSH_KEY" > "$HOME/.ssh/id_github"
+          chmod 600 "$HOME/.ssh/id_github"
+
+      - name: Push dist to GitHub gh-pages branch
+        env:
+          GITHUB_USER: ${{ secrets.GITHUB_USER }}
+        run: |
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          cd dist
+          git remote add github "git@github.com:$GITHUB_USER/intro-book-python.git"
+          git push -fq github pages:gh-pages

@@ -1,0 +1,17 @@
+[project]
+name = "intro-py"
+version = "0.0.1"
+description = "An Introduction to Programming, using ECS & EBP in Python"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "CC-BY-4.0" }
+authors = [{ name = "Bjorn Madsen" }]
+dependencies = []
+
+[project.optional-dependencies]
+exhibits = [
+    "numpy",
+]
+
+[tool.uv]
+managed = true

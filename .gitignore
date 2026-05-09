@@ -1,0 +1,25 @@
+# mdbook build output and staging
+dist/
+.mdbook/
+
+# Repo-local Rust toolchain installs
+.cargo/
+
+# Python venv and bytecode
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# uv lockfile is committed; uv cache is not
+.uv-cache/
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Local environment overrides
+.env
