@@ -71,16 +71,18 @@ jobs:
 
       - name: Write GitHub SSH key
         env:
-          GITHUB_SSH_KEY: ${{ secrets.GITHUB_SSH_KEY }}
+          # Forgejo reserves the GITHUB_* secret namespace for actions-protocol
+          # compatibility, so we use GIT_HUB_* instead.
+          GIT_HUB_SSH_KEY: ${{ secrets.GIT_HUB_SSH_KEY }}
         run: |
-          printf '%s\n' "$GITHUB_SSH_KEY" > "$HOME/.ssh/id_github"
+          printf '%s\n' "$GIT_HUB_SSH_KEY" > "$HOME/.ssh/id_github"
           chmod 600 "$HOME/.ssh/id_github"
 
       - name: Push dist to GitHub gh-pages branch
         env:
-          GITHUB_USER: ${{ secrets.GITHUB_USER }}
+          GIT_HUB_USER: ${{ secrets.GIT_HUB_USER }}
         run: |
           export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/id_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           cd dist
-          git remote add github "git@github.com:$GITHUB_USER/intro-book-python.git"
+          git remote add github "git@github.com:$GIT_HUB_USER/intro-book-python.git"
           git push -fq github pages:gh-pages

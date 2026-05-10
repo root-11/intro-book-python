@@ -61,20 +61,29 @@ ssh-keygen -t ed25519 -f ~/.ssh/forgejo-ci-github   -C "forgejo-ci → github"  
 
 This produces four files. The `.pub` files go to the host; the private keys go into Forgejo secrets.
 
-### B1. Add the Codeberg public key to Codeberg
+### B1. Add the public keys to Codeberg and GitHub
 
-1. https://codeberg.org/user/settings/keys
-2. Add `~/.ssh/forgejo-ci-codeberg.pub`. Title it "forgejo-ci".
-3. Tick "Authorized" and "Approved" if Codeberg asks.
+**Important: deploy keys are per-repo on both platforms.** A deploy key authorised for `intro-book` cannot push to `intro-book-python` — same scoping rule on Codeberg as on GitHub. You have two options per platform; pick the same model on both for consistency.
 
-### B2. Add the GitHub public key to GitHub
+#### Option 1 — User-level SSH keys (simpler, recommended)
 
-GitHub does not let one SSH key authenticate to multiple repos by default. Two options:
+One keypair per platform, attached to your *user account*; covers all current and future repos.
 
-- **Deploy key** (per-repo, write-enabled): GitHub repo → Settings → Deploy keys → "Add deploy key" → paste `~/.ssh/forgejo-ci-github.pub` → tick "Allow write access". Repeat for each repo (intro-book and intro-book-python).
-- **User SSH key** (account-wide, more permissions than needed): https://github.com/settings/keys → "New SSH key" → paste the same pub key. One key, all repos. Acceptable for a single-user setup.
+- **Codeberg:** https://codeberg.org/user/settings/keys → "Add Key". Paste `~/.ssh/forgejo-ci-codeberg.pub`. Title: "forgejo-ci".
+- **GitHub:** https://github.com/settings/keys → "New SSH key". Paste `~/.ssh/forgejo-ci-github.pub`. Title: "forgejo-ci".
 
-Pick whichever fits your security posture. Deploy keys are tighter; the user key is simpler.
+This is the simplest path for a single-author book. Two keys total (one per platform), one private key per Forgejo repo's secret.
+
+#### Option 2 — Per-repo deploy keys (tighter, more setup)
+
+If you want each key scoped to one repo, generate **one keypair per repo per platform** — so four keypairs total for two repos × two platforms. For each:
+
+- **Codeberg:** Repo → Settings → Deploy Keys → "Add Deploy Key". Paste the `.pub`. Tick "Enable write access".
+- **GitHub:** Repo → Settings → Deploy keys → "Add deploy key". Paste the `.pub`. Tick "Allow write access".
+
+Each Forgejo repo's `CODEBERG_SSH_KEY` / `GIT_HUB_SSH_KEY` secret then holds the *private* key matching that repo's deploy key.
+
+> **If the runner reports** `(Deploy) Key ... is not authorized to write to .../<other-repo>`: you used Option 2 (deploy key) but the key is attached to a different repo than the one being pushed to. Either add the same `.pub` as a deploy key on the failing repo, or move to Option 1 by removing it from the deploy-keys list and adding it as a user-level key.
 
 ---
 
@@ -86,8 +95,10 @@ For each Forgejo repo (Rust edition + Python edition), add these secrets via the
 |---|---|
 | `CODEBERG_SSH_KEY` | contents of `~/.ssh/forgejo-ci-codeberg` (the **private** key, full file including `-----BEGIN OPENSSH PRIVATE KEY-----` headers) |
 | `CODEBERG_USER` | `root-11` |
-| `GITHUB_SSH_KEY` | contents of `~/.ssh/forgejo-ci-github` (private key) |
-| `GITHUB_USER` | your GitHub username (assumed `root-11`) |
+| `GIT_HUB_SSH_KEY` | contents of `~/.ssh/forgejo-ci-github` (private key) |
+| `GIT_HUB_USER` | your GitHub username (assumed `root-11`) |
+
+> **Why `GIT_HUB_*` and not `GITHUB_*`:** Forgejo reserves the `GITHUB_*` namespace for actions-protocol-compatibility secrets and refuses to create secrets starting with that prefix. The workflow yaml uses `GIT_HUB_SSH_KEY` and `GIT_HUB_USER` (with underscore) to dodge the reservation; the secrets you store must match that name exactly.
 
 If the Forgejo Actions UI doesn't have a secrets manager, the equivalent is environment variables on the runner (less secure but workable for a homelab).
 
