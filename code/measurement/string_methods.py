@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
 import statistics, timeit
 
 setup = "x, y = 123, 456.789"

@@ -1,4 +1,7 @@
-
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
 import timeit
 import collections
 from typing import NamedTuple

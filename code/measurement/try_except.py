@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["numpy"]
+# ///
 import numpy as np
 import time
 import random

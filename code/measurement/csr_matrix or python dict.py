@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["numpy", "scipy"]
+# ///
 import timeit
 import numpy as np
 from scipy.sparse import csr_matrix
