@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 32](../../concepts/glossary.md#32--partition-dont-lock).*
 
+<p align="center"><img src="../illustrations/bridge_clipboard.jpg" alt="Bridges drawn as independent spans — partition into disjoint write-sets" style="max-height: 300px; max-width: 100%;"></p>
+
 [§31](31_disjoint_writes_parallelize.md) said "disjoint write-sets parallelise freely". What if the system has to write *one* table from many processes? Motion at 1M creatures wants to update `pos_x` and `pos_y` for every creature; the table is one. Eight processes, one table — looks like a lock case.
 
 It is not. The fix is to *partition the data*, not to lock the access.

@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 23](../../concepts/glossary.md#23--index-maps).*
 
+<p align="center"><img src="../illustrations/linear_algebra.jpg" alt="Linear algebra: Ax = b — a lookup is a matrix-vector product" style="max-height: 300px; max-width: 100%;"></p>
+
 The presence-replaces-flags substitution from [§17](17_presence_replaces_flags.md) had a sting in its tail. A presence query — "is creature 42 hungry?" — costs O(K) when implemented naively as `np.any(hungry == 42)`. At a 1,000,000-creature simulator with thousands of such queries per tick, that is too slow.
 
 The fix is a parallel data structure: an *index map* that maps every id to its current slot in the table. Lookup is now O(1).

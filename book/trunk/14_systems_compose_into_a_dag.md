@@ -4,6 +4,8 @@
 
 A program with one system is uninteresting; a program with many systems must say *what runs in what order*. The order is given by data dependencies: a system that reads a table must run *after* every system that writes that table within the same tick. No ordering is fixed by intuition; everything is given by the read-sets and write-sets [§13](13_system_as_function.md) just made you declare.
 
+<p align="center"><img src="../illustrations/dag_planning_checklist.jpg" alt="PLAN / ANALYZE / DESIGN / BUILD / TEST / IMPROVE — the planning DAG" style="max-height: 300px; max-width: 100%;"></p>
+
 Draw the dependency graph. Each system is a node. For every system that reads table `T` and every system that writes `T`, draw an edge `writer → reader`. The result is a *directed acyclic graph* — the DAG. A topological sort gives a valid execution order: any sort that respects the edges is correct. The program executes one such sort.
 
 The simulator's tick from `code/sim/SPEC.md`:
@@ -83,6 +85,8 @@ The observer-pattern alternative cannot offer this. Without an explicit DAG, the
 8. *(stretch)* **A query planner.** Take five hand-written SQL queries (each one a system shape) and draw the relational-algebra plan for each. Compare with how `motion → next_event → apply_*` decomposes the simulator. The shape is the same.
 
 Reference notes in [14_systems_compose_into_a_dag_solutions.md](14_systems_compose_into_a_dag_solutions.md).
+
+<p align="center"><img src="../illustrations/tip_visualize_full.jpg" alt="Visualize the problem. A good diagram can reveal the solution." style="max-height: 300px; max-width: 100%;"></p>
 
 ## What's next
 

@@ -6,6 +6,8 @@ You have built a small ecosystem simulator that runs deterministically, scales f
 
 ## The shape that carried the whole thing
 
+<p align="center"><img src="../illustrations/mathematics_describes.jpg" alt="Mathematics describes, models, implements, and improves the world." style="max-height: 300px; max-width: 100%;"></p>
+
 Three patterns showed up everywhere:
 
 **Tables, not objects.** A creature is not a `class` of fields with methods. It is a row across columns kept aligned by index — `pos_x[i]`, `pos_y[i]`, `energy[i]`. Each column is a numpy array. The columns have one writer each; they grow and shrink in lockstep. There is no container holding them together — only the discipline.
@@ -51,5 +53,7 @@ The book made choices. Other books make different ones. Worth knowing where you 
 - **Read the Rust edition of this book.** Same architecture, different enforcement. Watching the borrow checker enforce what this edition asks you to do by discipline is a genuinely useful calibration.
 - **Extend the simulator.** The genetics and predator-prey extensions flagged in the [simulator spec](../../code/sim/SPEC.md) break new ground without leaving the framework you have already built.
 - **Apply the architecture beyond simulators.** §35 + §37 is event-sourced architecture with a deterministic reducer; the same pattern works for request handlers, control loops, agent systems, anything with state that has to evolve under load. The simulator was the worked example; the architecture is the lesson.
+
+<p align="center"><img src="../illustrations/model_real_world.jpg" alt="Model the real world." style="max-height: 300px; max-width: 100%;"></p>
 
 The book ends here. The simulator does not — it runs as long as you keep the discipline.

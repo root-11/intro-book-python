@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 6](../../concepts/glossary.md#6--a-row-is-a-tuple).*
 
+<p align="center"><img src="../illustrations/cad_bearing.jpg" alt="A bearing's dimensioned drawing names every field" style="max-height: 300px; max-width: 100%;"></p>
+
 In §5 you built a deck of 52 cards as three numpy columns. The card at index 17 is the triple `(suits[17], ranks[17], locations[17])`. Together those three values are *the row*. There is no `Card` class. There is not even a tuple object — the row exists *implicitly* in the alignment: the same index, used in every column, recovers all the data about one card.
 
 This is what we call a *row* throughout the rest of the book — a coherent set of values that belong to the same entity. In a `creature` table the row is `(pos[i], vel[i], energy[i], birth_t[i], id[i], gen[i])`. In a `food` table it is `(pos[i], value[i], id[i])`. The fields belong to the same entity by virtue of all sharing index `i`. There is no `dataclass` holding them; there is no `NamedTuple` instance; there is no `dict`. There is only the discipline that whatever index `i` you used to read one column, you also use to read every other column of the same table.

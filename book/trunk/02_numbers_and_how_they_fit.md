@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 2](../../concepts/glossary.md#2--numbers-and-how-they-fit).*
 
+<p align="center"><img src="../illustrations/multimeter.jpg" alt="A mouse with a multimeter — numbers measured to the precision the budget allows" style="max-height: 300px; max-width: 100%;"></p>
+
 A cache line is 64 bytes. That is the unit of memory the CPU loads at a time. Everything you do with data is, in part, a question of how many things fit in 64 bytes.
 
 ## What an `int` actually costs

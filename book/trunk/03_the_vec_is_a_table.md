@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 3](../../concepts/glossary.md#3--the-vec-is-a-table).*
 
+<p align="center"><img src="../illustrations/linear_algebra.jpg" alt="Linear algebra: Ax = b — a table is a matrix of columns indexed in lockstep" style="max-height: 300px; max-width: 100%;"></p>
+
 A `list` in Python is a header object on the heap that stores three things: a length, a capacity (over-allocated by a small fraction), and a pointer to a contiguous run of `PyObject*` *pointers*. That last word is the lesson. The `list` does not contain your integers; it contains pointers to integer *objects*, each allocated separately on the heap. `lst[i]` reads a pointer from the contiguous run, then dereferences it to find the actual `PyLong` (28 bytes per int, 24 per float) somewhere else in memory.
 
 If you used Python last week, this is the container you reached for, and it is the right shape for *some* problems. It is also the wrong shape for almost everything the trunk of this book teaches, which is "process all the rows of a table." A `list` of N rows-as-tuples is one big jump table sitting in front of N+10N small objects scattered across the heap. Walking it is pointer-chasing, not sequential reading.

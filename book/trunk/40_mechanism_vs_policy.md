@@ -1,5 +1,7 @@
 # 40 — Mechanism vs policy
 
+<p align="center"><img src="../covers/phase_discipline.jpg" alt="Discipline phase" style="max-height: 380px; max-width: 100%;"></p>
+
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 40](../../concepts/glossary.md#40--mechanism-vs-policy).*
 
 The kernel of a system exposes verbs. The rules — what's allowed, what triggers what — live at the edges. Confusing the two is how systems calcify; once a kernel knows about a rule, the rule cannot change without rewriting the kernel.
@@ -71,6 +73,8 @@ Now `food_spawn` is doing both the *deciding* (when food appears) and the *commi
 The fix is to push to `to_insert` instead, letting cleanup commit. The two roles are separable because they were designed to be — through the buffering pattern from [§22](22_mutations_buffer.md), which is itself a mechanism-vs-policy separation. The *mechanism* is "apply changes at the boundary"; the *policy* is "what changes to apply".
 
 Mechanism vs policy is therefore not a separate discipline. It is the rule that every previous chapter has been respecting implicitly. Naming it makes it visible.
+
+<p align="center"><img src="../illustrations/note_assumptions_full.jpg" alt="Assumptions define the model. Know them, question them, and test them." style="max-height: 300px; max-width: 100%;"></p>
 
 ## Exercises
 

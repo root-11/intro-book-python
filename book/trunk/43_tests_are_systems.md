@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 43](../../concepts/glossary.md#43--tests-are-systems-tdd-from-day-one).*
 
+<p align="center"><img src="../illustrations/dag_planning_checklist.jpg" alt="PLAN, ANALYZE, DESIGN, BUILD, TEST, IMPROVE — tests are part of the same loop, written first" style="max-height: 300px; max-width: 100%;"></p>
+
 A test reads the world's state and asserts that some property holds. A system reads the world's state and writes a derived result. **The two are structurally the same.**
 
 This is not a slogan. It is the structural fact that lets every other discipline in the book apply to tests without translation.

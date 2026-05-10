@@ -14,6 +14,8 @@ A workload's cost is bounded by *both*. A 1 MB sequential read on NVMe is one IO
 
 The [§22](22_mutations_buffer.md) batched-cleanup pattern at [§30](30_streaming_wall.md)'s streaming scale gathers many small mutations into one large write. This converts a high-IOPS, low-bandwidth workload (1000 separate writes per tick) into a low-IOPS, bandwidth-friendly one (one batched write per tick). The pattern is the natural fit for storage systems where IOPS is the binding constraint.
 
+<p align="center"><img src="../illustrations/power_supply_components.jpg" alt="Storage systems have bandwidth and IOPS — counted like power and current" style="max-height: 300px; max-width: 100%;"></p>
+
 ## Where SQL fits — and where it does not
 
 A reasonable question after [§36](36_persistence_is_serialization.md) and [§37](37_log_is_world.md): if snapshots are `np.savez` and state changes are the simlog's triple-store, *why is this chapter about SQLite at all?*

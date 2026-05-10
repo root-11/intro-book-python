@@ -2,6 +2,8 @@
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 36](../../concepts/glossary.md#36--persistence-is-table-serialization).*
 
+<p align="center"><img src="../illustrations/mathematics_describes.jpg" alt="Mathematics describes, models, implements — persistence captures the world that worked" style="max-height: 300px; max-width: 100%;"></p>
+
 The simulator pauses. The world is in memory: eight columns of `creatures` (`pos_x`, `pos_y`, `vel_x`, `vel_y`, `energy`, `birth_t`, `id`, `gen`), a `food` table, presence tables (`hungry`, `dead`, etc.), the index map (`id_to_slot`), and the cleanup buffers. To pause durably, all of this must be written to disk; to resume, all of this must be read back.
 
 The instinct most Python programmers bring: design a "persistence format" with a schema, marshalling logic, version handling, and a translation layer between in-memory objects and on-disk records. Sometimes via `pydantic`, sometimes via `dataclasses.asdict` plus `json.dumps`, sometimes via SQLAlchemy ORMs. **This is wrong on the data-oriented side. There is no translation. There is only *transposition*.**

@@ -1,5 +1,7 @@
 # 17 — Presence replaces flags
 
+<p align="center"><img src="../covers/phase_ebp.jpg" alt="Existence-based processing phase" style="max-height: 380px; max-width: 100%;"></p>
+
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 17](../../concepts/glossary.md#17--presence-replaces-flags).*
 
 A creature can be hungry. Three ways to model it.

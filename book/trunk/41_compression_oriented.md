@@ -34,6 +34,8 @@ The Python ecosystem demonstrates compression-oriented programming repeatedly. `
 
 The opposite — abstractions that did not earn their place — also live in the ecosystem: deep ORM hierarchies designed for hypothetical schemas; "framework" packages with one user; metaclass machinery that solves problems the codebase does not have. They are recognisable by the gap between their surface complexity and their actual use.
 
+<p align="center"><img src="../illustrations/tip_simplify_full.jpg" alt="Break complex problems into smaller parts. Simplicity leads to clarity." style="max-height: 300px; max-width: 100%;"></p>
+
 The discipline is structural, not stylistic. *Compress when you can see the shape, not before.* The book's own through-line uses it. The simulator was built one concrete piece at a time. The DAG was named after the systems were built, not before. The trunk vocabulary is the compression of patterns that actually emerged.
 
 A useful test: after extracting an abstraction, can the abstraction handle a *fourth* case without a special branch? If yes, the compression is real. If no — if the abstraction grew an `if`/`elif` for the fourth case — the abstraction was wrong, and the fourth case is the case showing it.

@@ -4,6 +4,8 @@
 
 Most beginners assume the loop's frequency sets the model's time resolution. If the loop runs at 30 Hz, surely the model can only resolve events at 1/30 s = 33 ms? This is wrong, and the confusion costs many simulations their precision.
 
+<p align="center"><img src="../illustrations/oscilloscope_sine.jpg" alt="An oscilloscope: sample rate is independent of signal frequency" style="max-height: 300px; max-width: 100%;"></p>
+
 The tick rate is *how often the loop runs*. It says nothing about what the loop does inside one tick. Inside one tick, the loop can process events at arbitrary timestamps — microsecond, picosecond, whatever the data carries. The clock lives on the events, not on the loop.
 
 Concretely: a 30 Hz loop receiving 1,000 events per tick, each with microsecond-precision timestamps, processes them in timestamp order — applying each event's effect with the precision the timestamp implies. Output to the rest of the world (rendering, logging, network) happens at 30 Hz, but the *physics inside* runs at microsecond resolution. The tick is a *sampling* rate; the events are the actual phenomena.

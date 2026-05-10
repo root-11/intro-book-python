@@ -52,6 +52,8 @@ The reverse direction is also useful. If you find yourself wanting to *add* some
 
 ## The engineering analogy
 
+<p align="center"><img src="../illustrations/ohms_law.jpg" alt="Ohm's Law: V = I·R" style="max-height: 300px; max-width: 100%;"></p>
+
 The shape of this thinking is familiar to engineers in other domains. An electrical engineer designs a circuit by counting milliamps against a current budget. A structural engineer counts kilonewtons against a load budget. The data-oriented programmer counts microseconds against a tick budget. *Good design is measured in millivolts and microamps* — and in nanoseconds and microseconds. Pick the unit, write the budget down, count against it. Programming has no special exemption from accounting.
 
 > [!NOTE]

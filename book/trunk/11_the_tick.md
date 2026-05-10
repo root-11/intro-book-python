@@ -1,5 +1,7 @@
 # 11 — The tick
 
+<p align="center"><img src="../covers/phase_time_passes.jpg" alt="Time & passes phase" style="max-height: 380px; max-width: 100%;"></p>
+
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 11](../../concepts/glossary.md#11--the-tick).*
 
 A program's life has a shape:

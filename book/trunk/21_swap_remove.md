@@ -1,5 +1,7 @@
 # 21 — `swap_remove`
 
+<p align="center"><img src="../covers/phase_memory_lifecycle.jpg" alt="Memory & lifecycle phase" style="max-height: 380px; max-width: 100%;"></p>
+
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 21](../../concepts/glossary.md#21--swap_remove).*
 
 The presence-replaces-flags substitution from [§17](17_presence_replaces_flags.md) raised a problem we deferred. When a creature stops being hungry, you remove its id from `hungry`. When a creature dies, you remove its row from every table. *Removing rows from the middle of an array is expensive* — every later row has to shift left by one, costing O(N).
