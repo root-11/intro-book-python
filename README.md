@@ -1075,7 +1075,7 @@ Every system takes one of three shapes.
 
 An **operation** is 1→1: every input row produces exactly one output row. `motion` is an operation — each creature's position is updated to its new position. Most update functions are operations.
 
-A **filter** is 1→{0, 1}: every input row produces zero or one output rows. `apply_starve` (from `code/sim/SPEC.md`) is a filter — each creature with `energy ≤ 0` produces an entry in `to_remove`; creatures with `energy > 0` produce nothing. The numpy form is one line:
+A **filter** is 1→{0, 1}: every input row produces zero or one output rows. `apply_starve` (from [`code/sim/SPEC.md`](code/sim/SPEC.md)) is a filter — each creature with `energy ≤ 0` produces an entry in `to_remove`; creatures with `energy > 0` produce nothing. The numpy form is one line:
 
 ```python
 def starving(energy: np.ndarray) -> np.ndarray:
@@ -1144,7 +1144,7 @@ A program with one system is uninteresting; a program with many systems must say
 
 Draw the dependency graph. Each system is a node. For every system that reads table `T` and every system that writes `T`, draw an edge `writer → reader`. The result is a *directed acyclic graph* — the DAG. A topological sort gives a valid execution order: any sort that respects the edges is correct. The program executes one such sort.
 
-The simulator's tick from `code/sim/SPEC.md`:
+The simulator's tick from [`code/sim/SPEC.md`](code/sim/SPEC.md):
 
 ```mermaid
 flowchart TB
@@ -1205,7 +1205,7 @@ The observer-pattern alternative cannot offer this. Without an explicit DAG, the
 
 ## Exercises
 
-1. **Draw the DAG.** Take the eight simulator systems (motion, food_spawn, next_event, apply_eat, apply_reproduce, apply_starve, cleanup, inspect) and draw the dependency graph yourself, deriving the edges from each system's read-set and write-set in `code/sim/SPEC.md`. Compare with the diagram above.
+1. **Draw the DAG.** Take the eight simulator systems (motion, food_spawn, next_event, apply_eat, apply_reproduce, apply_starve, cleanup, inspect) and draw the dependency graph yourself, deriving the edges from each system's read-set and write-set in [`code/sim/SPEC.md`](code/sim/SPEC.md). Compare with the diagram above.
 2. **Spot the cycle.** Suppose `apply_starve` writes to `food` (returning fuel to the world when a creature dies). Now `apply_starve` writes `food`, which `food_spawn` reads. `food_spawn` writes `food`, which `next_event` reads. `next_event` writes `pending_event`, which `apply_starve` reads. Where's the cycle? How would you break it? (Hint: §15.)
 3. **Topological sort by hand.** Given:
    - A writes X
@@ -1306,7 +1306,7 @@ These build on the simulator skeleton. Your `to_remove: list[int]` and `to_inser
 5. **Show two ticks.** Run the loop for two ticks. After tick 1, log the population. After tick 2, log it again. Confirm that creatures killed in tick 1's `apply_starve` *do not* appear in tick 2's input — they were removed at the tick boundary, between the two ticks.
 6. **Insertions are tick-delayed.** A creature reproduces in tick 5: parent in `creatures`, two offspring in `to_insert`. After cleanup, the offspring are in `creatures`. In tick 6 the offspring receive their first system pass. Confirm by adding an `age_in_ticks` column and watching offspring start at 0 in tick 6, not in tick 5.
 7. *(stretch)* **A bad design that almost works.** Try to apply mutations in-tick *carefully* — collect dead creatures first, then process them in reverse-index order to avoid the iterator-skip bug. Show one specific case where this still corrupts state. (Hint: a reproduction produces an offspring whose new index conflicts with an in-progress death.)
-8. *(stretch)* **Read the simlog.** Open `.archive/simlog/logger.py`. Find the two `Container` instances. Find the line where they swap. Find the function the background thread runs. Note that the logger never holds *both* containers locked simultaneously — the swap is atomic, the dump is on the inactive container. This is the production version of what exercise 3 teaches.
+8. *(stretch)* **Read the simlog.** Open [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py). Find the two `Container` instances. Find the line where they swap. Find the function the background thread runs. Note that the logger never holds *both* containers locked simultaneously — the swap is atomic, the dump is on the inactive container. This is the production version of what exercise 3 teaches.
 
 ## What's next
 
@@ -2020,7 +2020,7 @@ Numpy columns are the opposite. You allocated `np.empty(N_max, dtype=...)` once,
 
 Use append-only when:
 
-- *History matters.* The simulator's `eaten`, `born`, `dead` logs from `code/sim/SPEC.md` are all append-only — they record what happened. Removed entries would be lost history.
+- *History matters.* The simulator's `eaten`, `born`, `dead` logs from [`code/sim/SPEC.md`](code/sim/SPEC.md) are all append-only — they record what happened. Removed entries would be lost history.
 - *Old references must remain valid forever.* Some slot-as-pointer designs assume the table never shrinks.
 - *Total volume is bounded by elapsed time, not by population.* A 30-second 30 Hz simulation produces at most 900 frames; an append-only frame log is at most 900 rows. No need to recycle.
 
@@ -2524,7 +2524,7 @@ This wall is where most projects either re-architect or quietly accept slower-th
 3. **Snapshot a small world.** Write a function `snapshot(world, path)` that calls `np.savez_compressed(path, pos_x=world.pos_x, pos_y=world.pos_y, ...)`. Read it back with `np.load`. Confirm the simulator continues running indistinguishably.
 4. **A windowed log.** Implement an append-only log where recent entries live in a numpy ring buffer of fixed size, and overflow gets dumped to a sqlite table or `.npz` file. Verify queries inside the window are fast; queries outside the window pay the disk cost.
 5. **Log-as-world.** With the windowed log from exercise 4, reconstruct creature state at an earlier tick by replaying the log over the most recent snapshot whose tick is ≤ the requested one. Compare query speed to the in-memory case.
-6. **Read the simlog seriously.** `.archive/simlog/logger.py` is the windowed-log architecture, end to end. Trace the path of one `log(time, value, ...)` call: which container does it land in, when does the swap happen, when does the disk write occur. The 700 lines you read are 700 lines you do not have to write.
+6. **Read the simlog seriously.** [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is the windowed-log architecture, end to end. Trace the path of one `log(time, value, ...)` call: which container does it land in, when does the swap happen, when does the disk write occur. The 700 lines you read are 700 lines you do not have to write.
 7. **Chunked numpy.** Build a 2 GB numpy array on disk via `np.save`. Compute its mean by reading 100 MB chunks in sequence; compare wall time to loading the whole thing first. Note: at the I/O-bound limit, the chunked version pays slightly more in syscall overhead but caps memory.
 8. *(stretch)* **Document your bound.** Write down, for your simulator, the largest N you can run while staying inside a 33 ms tick budget. Include footprint, cache regime, and any disk-bound cost. Above this N, the simulator needs the streaming architecture.
 
@@ -2994,7 +2994,7 @@ This rule closes Concurrency. The simulator can now use every core on the machin
 1. **Build the schedule.** Write a `tick(world, dt)` that runs `next_event`, then a parallel block of the three appliers (using your §32 ventilator pattern), then `cleanup`, then `inspect`. Verify the boundaries: `cleanup` must not start before all three appliers complete.
 2. **Test for determinism.** Run the simulator twice with the same seed. Hash the world after 100 ticks. The hashes must be identical even though the appliers ran in parallel.
 3. **Break the contract.** Construct a schedule where `cleanup` starts before `apply_starve` finishes (e.g. by skipping the wait-for-acks step in main between phases). Run twice. Hashes should differ — sometimes. The bug's intermittency is the lesson.
-4. **Find your phase boundaries.** Sketch your simulator's full DAG from `code/sim/SPEC.md`. Identify each *phase* (set of systems with no transitive dependency on each other). Each phase is a parallel batch; each boundary is a sync.
+4. **Find your phase boundaries.** Sketch your simulator's full DAG from [`code/sim/SPEC.md`](code/sim/SPEC.md). Identify each *phase* (set of systems with no transitive dependency on each other). Each phase is a parallel batch; each boundary is a sync.
 5. **The asyncio trap, hands-on.** Implement `tick` using `asyncio.gather` over the systems. Run the determinism test. Watch the hash diverge across runs. Note the failure shape: not a crash, just *wrong* answers.
 6. **Cross-machine determinism.** If you have access to another machine, run the same simulator with the same seed there. The hashes must match. If they do not, find the difference — `PYTHONHASHSEED`, wall clock, glibc version, hardware float behaviour. Each is a possible source.
 7. *(stretch)* **A minimal scheduler.** Write `def topo_phases(systems: list[tuple[str, set[str], set[str]]]) -> list[list[str]]` taking `(name, read_set, write_set)` triples and returning a list of phases (each phase is a list of system names that can run in parallel). Around 30 lines of Python. The scheduler is just a topological sort with level-grouping.
@@ -3296,7 +3296,7 @@ The remaining chapters — Part 8 closing with [§38](#38--storage-systems-bandw
 2. **Reconstruct from the log.** Write `def replay(initial: World, events: TripleStore) -> World` that applies each triple in order. Verify: starting from an initial world and applying the log produces a world identical to the live simulator's output at the same tick. Hash both with the §16 `hash_world` function.
 3. **Save and load the log.** Persist the triple-store via [§36](#36--persistence-is-table-serialization)'s `np.savez`. Reload. Replay. Confirm bit-identical state.
 4. **Snapshot + log.** Save a snapshot at tick S; save the log from tick S onward. Reconstruct any tick T > S by loading the snapshot and replaying the log from S to T. Verify against the live simulator.
-5. **Run simlog.** Open `.archive/simlog/logger.py` and trace the `log()` call: what does it touch in memory, what does it not touch on disk, when does the swap happen, when does the disk write occur. Sketch the call graph on paper. The 700 lines you read are 700 lines you will not have to write.
+5. **Run simlog.** Open [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) and trace the `log()` call: what does it touch in memory, what does it not touch on disk, when does the swap happen, when does the disk write occur. Sketch the call graph on paper. The 700 lines you read are 700 lines you will not have to write.
 6. **The codebook saving.** With 1,000,000 events of which all are `kind="eat"`, compare two storage forms: storing the literal string `"eat"` per event vs storing a `uint8` code with a one-row codebook. The codebook form is ~24× smaller (1 byte vs 24 bytes for the short string plus Python object overhead) and round-trips losslessly.
 7. **The `logging` module trap.** Configure Python's standard `logging` module to write events to a file, one per `eat`. Generate 100,000 events. Now write the same events into a numpy triple-store. Compare: file size, write time, time to query "how many eat events involved creature 42?". The triple-store form is faster on every axis and the query is a single `np.where`.
 8. *(stretch)* **The simlog API, three views.** Sketch the API for a hypothetical simlog-v2 in three forms:
@@ -3732,7 +3732,7 @@ The discipline that follows from this is not "use no dependencies". It is:
 
 ## The book's worked example
 
-The book's through-line example is the simlog. The simlog implements the generational arena pattern from [§10](#10--stable-ids-and-generations), the index map from [§23](#23--index-maps), the buffered cleanup from [§22](#22--mutations-buffer-cleanup-is-batched), the double-buffered serialisation from [§37](#37--the-log-is-the-world), and the np.savez output from [§36](#36--persistence-is-table-serialization) — in 700 lines, vendored at `.archive/simlog/logger.py`. Most simulators benefit from it because the from-scratch version is non-trivial. But the from-scratch version is *also* small enough that you could fork and own it if needed. **That balance — small enough to fix, complex enough to want — is the sweet spot.**
+The book's through-line example is the simlog. The simlog implements the generational arena pattern from [§10](#10--stable-ids-and-generations), the index map from [§23](#23--index-maps), the buffered cleanup from [§22](#22--mutations-buffer-cleanup-is-batched), the double-buffered serialisation from [§37](#37--the-log-is-the-world), and the np.savez output from [§36](#36--persistence-is-table-serialization) — in 700 lines, vendored at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py). Most simulators benefit from it because the from-scratch version is non-trivial. But the from-scratch version is *also* small enough that you could fork and own it if needed. **That balance — small enough to fix, complex enough to want — is the sweet spot.**
 
 The opposite end is `numpy`. Adoption is a commitment to the maintainer team. For most projects this is fine — the team is competent and the ecosystem is durable. But the commitment is real.
 
@@ -3821,7 +3821,7 @@ That is the data-oriented program. That is the book.
 2. **A property test.** Run the simulator for 1000 ticks with seed `0xCAFE`. Assert: `world.n_active <= 2 * initial_n_active`. Run twice with the same seed; both runs should report the same outcome (passing or failing at the same tick).
 3. **A replay test.** Save the in-queue of a 100-tick run via [§36](#36--persistence-is-table-serialization)'s `np.savez`. Load it into a fresh simulator and replay. After 100 ticks, hash both worlds. They must match.
 4. **TDD a new system.** Pick a piece of behaviour you have not built — say, "creatures with energy above 50 grow more slowly". Write the test first: what's the smallest case (one creature)? Largest (a million)? Then write the system. Confirm the test passes.
-5. **Read the simlog tests.** Open `.archive/simlog/test_simlog.py`. Note the absence of mocks. Note that every test fixture is a real numpy array set up in the test body. The test file is 713 lines for a 700-line library — roughly 1:1, which is the right ratio for code that has to work.
+5. **Read the simlog tests.** Open [`.archive/simlog/test_simlog.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/test_simlog.py). Note the absence of mocks. Note that every test fixture is a real numpy array set up in the test body. The test file is 713 lines for a 700-line library — roughly 1:1, which is the right ratio for code that has to work.
 6. **The InspectionSystem connection.** Take the test from exercise 1 and the inspection-system idea from [§13](#13--a-system-is-a-function-over-tables). Argue why they are structurally identical — same read-set, same lack of write-set, same scheduling slot.
 7. **pytest-xdist as a determinism check.** Convert your test suite to run under `pytest -n 8` (parallel workers). Any test that passes under `pytest` but fails under `pytest -n 8` has a non-determinism leak (often a `set` iteration, often a wall clock). Fix the leak; the §16 recipe is the remedy.
 8. *(stretch)* **A test runner that *is* the simulator's scheduler.** Implement a tiny test runner whose only difference from the simulator's scheduler is *which* systems it includes in the DAG: production systems for live runs, test-and-inspection systems for test runs. The two binaries share most of their code; the difference is the systems list.

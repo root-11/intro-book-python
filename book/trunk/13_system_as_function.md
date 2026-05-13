@@ -22,7 +22,7 @@ Every system takes one of three shapes.
 
 An **operation** is 1→1: every input row produces exactly one output row. `motion` is an operation — each creature's position is updated to its new position. Most update functions are operations.
 
-A **filter** is 1→{0, 1}: every input row produces zero or one output rows. `apply_starve` (from `code/sim/SPEC.md`) is a filter — each creature with `energy ≤ 0` produces an entry in `to_remove`; creatures with `energy > 0` produce nothing. The numpy form is one line:
+A **filter** is 1→{0, 1}: every input row produces zero or one output rows. `apply_starve` (from [`code/sim/SPEC.md`](../../code/sim/SPEC.md)) is a filter — each creature with `energy ≤ 0` produces an entry in `to_remove`; creatures with `energy > 0` produce nothing. The numpy form is one line:
 
 ```python
 def starving(energy: np.ndarray) -> np.ndarray:

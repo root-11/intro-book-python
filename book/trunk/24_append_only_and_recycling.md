@@ -22,7 +22,7 @@ Numpy columns are the opposite. You allocated `np.empty(N_max, dtype=...)` once,
 
 Use append-only when:
 
-- *History matters.* The simulator's `eaten`, `born`, `dead` logs from `code/sim/SPEC.md` are all append-only — they record what happened. Removed entries would be lost history.
+- *History matters.* The simulator's `eaten`, `born`, `dead` logs from [`code/sim/SPEC.md`](../../code/sim/SPEC.md) are all append-only — they record what happened. Removed entries would be lost history.
 - *Old references must remain valid forever.* Some slot-as-pointer designs assume the table never shrinks.
 - *Total volume is bounded by elapsed time, not by population.* A 30-second 30 Hz simulation produces at most 900 frames; an append-only frame log is at most 900 rows. No need to recycle.
 

@@ -8,7 +8,7 @@ A program with one system is uninteresting; a program with many systems must say
 
 Draw the dependency graph. Each system is a node. For every system that reads table `T` and every system that writes `T`, draw an edge `writer → reader`. The result is a *directed acyclic graph* — the DAG. A topological sort gives a valid execution order: any sort that respects the edges is correct. The program executes one such sort.
 
-The simulator's tick from `code/sim/SPEC.md`:
+The simulator's tick from [`code/sim/SPEC.md`](../../code/sim/SPEC.md):
 
 ```mermaid
 flowchart TB
@@ -69,7 +69,7 @@ The observer-pattern alternative cannot offer this. Without an explicit DAG, the
 
 ## Exercises
 
-1. **Draw the DAG.** Take the eight simulator systems (motion, food_spawn, next_event, apply_eat, apply_reproduce, apply_starve, cleanup, inspect) and draw the dependency graph yourself, deriving the edges from each system's read-set and write-set in `code/sim/SPEC.md`. Compare with the diagram above.
+1. **Draw the DAG.** Take the eight simulator systems (motion, food_spawn, next_event, apply_eat, apply_reproduce, apply_starve, cleanup, inspect) and draw the dependency graph yourself, deriving the edges from each system's read-set and write-set in [`code/sim/SPEC.md`](../../code/sim/SPEC.md). Compare with the diagram above.
 2. **Spot the cycle.** Suppose `apply_starve` writes to `food` (returning fuel to the world when a creature dies). Now `apply_starve` writes `food`, which `food_spawn` reads. `food_spawn` writes `food`, which `next_event` reads. `next_event` writes `pending_event`, which `apply_starve` reads. Where's the cycle? How would you break it? (Hint: §15.)
 3. **Topological sort by hand.** Given:
    - A writes X
