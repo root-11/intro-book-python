@@ -19,7 +19,7 @@ The through-line is a small ecosystem simulator built in stages from one hundred
 
 This is the **Python edition** — a sister volume to the Rust edition of the same book. Same forty-four sections, same DAG, same simulator. The variation is per-chapter commentary on what Python's defaults push the reader into, and why ECS and EBP win even in a slow language. The thesis the edition carries: **ECS and EBP beat OOP because they process more efficiently (operations grouped over arrays), they extend more cleanly (data-oriented composition over class graphs), and they have smaller memory footprint (typed columns over object graphs).**
 
-What carries this edition is the **evidence**. Every load-bearing claim is backed by a measurement the reader can reproduce on their own laptop in under a minute. The exhibits live in [`code/measurement/`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement) and run via `uv run code/measurement/<file>.py`.
+What carries this edition is the **evidence**. Every load-bearing claim is backed by a measurement the reader can reproduce on their own laptop in under a minute. The exhibits live in [`code/measurement/`](https://github.com/root-11/intro-book-python/tree/main/code/measurement) and run via `uv run code/measurement/<file>.py`.
 
 This is a work in progress. Section ordering is by the DAG; reading order can be linear (front to back) or by following the cross-links wherever they lead.
 

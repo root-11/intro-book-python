@@ -56,7 +56,7 @@ growth points up to N=1000: 28
 uv run code/measurement/aos_vs_soa_footprint.py
 ```
 
-Source: [`code/measurement/aos_vs_soa_footprint.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/aos_vs_soa_footprint.py). N=1,000,000 rows, K=10 ints per row, values past the small-int cache, each layout in a fresh subprocess:
+Source: [`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py). N=1,000,000 rows, K=10 ints per row, values past the small-int cache, each layout in a fresh subprocess:
 
 ```
 layout                                          build (s)   RSS (MB)  sum c0 (s)

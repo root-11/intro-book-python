@@ -68,7 +68,7 @@ Each `input()` blocks until a line arrives. The loop has no fixed rate — its p
 uv run code/measurement/tick_budget.py
 ```
 
-Source: [`code/measurement/tick_budget.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/tick_budget.py).
+Source: [`code/measurement/tick_budget.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/tick_budget.py).
 
 ```
           N  layout                  tick (ms)   30 Hz            60 Hz

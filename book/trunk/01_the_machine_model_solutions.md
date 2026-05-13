@@ -16,7 +16,7 @@ Write the numbers down. [§27](27_working_set_vs_cache.md) refers back.
 uv run code/measurement/cache_cliffs.py
 ```
 
-Source: [`code/measurement/cache_cliffs.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/cache_cliffs.py).
+Source: [`code/measurement/cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py).
 
 ```
            N     Python list     numpy seq    numpy gather   gather/seq
@@ -55,7 +55,7 @@ Same data, same arithmetic. The number stays in the 4-6 ns/elem band at every N.
 uv run code/measurement/try_except.py
 ```
 
-Source: [`code/measurement/try_except.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/try_except.py). Four points along the rate axis from one author's run:
+Source: [`code/measurement/try_except.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/try_except.py). Four points along the rate axis from one author's run:
 
 | hits / misses          | try/except (s) | if (s) | if / try-except |
 |------------------------|---------------:|-------:|----------------:|
@@ -74,7 +74,7 @@ The lesson is not "use one or the other" — it is that constant factors are rat
 uv run code/measurement/string_methods.py
 ```
 
-Source: [`code/measurement/string_methods.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/string_methods.py). Median over seven runs, one author's machine:
+Source: [`code/measurement/string_methods.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/string_methods.py). Median over seven runs, one author's machine:
 
 |  format       | median (s) |
 |---------------|-----------:|

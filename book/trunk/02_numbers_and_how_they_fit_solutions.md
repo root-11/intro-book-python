@@ -128,7 +128,7 @@ print(a64 - b64)                          # 1.0
 uv run code/measurement/sums.py
 ```
 
-Source: [`code/measurement/sums.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/sums.py). Five datasets × three orders × five algorithms. The dataset where the spread is largest is `large_plus_small` (a few values of size 10⁶ added to many values of size 1):
+Source: [`code/measurement/sums.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/sums.py). Five datasets × three orders × five algorithms. The dataset where the spread is largest is `large_plus_small` (a few values of size 10⁶ added to many values of size 1):
 
 ```
 === DATASET: large_plus_small (N=2000002) ===

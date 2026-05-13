@@ -114,7 +114,7 @@ print(np.spacing(np.float64(31_536_000)))    # ~3.7e-09 = 3.7 ns
 uv run code/measurement/event_time_storage.py
 ```
 
-Source: [`code/measurement/event_time_storage.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/event_time_storage.py).
+Source: [`code/measurement/event_time_storage.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/event_time_storage.py).
 
 ```
 layout                                          data (MB)   build (ms)   sort (ms)   count <T (ms)

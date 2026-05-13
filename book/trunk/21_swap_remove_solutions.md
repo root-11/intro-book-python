@@ -64,7 +64,7 @@ print(f"swap_remove × 1000:  {(t1-t0)*1000:.3f} ms")
 uv run code/measurement/swap_remove.py
 ```
 
-Source: [`code/measurement/swap_remove.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/swap_remove.py). Removing 100,000 mid-table rows from a 1M-row table:
+Source: [`code/measurement/swap_remove.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/swap_remove.py). Removing 100,000 mid-table rows from a 1M-row table:
 
 ```
 layout                                              time      remove rate

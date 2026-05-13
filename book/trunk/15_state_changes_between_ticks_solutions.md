@@ -187,7 +187,7 @@ The buffered approach prevents *all* of this by definition: nothing changes in `
 
 ## Exercise 8 — Read the simlog (stretch)
 
-The vendored copy at [`.archive/simlog/logger.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/.archive/simlog/logger.py) is the production-grade version of this chapter's pattern. Things to find:
+The vendored copy at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is the production-grade version of this chapter's pattern. Things to find:
 
 - **Two `Container` instances.** The logger maintains two pre-allocated numpy column buffers (`active` and `inactive`). The simulation writes only to `active`.
 - **The atomic swap.** When `active` fills, the logger atomically swaps the two references (`active`, `inactive` = `inactive`, `active`). The simulation's next write goes to the now-empty buffer; the previously-active buffer is now `inactive` and ready for flushing.

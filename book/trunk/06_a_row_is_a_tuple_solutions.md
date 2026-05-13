@@ -103,7 +103,7 @@ This is the §25 *ownership-of-tables* discipline applied at the smallest scale:
 uv run code/measurement/classes_or_tuples.py
 ```
 
-Source: [`code/measurement/classes_or_tuples.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/classes_or_tuples.py). One million two-field rows, ordered fastest to slowest:
+Source: [`code/measurement/classes_or_tuples.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/classes_or_tuples.py). One million two-field rows, ordered fastest to slowest:
 
 ```
 0.004 s  numpy SoA: two np.full(1_000_000, 10.0) calls (bulk)

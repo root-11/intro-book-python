@@ -162,7 +162,7 @@ This is the architecture of every event-sourced system, every git, every databas
 
 ## Exercise 6 — Read the simlog seriously
 
-The vendored simlog at [`.archive/simlog/logger.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/.archive/simlog/logger.py) implements the windowed-log pattern in 700 lines. Trace one `log(...)` call:
+The vendored simlog at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) implements the windowed-log pattern in 700 lines. Trace one `log(...)` call:
 
 1. **Inside the simulation**: `log(time, value, **fields)` is called.
 2. **Active container write**: the call writes a row to the *active* `Container` (a pre-allocated numpy SoA buffer). Counter increments.

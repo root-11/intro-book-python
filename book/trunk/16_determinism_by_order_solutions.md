@@ -6,7 +6,7 @@
 uv run code/measurement/set_iteration_order.py
 ```
 
-Source: [`code/measurement/set_iteration_order.py`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement/set_iteration_order.py).
+Source: [`code/measurement/set_iteration_order.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/set_iteration_order.py).
 
 ```
 Set iteration order across runs:
