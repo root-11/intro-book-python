@@ -48,7 +48,7 @@ The disciplined Python form: append the structured event to numpy columns, write
 
 ## The simlog: a working specimen
 
-The library [`.archive/simlog/logger.py`](../../.archive/simlog/logger.py) implements this triple-store shape directly, in Python, in 700 lines. Its design is worth walking through, because it meets three problems that recur whenever a simulator wants to log everything, and the conclusions it reaches are not specific to any one language or domain.
+The library [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) implements this triple-store shape directly, in Python, in 700 lines. Its design is worth walking through, because it meets three problems that recur whenever a simulator wants to log everything, and the conclusions it reaches are not specific to any one language or domain.
 
 **The IOPS problem → batching.** A naive event logger calls `f.write` once per event. At a million events per minute, that is a million disk operations per minute — bound by IOPS, not bandwidth ([§38](38_storage_systems.md)). The disk's bandwidth sits mostly idle while it queues operations. The fix: collect events into an in-memory buffer; when the buffer fills, flush it as one large write. IOPS scales with "buffer flushes per second"; bandwidth absorbs the actual byte volume. Logging cost drops from disk-latency-bound to bandwidth-bound — typically 100-1000× faster. **This is the same pattern as §22's cleanup amortisation, applied at the disk boundary.**
 

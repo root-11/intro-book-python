@@ -39,7 +39,7 @@ The bulk-filter version takes a *batch* of indices and processes them in a singl
 
 ## Cost, measured
 
-From [`code/measurement/swap_remove.py`](../../code/measurement/swap_remove.py), removing 100,000 mid-table rows from a 1,000,000-row table on this machine:
+From [`code/measurement/swap_remove.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/swap_remove.py), removing 100,000 mid-table rows from a 1,000,000-row table on this machine:
 
 | layout                                              | time      | remove rate         |
 |-----------------------------------------------------|----------:|--------------------:|

@@ -38,7 +38,7 @@ Two creatures in the same spatial cell are now adjacent in `pos_x` and `pos_y`. 
 
 ## Why this matters in numpy
 
-The locality gap is not theoretical. From [§1's `cache_cliffs.py`](../../code/measurement/cache_cliffs.py), at 100M elements the gather (random-index) read is **72× slower than sequential** on this machine. That ratio is the cost of every cache-unfriendly access pattern — every iteration that visits creatures in a non-spatial order pays it. Spatial sort converts gather-shaped reads into sequential ones, **which is exactly the operation that ratio measures.**
+The locality gap is not theoretical. From [§1's `cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py), at 100M elements the gather (random-index) read is **72× slower than sequential** on this machine. That ratio is the cost of every cache-unfriendly access pattern — every iteration that visits creatures in a non-spatial order pays it. Spatial sort converts gather-shaped reads into sequential ones, **which is exactly the operation that ratio measures.**
 
 The cost is the sort itself. At 1M `uint32` keys, `np.argsort` takes ~10-30 ms depending on input distribution. Done every tick this would be too expensive — but typically the sort is done every ~100 ticks (or when accumulated motion exceeds a threshold), amortising to ~0.1-0.3 ms per tick. The savings on the inner loop dwarf the cost.
 

@@ -27,7 +27,7 @@ That is the snapshot. Recovery is the inverse. No type conversion, no field mapp
 
 ## What it costs, four ways
 
-From [`code/measurement/persistence_shapes.py`](../../code/measurement/persistence_shapes.py), 1,000,000 creatures across 8 columns (34 MB in memory), persisted four ways on this machine:
+From [`code/measurement/persistence_shapes.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/persistence_shapes.py), 1,000,000 creatures across 8 columns (34 MB in memory), persisted four ways on this machine:
 
 | layout                              | file (MB) | write (ms) | read (ms) |
 |-------------------------------------|----------:|-----------:|----------:|

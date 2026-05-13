@@ -70,7 +70,7 @@ We call this **identity-is-an-integer**, and it is the precondition for every ec
 
 ## Even *which* integer matters
 
-Not every integer is the same integer for performance. From [`code/measurement/float_or_int_tuple.py`](../../code/measurement/float_or_int_tuple.py), looking up keys in a Python `dict` of 10,000 entries:
+Not every integer is the same integer for performance. From [`code/measurement/float_or_int_tuple.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/float_or_int_tuple.py), looking up keys in a Python `dict` of 10,000 entries:
 
 | key shape                  | lookups / sec |
 |----------------------------|--------------:|

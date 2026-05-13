@@ -24,7 +24,7 @@ Take the same data — N rows, K integers per row — and lay it out five ways. 
 | 4. `tuple(array.array('q', …) for k …)`         | tuple of `array.array` — SoA, stdlib typed |
 | 5. `tuple(np.arange(...) for k in range(K))`    | tuple of numpy columns — SoA, typed + C |
 
-[`code/measurement/aos_vs_soa_footprint.py`](../../code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so RSS readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
+[`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so RSS readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
 
 | layout                              |  RSS    | build  | sum c0 |
 |-------------------------------------|--------:|-------:|-------:|
@@ -76,7 +76,7 @@ Reference notes in [03_the_vec_is_a_table_solutions.md](03_the_vec_is_a_table_so
 
 ## Applied reference
 
-If you want to see this discipline carried through a real piece of code, read [`.archive/simlog/logger.py`](../../.archive/simlog/logger.py). It is a 700-line columnar logger that parks dict payloads into pre-allocated numpy columns, with a double-buffered design that lets the simulation write to one buffer while a background thread dumps the other to disk. The book does not require you to read it now. It's the destination this chapter and the next several point at.
+If you want to see this discipline carried through a real piece of code, read [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py). It is a 700-line columnar logger that parks dict payloads into pre-allocated numpy columns, with a double-buffered design that lets the simulation write to one buffer while a background thread dumps the other to disk. The book does not require you to read it now. It's the destination this chapter and the next several point at.
 
 ## What's next
 

@@ -30,7 +30,7 @@ def stop_being_hungry_presence(hungry: np.ndarray, creature_id: int) -> np.ndarr
 
 The Python idiom that this chapter is asking you to abandon is older and more universal than `is_hungry`. It is `creature.alive = False` — the *soft delete*. Every Python tutorial that introduces classes teaches it: when a thing should stop being processed, set a bool, and check that bool before processing it. Tens of thousands of production codebases run on exactly this pattern.
 
-The cost is real. From [`code/measurement/alive_fraction.py`](../../code/measurement/alive_fraction.py), one motion update over 1,000,000 creatures at varying alive-fraction:
+The cost is real. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py), one motion update over 1,000,000 creatures at varying alive-fraction:
 
 | alive % | AoS (`for c if c.alive`) | numpy bool mask | numpy presence (ids) | mask/presence |
 |--------:|-------------------------:|----------------:|---------------------:|--------------:|

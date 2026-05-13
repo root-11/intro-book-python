@@ -33,7 +33,7 @@ energy[hungry] -= HUNGER_BURN_RATE * dt
 
 The two produce the same result. The two have very different costs.
 
-The filtered version evaluates `is_hungry` for every creature — a 1,000,000-byte scan to find the 100,000 hungry ones. The EBP version reads the 100,000 entries of `hungry` and indexes directly. From [`code/measurement/alive_fraction.py`](../../code/measurement/alive_fraction.py) (the §18 exhibit), at 10% sparsity the presence version was **5× faster** than the bool mask version, and at 1% it was **10× faster**. Most simulator states are sparse — a small fraction of creatures are eating at any given tick, a small fraction are reproducing, a small fraction are dying — so EBP's compounding advantage shows up everywhere.
+The filtered version evaluates `is_hungry` for every creature — a 1,000,000-byte scan to find the 100,000 hungry ones. The EBP version reads the 100,000 entries of `hungry` and indexes directly. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py) (the §18 exhibit), at 10% sparsity the presence version was **5× faster** than the bool mask version, and at 1% it was **10× faster**. Most simulator states are sparse — a small fraction of creatures are eating at any given tick, a small fraction are reproducing, a small fraction are dying — so EBP's compounding advantage shows up everywhere.
 
 A useful intuition: it is the difference between a wandering shopper trying to remember what they need and a shopper with a list. The list version is shorter, faster, and correct by construction. You do not consult the list to ask "is this aisle on my list?" — you walk down the list and visit each aisle once.
 

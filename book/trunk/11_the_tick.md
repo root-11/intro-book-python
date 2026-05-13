@@ -58,7 +58,7 @@ A simulation tick wants three things: precision (sleep until exactly the next de
 
 ## What fits in a tick
 
-The budget binds the design. From [`code/measurement/tick_budget.py`](../../code/measurement/tick_budget.py), one motion system (`pos += vel * dt`) measured on this machine:
+The budget binds the design. From [`code/measurement/tick_budget.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/tick_budget.py), one motion system (`pos += vel * dt`) measured on this machine:
 
 |             N  | layout              | tick time | 30 Hz budget | 60 Hz budget |
 |---------------:|---------------------|----------:|:-------------|:-------------|

@@ -56,7 +56,7 @@ This makes the SoA win in Python *categorical*, not just *quantitative*. The num
 
 SoA is therefore the default in this book. AoS is sometimes the right choice — for example when every system reads every field of every entity on every tick (rare), or when N is so small that the loop overhead dominates regardless of layout (think dozens of items, not millions). But this is a tradeoff to *earn* by measurement, not to assume by habit. Write SoA first; switch to AoS only when a benchmark forces you to.
 
-The §3 exhibit ([`code/measurement/aos_vs_soa_footprint.py`](../../code/measurement/aos_vs_soa_footprint.py)) is the reference measurement for this chapter. Re-read its sum-column-0 row: list-of-tuples (the AoS twin) summed column 0 of one million ten-field rows in 30 ms; numpy SoA did the same in 0.4 ms. **75× faster for the canonical "system reads one column" operation.** That is the regime your inner loops will live in for the rest of this book.
+The §3 exhibit ([`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py)) is the reference measurement for this chapter. Re-read its sum-column-0 row: list-of-tuples (the AoS twin) summed column 0 of one million ten-field rows in 30 ms; numpy SoA did the same in 0.4 ms. **75× faster for the canonical "system reads one column" operation.** That is the regime your inner loops will live in for the rest of this book.
 
 ## Exercises
 

@@ -34,7 +34,7 @@ def slot_of(id_to_slot: dict[int, int], creature_id: int) -> int | None:
     return id_to_slot.get(creature_id)
 ```
 
-Dict lookup is O(1) amortised, ~30-40 million ops/sec for integer keys (per [`code/measurement/float_or_int_tuple.py`](../../code/measurement/float_or_int_tuple.py) — note that *which* integer matters; int keys are 2.4× faster than float-tuple keys at the same map size). Dict pays for hash machinery on every lookup and one pointer chase per access; numpy pays neither. But dict pays *only* for ids that actually exist, which is the right shape for a sparse id space.
+Dict lookup is O(1) amortised, ~30-40 million ops/sec for integer keys (per [`code/measurement/float_or_int_tuple.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/float_or_int_tuple.py) — note that *which* integer matters; int keys are 2.4× faster than float-tuple keys at the same map size). Dict pays for hash machinery on every lookup and one pointer chase per access; numpy pays neither. But dict pays *only* for ids that actually exist, which is the right shape for a sparse id space.
 
 The choice is set by id density, not by taste. The simulator's surrogate ids from [§10](10_stable_ids_and_generations.md) are dense — a fresh integer per creature, recycled when slots are reused. The numpy array is the right pick. An audit log indexed by 64-bit hash would be sparse — the dict is the right pick.
 
@@ -47,7 +47,7 @@ m = csr_matrix(...)            # built for sparse 2D matrix arithmetic
 slot = m[creature_id, 0]        # used here as a 1D point-lookup map
 ```
 
-The `scipy.sparse` family — CSR, CSC, COO — are not index maps. They are sparse-matrix data structures, optimised for matrix-vector products and slicing entire rows or columns. Used for individual point lookups, they are very slow. From [`code/measurement/csr_matrix or python dict.py`](../../code/measurement/csr_matrix%20or%20python%20dict.py) at 1,000 × 1,000 with 1% density, **a Python dict is roughly 108× faster** than CSR at random scalar lookups.
+The `scipy.sparse` family — CSR, CSC, COO — are not index maps. They are sparse-matrix data structures, optimised for matrix-vector products and slicing entire rows or columns. Used for individual point lookups, they are very slow. From [`code/measurement/csr_matrix or python dict.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/csr_matrix%20or%20python%20dict.py) at 1,000 × 1,000 with 1% density, **a Python dict is roughly 108× faster** than CSR at random scalar lookups.
 
 The exhibit's headline reads "CSR matrix is 108× slower than Python dict." That is true *for the access pattern in the file* — and it is the wrong reading. The right reading is: **scipy gave you a sparse *matrix*, not a sparse *map*. Pick the structure that matches your access pattern.** CSR is excellent at SpMV (sparse-matrix-vector-product, the common dense-vector-multiplied-by-sparse-matrix operation in scientific computing). It is poor at point-and-shoot lookups because its internal layout — three `indices`, `indptr`, `data` arrays — is optimised for stride-skipping, not for O(1) random access. The lesson is not "CSR is slow"; it is "wrong tool for this job, every time, by design."
 

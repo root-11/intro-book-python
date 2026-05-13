@@ -14,7 +14,7 @@ That is half the chapter. The other half is the question §31 left dangling: **h
 
 ## Coprocessors are IOPS-limited
 
-A worker process is a CPU that can do work, but only after main has told it what work. Telling a worker something — sending a message, releasing a barrier, putting a task on a queue — has a cost, and that cost is a hard ceiling on how fast main can keep workers busy. From [`code/measurement/coordination_patterns.py`](../../code/measurement/coordination_patterns.py), three coordination patterns measured on this machine (8 physical cores, 7 workers + 1 main, 20,000 rounds × 7 workers = 140,000 round-trips per pattern):
+A worker process is a CPU that can do work, but only after main has told it what work. Telling a worker something — sending a message, releasing a barrier, putting a task on a queue — has a cost, and that cost is a hard ceiling on how fast main can keep workers busy. From [`code/measurement/coordination_patterns.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/coordination_patterns.py), three coordination patterns measured on this machine (8 physical cores, 7 workers + 1 main, 20,000 rounds × 7 workers = 140,000 round-trips per pattern):
 
 | pattern                       |    msgs/sec | jitter p50 | jitter p99 |
 |-------------------------------|------------:|-----------:|-----------:|

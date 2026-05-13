@@ -19,7 +19,7 @@ This is not a quality goal; it is a precondition for almost everything the book 
 
 The recipe for determinism is to forbid every source of non-determinism in the inner systems. In Python the sources have specific names.
 
-**No raw set iteration.** From [`code/measurement/set_iteration_order.py`](../../code/measurement/set_iteration_order.py), three fresh subprocesses iterating the same six-element set produced three different orders:
+**No raw set iteration.** From [`code/measurement/set_iteration_order.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/set_iteration_order.py), three fresh subprocesses iterating the same six-element set produced three different orders:
 
 ```
 run 1: delta,foxtrot,echo,bravo,charlie,alpha

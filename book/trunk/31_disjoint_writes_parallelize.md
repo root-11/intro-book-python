@@ -20,7 +20,7 @@ This is the chapter where the GIL question finally lands. The Python reflex when
 
 The disciplined alternative is **`multiprocessing` plus `shared_memory`**. `__main__` allocates the world's columns in a shared-memory region. Worker processes attach to that region, get a numpy view onto the same bytes, and write to *their slice only*. There is no copying across the process boundary; the bytes are shared. The GIL is no longer in the picture because each process has its own GIL, and each process is doing pure C-level numpy work on its own partition.
 
-The shape (full version in [`code/measurement/parallel_motion.py`](../../code/measurement/parallel_motion.py)):
+The shape (full version in [`code/measurement/parallel_motion.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/parallel_motion.py)):
 
 ```python
 # Worker globals — set once per worker by the Pool initializer.
@@ -52,7 +52,7 @@ The shape: **`__main__` owns the memory; workers attach via `init_worker` and ho
 
 ## What it costs and what it buys
 
-From [`code/measurement/parallel_motion.py`](../../code/measurement/parallel_motion.py), two workloads applied 100 times to 10,000,000 `float32` creatures on this machine (8 physical cores, 16 logical with SMT):
+From [`code/measurement/parallel_motion.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/parallel_motion.py), two workloads applied 100 times to 10,000,000 `float32` creatures on this machine (8 physical cores, 16 logical with SMT):
 
 **Workload A — memory-bound** (`pos += vel * dt`): 12 bytes accessed per element, 2 arithmetic ops. Memory traffic dominates.
 

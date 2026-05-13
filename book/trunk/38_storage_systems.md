@@ -34,7 +34,7 @@ SQL fits at the boundary, in three specific roles:
 
 Most Python programmers carry an intuition that "in-memory is fast, on-disk is slow." For *cold* access this is true; the first read of a database file from cold storage is a real disk seek. For *warm* access — once the OS page cache has the relevant blocks — the gap is much smaller than the intuition suggests.
 
-From [`code/measurement/sqlite_performance_test.py`](../../code/measurement/sqlite_performance_test.py), 100,000 random point lookups against a SQLite table populated with the same data, measured on this author's machine:
+From [`code/measurement/sqlite_performance_test.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/sqlite_performance_test.py), 100,000 random point lookups against a SQLite table populated with the same data, measured on this author's machine:
 
 | backing                       | lookups/sec |
 |-------------------------------|------------:|
@@ -50,7 +50,7 @@ Two practical consequences:
 
 ## Three concrete examples worth remembering
 
-**SQLite.** On local NVMe, SQLite handles ~50K row inserts per second using one-by-one `INSERT` statements; ~500K-1M per second using prepared statements with batched transactions; ~5M per second using `INSERT INTO ... SELECT FROM ...` over an in-memory table. The simlog exporter at [`.archive/simlog/logger.py`](../../.archive/simlog/logger.py) uses the last form. **Same database, three orders of magnitude in throughput, depending on whether the workload pushes IOPS or bandwidth.**
+**SQLite.** On local NVMe, SQLite handles ~50K row inserts per second using one-by-one `INSERT` statements; ~500K-1M per second using prepared statements with batched transactions; ~5M per second using `INSERT INTO ... SELECT FROM ...` over an in-memory table. The simlog exporter at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) uses the last form. **Same database, three orders of magnitude in throughput, depending on whether the workload pushes IOPS or bandwidth.**
 
 ```python
 # anti-pattern: bad! — one INSERT per row, ~50K/sec

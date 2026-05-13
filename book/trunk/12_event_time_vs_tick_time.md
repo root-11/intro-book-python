@@ -23,7 +23,7 @@ In each case, the tick rate of the host loop is irrelevant to the simulation's r
 
 The Python reflex when a chapter mentions "timestamps" is to reach for `datetime`. It is the obvious choice — the standard library provides it, every tutorial uses it, comparisons work with `<` and `>`, subtractions return a readable `timedelta`. It is also one of the most expensive ways to store time at scale.
 
-From [`code/measurement/event_time_storage.py`](../../code/measurement/event_time_storage.py), one million events covering an hour at microsecond resolution, on this machine:
+From [`code/measurement/event_time_storage.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/event_time_storage.py), one million events covering an hour at microsecond resolution, on this machine:
 
 | layout                               |  data    | build   | sort    | count <T |
 |--------------------------------------|---------:|--------:|--------:|---------:|
@@ -37,7 +37,7 @@ The headline numbers, both ways:
 - **17× faster** count of "how many events happened before time T?" — the per-tick query that decides what gets processed this tick. The numpy versions evaluate the comparison as one bandwidth-bound bulk op; the datetime version pays per-element interpreter dispatch and a `<` method call.
 - Sort time is mixed and dtype-sensitive — measure your specific case. On this run numpy's float64 sort was slower than its datetime64 sort, which was slightly faster than Python's Timsort on the already-sorted datetime list. Sort cost matters for ingestion; count cost matters per tick. The tick is the binding budget.
 
-The simlog reference implementation (vendored at [`.archive/simlog/logger.py`](../../.archive/simlog/logger.py)) stores time as `f8` — float64 seconds. That is the disciplined choice for an event log: small, sortable, amenable to bulk numpy ops, and the same width as everything else in the column store. `datetime64[us]` is a reasonable alternative when you need to read the timestamps as wall-clock dates without conversion. Use `datetime` objects only at the boundary — formatting a string for a log line, comparing against a user-supplied timestamp from a request — never as your in-memory storage at simulation scale.
+The simlog reference implementation (vendored at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py)) stores time as `f8` — float64 seconds. That is the disciplined choice for an event log: small, sortable, amenable to bulk numpy ops, and the same width as everything else in the column store. `datetime64[us]` is a reasonable alternative when you need to read the timestamps as wall-clock dates without conversion. Use `datetime` objects only at the boundary — formatting a string for a log line, comparing against a user-supplied timestamp from a request — never as your in-memory storage at simulation scale.
 
 ## The decoupling, in code
 

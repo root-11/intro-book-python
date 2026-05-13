@@ -173,7 +173,7 @@ That experience is real, and it is hiding the machine from you. The cost of one 
 
 This is the missing piece of the machine model in Python. The hierarchy is still there; the bottleneck just moved. To *see* the machine, you have to look in places where the interpreter dispatch isn't dominating. Two such places, both measurable on your laptop:
 
-**1. Sum a million int64s, three ways.** [`code/measurement/cache_cliffs.py`](code/measurement/cache_cliffs.py) walks N from 10K to 100M and times: `sum(lst)` on a Python list, `arr.sum()` on a contiguous numpy array, and `arr[idx].sum()` where `idx` is a shuffled permutation. On this machine:
+**1. Sum a million int64s, three ways.** [`code/measurement/cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py) walks N from 10K to 100M and times: `sum(lst)` on a Python list, `arr.sum()` on a contiguous numpy array, and `arr[idx].sum()` where `idx` is a shuffled permutation. On this machine:
 
 | N           | Python list | numpy seq | numpy gather | gather/seq |
 |------------:|------------:|----------:|-------------:|-----------:|
@@ -185,9 +185,9 @@ This is the missing piece of the machine model in Python. The hierarchy is still
 
 Read the columns. The Python list is **flat at ~4.6 ns/element across five orders of magnitude**. From inside the interpreter the cache hierarchy does not exist. The numpy sequential column is 25-30× faster and reveals the bandwidth — the inner loop is C, the bytes are typed, the prefetcher works. The numpy gather column is the same data accessed in a shuffled order; once the working set leaves L1 (between 10K and 100K), the per-element cost climbs, and by 100M the gap to sequential is **72×**. That ratio is the L1-to-RAM cost gap on this machine, measured.
 
-**2. Take an exception once vs a million times.** [`code/measurement/try_except.py`](code/measurement/try_except.py) compares `try/except ZeroDivisionError` against an explicit `if value != 0` check, across hit rates from 0.0001% to 99.9999%. At 50/50 the `try/except` form is 4× slower; at 99.9999% (almost no exceptions raised) the `try/except` form is *faster* than the `if`. The difference is the CPU's branch predictor: a taken branch with high frequency is essentially free; a mispredicted one costs ~10-20 cycles. The lesson is not "use try/except" or "use if" — it is that constant factors are rate-dependent, and even Python inherits this.
+**2. Take an exception once vs a million times.** [`code/measurement/try_except.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/try_except.py) compares `try/except ZeroDivisionError` against an explicit `if value != 0` check, across hit rates from 0.0001% to 99.9999%. At 50/50 the `try/except` form is 4× slower; at 99.9999% (almost no exceptions raised) the `try/except` form is *faster* than the `if`. The difference is the CPU's branch predictor: a taken branch with high frequency is essentially free; a mispredicted one costs ~10-20 cycles. The lesson is not "use try/except" or "use if" — it is that constant factors are rate-dependent, and even Python inherits this.
 
-**3. Constant factors leak through.** [`code/measurement/string_methods.py`](code/measurement/string_methods.py) compares `%`-format, f-strings, and `.format` for the same output. On this machine `%`-format is ~20% faster than f-strings, which are ~5% faster than `.format`. None of this matters in a one-off log line. All of it matters in a tight loop. The "modern idiomatic" choice is not automatically the cheap choice.
+**3. Constant factors leak through.** [`code/measurement/string_methods.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/string_methods.py) compares `%`-format, f-strings, and `.format` for the same output. On this machine `%`-format is ~20% faster than f-strings, which are ~5% faster than `.format`. None of this matters in a one-off log line. All of it matters in a tight loop. The "modern idiomatic" choice is not automatically the cheap choice.
 
 ## What this chapter is asking you to do
 
@@ -227,7 +227,7 @@ A cache line is 64 bytes. That is the unit of memory the CPU loads at a time. Ev
 
 ## What an `int` actually costs
 
-You wrote `x = 1` last week and that was the end of the question. What sat in memory was a `PyLong` object: a header, a refcount, a length, and one or more 32-bit "digit" limbs holding the value. The minimum size, even for `0`, is **28 bytes**. As the value grows past one digit, the object grows by four bytes per additional digit. From [`code/measurement/number_footprint.py`](code/measurement/number_footprint.py) on this machine:
+You wrote `x = 1` last week and that was the end of the question. What sat in memory was a `PyLong` object: a header, a refcount, a length, and one or more 32-bit "digit" limbs holding the value. The minimum size, even for `0`, is **28 bytes**. As the value grows past one digit, the object grows by four bytes per additional digit. From [`code/measurement/number_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/number_footprint.py) on this machine:
 
 ```
 int 0                          28 bytes
@@ -277,7 +277,7 @@ Pick the narrowest type that holds your range, and write down why. A 52-card dec
 
 They look like real numbers but are not. There are only about 4 billion `float32` values; there are only about 18 quintillion `float64` values; that is finite. Operations have edges: `1.0 / 0.0 = inf`, `0.0 / 0.0 = nan`, and `nan != nan` — yes, equality is broken on purpose for `nan`, because there is no reasonable answer. But `==` is also unreliable for *ordinary* floats: `0.1 + 0.2 == 0.3` is `False`, because `0.1` and `0.2` cannot be represented exactly in binary and the rounding error happens to land just past `0.3`. This is why `math.isclose(a, b, rel_tol=1e-9, abs_tol=0.0)` exists — it is the standard library's acknowledgement that `==` is the wrong tool for floats and that comparing them needs a tolerance you choose deliberately. Subtracting two nearly equal floats loses most of their precision (this is *catastrophic cancellation*). Adding a tiny float to a large one quietly drops the tiny one (this is *absorption*). None of this is a problem if you know it is there; all of it is a problem if you assume floats are mathematics.
 
-[`code/measurement/sums.py`](code/measurement/sums.py) demonstrates the consequences across five pathological datasets — random balanced, large-plus-many-small, alternating signs, tiny increments, and arrays containing NaNs — using six summation algorithms (`sum`, `math.fsum`, Kahan, Neumaier, pairwise, decimal reference). Run it; read the discrepancies. The same input data summed in different orders gives different answers, and the "naive" answer is sometimes off by orders of magnitude. The fix is not "use float64 instead of float32" — it is *picking a summation algorithm aware of the data shape*. `math.fsum` and Neumaier are usually the right defaults for a single-pass sum where you cannot bound the input.
+[`code/measurement/sums.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/sums.py) demonstrates the consequences across five pathological datasets — random balanced, large-plus-many-small, alternating signs, tiny increments, and arrays containing NaNs — using six summation algorithms (`sum`, `math.fsum`, Kahan, Neumaier, pairwise, decimal reference). Run it; read the discrepancies. The same input data summed in different orders gives different answers, and the "naive" answer is sometimes off by orders of magnitude. The fix is not "use float64 instead of float32" — it is *picking a summation algorithm aware of the data shape*. `math.fsum` and Neumaier are usually the right defaults for a single-pass sum where you cannot bound the input.
 
 Most of this book uses `np.uint8`, `np.uint16`, `np.uint32`, `np.float32`, and `np.uint64` for time. `int*` and `float64` appear when the range or precision genuinely demands it. The choice is documented at every column declaration.
 
@@ -322,7 +322,7 @@ Take the same data — N rows, K integers per row — and lay it out five ways. 
 | 4. `tuple(array.array('q', …) for k …)`         | tuple of `array.array` — SoA, stdlib typed |
 | 5. `tuple(np.arange(...) for k in range(K))`    | tuple of numpy columns — SoA, typed + C |
 
-[`code/measurement/aos_vs_soa_footprint.py`](code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so RSS readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
+[`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so RSS readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
 
 | layout                              |  RSS    | build  | sum c0 |
 |-------------------------------------|--------:|-------:|-------:|
@@ -372,7 +372,7 @@ There is no such thing as a cost-free abstraction. Every pointer has a cost, and
 
 ## Applied reference
 
-If you want to see this discipline carried through a real piece of code, read [`.archive/simlog/logger.py`](.archive/simlog/logger.py). It is a 700-line columnar logger that parks dict payloads into pre-allocated numpy columns, with a double-buffered design that lets the simulation write to one buffer while a background thread dumps the other to disk. The book does not require you to read it now. It's the destination this chapter and the next several point at.
+If you want to see this discipline carried through a real piece of code, read [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py). It is a 700-line columnar logger that parks dict payloads into pre-allocated numpy columns, with a double-buffered design that lets the simulation write to one buffer while a background thread dumps the other to disk. The book does not require you to read it now. It's the destination this chapter and the next several point at.
 
 ## What's next
 
@@ -534,7 +534,7 @@ We call this **identity-is-an-integer**, and it is the precondition for every ec
 
 ## Even *which* integer matters
 
-Not every integer is the same integer for performance. From [`code/measurement/float_or_int_tuple.py`](code/measurement/float_or_int_tuple.py), looking up keys in a Python `dict` of 10,000 entries:
+Not every integer is the same integer for performance. From [`code/measurement/float_or_int_tuple.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/float_or_int_tuple.py), looking up keys in a Python `dict` of 10,000 entries:
 
 | key shape                  | lookups / sec |
 |----------------------------|--------------:|
@@ -583,7 +583,7 @@ This is what we call a *row* throughout the rest of the book — a coherent set 
 
 ## Why "implicit" matters in Python
 
-Python's tutorial reflex when it sees the word *row* is to reach for a class — `@dataclass class Row` or `class Row(NamedTuple)` or, if performance is mentioned, `class Row: __slots__ = (...)`. Each of these constructs the row as an *object*, with a header, a refcount, and field pointers. None of them are free. From [`code/measurement/classes_or_tuples.py`](code/measurement/classes_or_tuples.py), the time to materialise 1,000,000 two-field "rows" on this machine, ordered fastest to slowest:
+Python's tutorial reflex when it sees the word *row* is to reach for a class — `@dataclass class Row` or `class Row(NamedTuple)` or, if performance is mentioned, `class Row: __slots__ = (...)`. Each of these constructs the row as an *object*, with a header, a refcount, and field pointers. None of them are free. From [`code/measurement/classes_or_tuples.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/classes_or_tuples.py), the time to materialise 1,000,000 two-field "rows" on this machine, ordered fastest to slowest:
 
 | how the row is built                                     | time for 1M rows |
 |----------------------------------------------------------|-----------------:|
@@ -596,7 +596,7 @@ Python's tutorial reflex when it sees the word *row* is to reach for a class —
 
 Two readings of this table.
 
-First reading: the bare tuple is **~16× faster** than a slotted class and **~23× faster** than a frozen+slots dataclass for per-row construction. The named alternatives all pay for an object header and per-field descriptor lookup that the tuple skips. From [`code/measurement/simple_namespace.py`](code/measurement/simple_namespace.py), even a `dict` (`{'x': 10.0, 'y': 20.0}`) constructs faster than any of the named-class options — about 0.036 s for the same million. *Naming the row* is the cost; the tuple is the cheapest row that is still recognisable as a row.
+First reading: the bare tuple is **~16× faster** than a slotted class and **~23× faster** than a frozen+slots dataclass for per-row construction. The named alternatives all pay for an object header and per-field descriptor lookup that the tuple skips. From [`code/measurement/simple_namespace.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/simple_namespace.py), even a `dict` (`{'x': 10.0, 'y': 20.0}`) constructs faster than any of the named-class options — about 0.036 s for the same million. *Naming the row* is the cost; the tuple is the cheapest row that is still recognisable as a row.
 
 Second reading — and the one this book cares about — is the top line: **two bulk numpy column allocations construct 1,000,000 rows-worth of data faster than a million individual tuple literals.** Bulk allocation is roughly 30× faster than the named alternatives and is *not even slower than the cheapest per-row option*. The shape that lets you do this — pre-allocate a column once, fill it with values, and treat row `i` as the implicit tuple `(col0[i], col1[i], ...)` — has no per-row construction cost at all. The tuple at index `i` only exists when you ask for it explicitly; until then it lives in contiguous bytes inside numpy columns. From the §3 footprint exhibit, one million ten-field rows cost 99 MB as numpy SoA columns and 437 MB as a list of tuples — and the SoA version pays *zero* per-row construction cost on top of that, because there are no row objects.
 
@@ -683,7 +683,7 @@ This makes the SoA win in Python *categorical*, not just *quantitative*. The num
 
 SoA is therefore the default in this book. AoS is sometimes the right choice — for example when every system reads every field of every entity on every tick (rare), or when N is so small that the loop overhead dominates regardless of layout (think dozens of items, not millions). But this is a tradeoff to *earn* by measurement, not to assume by habit. Write SoA first; switch to AoS only when a benchmark forces you to.
 
-The §3 exhibit ([`code/measurement/aos_vs_soa_footprint.py`](code/measurement/aos_vs_soa_footprint.py)) is the reference measurement for this chapter. Re-read its sum-column-0 row: list-of-tuples (the AoS twin) summed column 0 of one million ten-field rows in 30 ms; numpy SoA did the same in 0.4 ms. **75× faster for the canonical "system reads one column" operation.** That is the regime your inner loops will live in for the rest of this book.
+The §3 exhibit ([`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py)) is the reference measurement for this chapter. Re-read its sum-column-0 row: list-of-tuples (the AoS twin) summed column 0 of one million ten-field rows in 30 ms; numpy SoA did the same in 0.4 ms. **75× faster for the canonical "system reads one column" operation.** That is the regime your inner loops will live in for the rest of this book.
 
 ## Exercises
 
@@ -721,7 +721,7 @@ A useful test: when you find yourself writing a method on a class, ask *what doe
 
 ## The performance argument
 
-There is also a performance reason — sharper in Python than in any compiled language. A method that operates on one entity at a time forces the system that uses it to call the method N times. From [`code/measurement/cache_cliffs.py`](code/measurement/cache_cliffs.py), Python per-element work cost ~5 ns regardless of the size of the data; numpy bulk work cost ~0.2 ns/element. The ratio is **roughly 25×** at any size, and that is *just* the dispatch cost — before you add the cost of `getattr(creature, 'energy')` once per call, the refcount work on every return, and the lost opportunity for numpy to use SIMD instructions on contiguous bytes.
+There is also a performance reason — sharper in Python than in any compiled language. A method that operates on one entity at a time forces the system that uses it to call the method N times. From [`code/measurement/cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py), Python per-element work cost ~5 ns regardless of the size of the data; numpy bulk work cost ~0.2 ns/element. The ratio is **roughly 25×** at any size, and that is *just* the dispatch cost — before you add the cost of `getattr(creature, 'energy')` once per call, the refcount work on every return, and the lost opportunity for numpy to use SIMD instructions on contiguous bytes.
 
 In a compiled language, an "obvious" inner loop over `creatures.iter().for_each(|c| c.update())` is something the optimizer can usually rescue — inline the method, fuse the body into the loop, autovectorize the result. In Python the optimizer is the bytecode dispatcher and it cannot do any of that. The per-method-call form is essentially the worst case the language offers. Writing for arrays first is a request the *interpreter* can fulfil — it can hand the work to numpy and step out of the loop entirely. Writing for singletons-and-iterate is a request that pins the work inside the interpreter for every element.
 
@@ -941,7 +941,7 @@ A simulation tick wants three things: precision (sleep until exactly the next de
 
 ## What fits in a tick
 
-The budget binds the design. From [`code/measurement/tick_budget.py`](code/measurement/tick_budget.py), one motion system (`pos += vel * dt`) measured on this machine:
+The budget binds the design. From [`code/measurement/tick_budget.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/tick_budget.py), one motion system (`pos += vel * dt`) measured on this machine:
 
 |             N  | layout              | tick time | 30 Hz budget | 60 Hz budget |
 |---------------:|---------------------|----------:|:-------------|:-------------|
@@ -1001,7 +1001,7 @@ In each case, the tick rate of the host loop is irrelevant to the simulation's r
 
 The Python reflex when a chapter mentions "timestamps" is to reach for `datetime`. It is the obvious choice — the standard library provides it, every tutorial uses it, comparisons work with `<` and `>`, subtractions return a readable `timedelta`. It is also one of the most expensive ways to store time at scale.
 
-From [`code/measurement/event_time_storage.py`](code/measurement/event_time_storage.py), one million events covering an hour at microsecond resolution, on this machine:
+From [`code/measurement/event_time_storage.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/event_time_storage.py), one million events covering an hour at microsecond resolution, on this machine:
 
 | layout                               |  data    | build   | sort    | count <T |
 |--------------------------------------|---------:|--------:|--------:|---------:|
@@ -1015,7 +1015,7 @@ The headline numbers, both ways:
 - **17× faster** count of "how many events happened before time T?" — the per-tick query that decides what gets processed this tick. The numpy versions evaluate the comparison as one bandwidth-bound bulk op; the datetime version pays per-element interpreter dispatch and a `<` method call.
 - Sort time is mixed and dtype-sensitive — measure your specific case. On this run numpy's float64 sort was slower than its datetime64 sort, which was slightly faster than Python's Timsort on the already-sorted datetime list. Sort cost matters for ingestion; count cost matters per tick. The tick is the binding budget.
 
-The simlog reference implementation (vendored at [`.archive/simlog/logger.py`](.archive/simlog/logger.py)) stores time as `f8` — float64 seconds. That is the disciplined choice for an event log: small, sortable, amenable to bulk numpy ops, and the same width as everything else in the column store. `datetime64[us]` is a reasonable alternative when you need to read the timestamps as wall-clock dates without conversion. Use `datetime` objects only at the boundary — formatting a string for a log line, comparing against a user-supplied timestamp from a request — never as your in-memory storage at simulation scale.
+The simlog reference implementation (vendored at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py)) stores time as `f8` — float64 seconds. That is the disciplined choice for an event log: small, sortable, amenable to bulk numpy ops, and the same width as everything else in the column store. `datetime64[us]` is a reasonable alternative when you need to read the timestamps as wall-clock dates without conversion. Use `datetime` objects only at the boundary — formatting a string for a log line, comparing against a user-supplied timestamp from a request — never as your in-memory storage at simulation scale.
 
 ## The decoupling, in code
 
@@ -1090,7 +1090,7 @@ These three shapes are the same shapes a database query takes. `SELECT * FROM t 
 
 This is the moment to name what most Python tutorials teach instead. The method-on-object shape — `class Creature: def tick(self, dt): self.pos += self.vel * dt` — is the same lesson rotated through `self`, and the rotation costs you everything important. The signature `def tick(self, dt)` does not tell you what the method reads or writes. The body does, but only after you read it. The contract is no longer expressible at the call site; it is implicit in the body of the method, which means you cannot reason about composition without inlining every method.
 
-It also costs you the loop. The natural caller for `Creature.tick` is `for c in creatures: c.tick(dt)` — a Python-level loop, one method dispatch per element, interpreter-bound at the floor of ~5 ns per element from §1, plus another ~50-100 ns of `getattr` and method-call overhead per attribute. From [`code/measurement/tick_budget.py`](code/measurement/tick_budget.py) the cost is **27.9 ms per tick at 1,000,000 creatures** for one motion system, against **0.6 ms** for the function-over-columns form. The system shape is not just clearer — it is the only one that fits inside a 30 Hz budget at scale.
+It also costs you the loop. The natural caller for `Creature.tick` is `for c in creatures: c.tick(dt)` — a Python-level loop, one method dispatch per element, interpreter-bound at the floor of ~5 ns per element from §1, plus another ~50-100 ns of `getattr` and method-call overhead per attribute. From [`code/measurement/tick_budget.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/tick_budget.py) the cost is **27.9 ms per tick at 1,000,000 creatures** for one motion system, against **0.6 ms** for the function-over-columns form. The system shape is not just clearer — it is the only one that fits inside a 30 Hz budget at scale.
 
 The wider rule: **a function that takes `self` does not have a declared read-set or write-set.** A function that takes columns does. This is one of the two or three places where "OOP versus data-oriented" is not a stylistic choice — it is whether your system has a contract you can read.
 
@@ -1283,7 +1283,7 @@ The starvation system *only* writes to `to_remove`. It never touches `creatures`
 
 ## The simlog is what this looks like in production
 
-The reference implementation at [`.archive/simlog/logger.py`](.archive/simlog/logger.py) is a 700-line columnar logger built on exactly this pattern. It maintains *two* `Container`s — pre-allocated numpy arrays plus a write pointer. The simulation writes into one container; when that container fills, the simlog atomically swaps containers and a background thread dumps the full one to disk. The simulation never observes a half-flushed buffer; the disk-flushing thread never observes a half-written row. Read it when this chapter clicks; it is the same idea this chapter teaches, sized up for production.
+The reference implementation at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is a 700-line columnar logger built on exactly this pattern. It maintains *two* `Container`s — pre-allocated numpy arrays plus a write pointer. The simulation writes into one container; when that container fills, the simlog atomically swaps containers and a background thread dumps the full one to disk. The simulation never observes a half-flushed buffer; the disk-flushing thread never observes a half-written row. Read it when this chapter clicks; it is the same idea this chapter teaches, sized up for production.
 
 ## Costs and trade
 
@@ -1332,7 +1332,7 @@ This is not a quality goal; it is a precondition for almost everything the book 
 
 The recipe for determinism is to forbid every source of non-determinism in the inner systems. In Python the sources have specific names.
 
-**No raw set iteration.** From [`code/measurement/set_iteration_order.py`](code/measurement/set_iteration_order.py), three fresh subprocesses iterating the same six-element set produced three different orders:
+**No raw set iteration.** From [`code/measurement/set_iteration_order.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/set_iteration_order.py), three fresh subprocesses iterating the same six-element set produced three different orders:
 
 ```
 run 1: delta,foxtrot,echo,bravo,charlie,alpha
@@ -1481,7 +1481,7 @@ def stop_being_hungry_presence(hungry: np.ndarray, creature_id: int) -> np.ndarr
 
 The Python idiom that this chapter is asking you to abandon is older and more universal than `is_hungry`. It is `creature.alive = False` — the *soft delete*. Every Python tutorial that introduces classes teaches it: when a thing should stop being processed, set a bool, and check that bool before processing it. Tens of thousands of production codebases run on exactly this pattern.
 
-The cost is real. From [`code/measurement/alive_fraction.py`](code/measurement/alive_fraction.py), one motion update over 1,000,000 creatures at varying alive-fraction:
+The cost is real. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py), one motion update over 1,000,000 creatures at varying alive-fraction:
 
 | alive % | AoS (`for c if c.alive`) | numpy bool mask | numpy presence (ids) | mask/presence |
 |--------:|-------------------------:|----------------:|---------------------:|--------------:|
@@ -1563,7 +1563,7 @@ energy[hungry] -= HUNGER_BURN_RATE * dt
 
 The two produce the same result. The two have very different costs.
 
-The filtered version evaluates `is_hungry` for every creature — a 1,000,000-byte scan to find the 100,000 hungry ones. The EBP version reads the 100,000 entries of `hungry` and indexes directly. From [`code/measurement/alive_fraction.py`](code/measurement/alive_fraction.py) (the §18 exhibit), at 10% sparsity the presence version was **5× faster** than the bool mask version, and at 1% it was **10× faster**. Most simulator states are sparse — a small fraction of creatures are eating at any given tick, a small fraction are reproducing, a small fraction are dying — so EBP's compounding advantage shows up everywhere.
+The filtered version evaluates `is_hungry` for every creature — a 1,000,000-byte scan to find the 100,000 hungry ones. The EBP version reads the 100,000 entries of `hungry` and indexes directly. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py) (the §18 exhibit), at 10% sparsity the presence version was **5× faster** than the bool mask version, and at 1% it was **10× faster**. Most simulator states are sparse — a small fraction of creatures are eating at any given tick, a small fraction are reproducing, a small fraction are dying — so EBP's compounding advantage shows up everywhere.
 
 A useful intuition: it is the difference between a wandering shopper trying to remember what they need and a shopper with a list. The list version is shorter, faster, and correct by construction. You do not consult the list to ask "is this aisle on my list?" — you walk down the list and visit each aisle once.
 
@@ -1660,7 +1660,7 @@ This is not "fast in the empty case as an optimisation". It is *free in the empt
 
 Python's tutorial reflex when an attribute might be absent is `disease: Optional[Disease] = None`. Every `Creature` carries the field; healthy creatures carry `None`. This looks free — `None` is a singleton, after all — but every instance still pays one slot, every iteration still pays one `getattr`, and the storage still scales with population, not with prevalence.
 
-From [`code/measurement/empty_tables.py`](code/measurement/empty_tables.py), one million creatures with a `disease` field at four prevalence levels:
+From [`code/measurement/empty_tables.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/empty_tables.py), one million creatures with a `disease` field at four prevalence levels:
 
 | prevalence | layout                              | RSS    | process tick | n diseased |
 |-----------:|-------------------------------------|-------:|-------------:|-----------:|
@@ -1750,7 +1750,7 @@ The bulk-filter version takes a *batch* of indices and processes them in a singl
 
 ## Cost, measured
 
-From [`code/measurement/swap_remove.py`](code/measurement/swap_remove.py), removing 100,000 mid-table rows from a 1,000,000-row table on this machine:
+From [`code/measurement/swap_remove.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/swap_remove.py), removing 100,000 mid-table rows from a 1,000,000-row table on this machine:
 
 | layout                                              | time      | remove rate         |
 |-----------------------------------------------------|----------:|--------------------:|
@@ -1940,7 +1940,7 @@ def slot_of(id_to_slot: dict[int, int], creature_id: int) -> int | None:
     return id_to_slot.get(creature_id)
 ```
 
-Dict lookup is O(1) amortised, ~30-40 million ops/sec for integer keys (per [`code/measurement/float_or_int_tuple.py`](code/measurement/float_or_int_tuple.py) — note that *which* integer matters; int keys are 2.4× faster than float-tuple keys at the same map size). Dict pays for hash machinery on every lookup and one pointer chase per access; numpy pays neither. But dict pays *only* for ids that actually exist, which is the right shape for a sparse id space.
+Dict lookup is O(1) amortised, ~30-40 million ops/sec for integer keys (per [`code/measurement/float_or_int_tuple.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/float_or_int_tuple.py) — note that *which* integer matters; int keys are 2.4× faster than float-tuple keys at the same map size). Dict pays for hash machinery on every lookup and one pointer chase per access; numpy pays neither. But dict pays *only* for ids that actually exist, which is the right shape for a sparse id space.
 
 The choice is set by id density, not by taste. The simulator's surrogate ids from [§10](#10--stable-ids-and-generations) are dense — a fresh integer per creature, recycled when slots are reused. The numpy array is the right pick. An audit log indexed by 64-bit hash would be sparse — the dict is the right pick.
 
@@ -1953,7 +1953,7 @@ m = csr_matrix(...)            # built for sparse 2D matrix arithmetic
 slot = m[creature_id, 0]        # used here as a 1D point-lookup map
 ```
 
-The `scipy.sparse` family — CSR, CSC, COO — are not index maps. They are sparse-matrix data structures, optimised for matrix-vector products and slicing entire rows or columns. Used for individual point lookups, they are very slow. From [`code/measurement/csr_matrix or python dict.py`](code/measurement/csr_matrix%20or%20python%20dict.py) at 1,000 × 1,000 with 1% density, **a Python dict is roughly 108× faster** than CSR at random scalar lookups.
+The `scipy.sparse` family — CSR, CSC, COO — are not index maps. They are sparse-matrix data structures, optimised for matrix-vector products and slicing entire rows or columns. Used for individual point lookups, they are very slow. From [`code/measurement/csr_matrix or python dict.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/csr_matrix%20or%20python%20dict.py) at 1,000 × 1,000 with 1% density, **a Python dict is roughly 108× faster** than CSR at random scalar lookups.
 
 The exhibit's headline reads "CSR matrix is 108× slower than Python dict." That is true *for the access pattern in the file* — and it is the wrong reading. The right reading is: **scipy gave you a sparse *matrix*, not a sparse *map*. Pick the structure that matches your access pattern.** CSR is excellent at SpMV (sparse-matrix-vector-product, the common dense-vector-multiplied-by-sparse-matrix operation in scientific computing). It is poor at point-and-shoot lookups because its internal layout — three `indices`, `indptr`, `data` arrays — is optimised for stride-skipping, not for O(1) random access. The lesson is not "CSR is slow"; it is "wrong tool for this job, every time, by design."
 
@@ -2279,7 +2279,7 @@ The *working set* of a loop is the data it touches per pass. The *cache hierarch
 
 If the working set fits in L1 — typically 32 KB per core — the loop runs near memory-bandwidth speed: ~0.1-0.5 ns per element. If it fits in L2 — typically 1-2 MB per core — it is ~0.5-2 ns. If it fits in L3 — typically 16-32 MB shared — it is ~1-5 ns. If it spills to RAM, sequential access drops to ~3-10 ns (prefetcher helping); random access drops to 50-200 ns (no prefetcher help).
 
-These ranges are not theoretical. They are what your machine actually does, measured in [§1's `cache_cliffs.py` exhibit](code/measurement/cache_cliffs.py). The numbers from that exhibit, on this machine:
+These ranges are not theoretical. They are what your machine actually does, measured in [§1's `cache_cliffs.py` exhibit](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py). The numbers from that exhibit, on this machine:
 
 | N           | numpy seq | numpy gather | gather/seq |
 |------------:|----------:|-------------:|-----------:|
@@ -2373,7 +2373,7 @@ Two creatures in the same spatial cell are now adjacent in `pos_x` and `pos_y`. 
 
 ## Why this matters in numpy
 
-The locality gap is not theoretical. From [§1's `cache_cliffs.py`](code/measurement/cache_cliffs.py), at 100M elements the gather (random-index) read is **72× slower than sequential** on this machine. That ratio is the cost of every cache-unfriendly access pattern — every iteration that visits creatures in a non-spatial order pays it. Spatial sort converts gather-shaped reads into sequential ones, **which is exactly the operation that ratio measures.**
+The locality gap is not theoretical. From [§1's `cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py), at 100M elements the gather (random-index) read is **72× slower than sequential** on this machine. That ratio is the cost of every cache-unfriendly access pattern — every iteration that visits creatures in a non-spatial order pays it. Spatial sort converts gather-shaped reads into sequential ones, **which is exactly the operation that ratio measures.**
 
 The cost is the sort itself. At 1M `uint32` keys, `np.argsort` takes ~10-30 ms depending on input distribution. Done every tick this would be too expensive — but typically the sort is done every ~100 ticks (or when accumulated motion exceeds a threshold), amortising to ~0.1-0.3 ms per tick. The savings on the inner loop dwarf the cost.
 
@@ -2422,7 +2422,7 @@ This chapter is about *finding the wall*. The fixes are techniques you already h
 - **Pre-allocation skipped.** A `to_insert: list[CreatureRow]` that grew lazily was fine at 100 appends per tick (10K creatures × 1% reproduction). At 10K appends per tick (1M × 1%), Python list `append` is amortised O(1) but each capacity doubling is an N-byte copy; at this scale the doublings dominate. Fix: pre-size with `[None] * estimated_max` plus an `n_inserts` counter, the same pattern §22 already uses.
 - **Linear scans in pure Python.** A list comprehension `[c for c in creatures if c.id == target_id]` was 0.1 ms at 10K, but tens of milliseconds at 1M. Fix: the `id_to_slot` map ([§23](#23--index-maps)) plus parallel presence flags. *In Python the linear-scan cost is sharper than in Rust* — you pay interpreter dispatch on every iteration, ~5 ns per step from §1.
 - **Cache spillover.** A `creature` working set at 10K is 200 KB (L2-resident). At 1M it is 20 MB (L3-resident). Per-element time triples. Fix: hot/cold splits + narrower numpy dtypes.
-- **The pandas wall.** A `pandas.DataFrame` of 10M rows × 20 columns at default dtypes occupies 1.6 GB+ before any operation. A `DataFrame.merge` allocates intermediate copies; a `groupby.apply` materialises Python objects per row; both can OOM long before the data itself would. Fix: drop pandas. Either move to numpy SoA (when the working set still fits in RAM with explicit columns) or to **sqlite** (when it doesn't, or won't long-term). [`code/measurement/sqlite_performance_test.py`](code/measurement/sqlite_performance_test.py) shows sqlite delivers ~830K-900K random lookups per second on disk — fast enough to be the production answer for many workloads that pandas was struggling with. **The migration is usually a one-day project that gives back days of OOM debugging per quarter.**
+- **The pandas wall.** A `pandas.DataFrame` of 10M rows × 20 columns at default dtypes occupies 1.6 GB+ before any operation. A `DataFrame.merge` allocates intermediate copies; a `groupby.apply` materialises Python objects per row; both can OOM long before the data itself would. Fix: drop pandas. Either move to numpy SoA (when the working set still fits in RAM with explicit columns) or to **sqlite** (when it doesn't, or won't long-term). [`code/measurement/sqlite_performance_test.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/sqlite_performance_test.py) shows sqlite delivers ~830K-900K random lookups per second on disk — fast enough to be the production answer for many workloads that pandas was struggling with. **The migration is usually a one-day project that gives back days of OOM debugging per quarter.**
 - **Per-tick allocation.** A system that calls `np.zeros(N)` per tick was fine when N was 10,000 (40 KB). At N = 1,000,000 it is 4 MB allocated and zero-filled every tick — the malloc cost alone is significant. Fix: allocate the buffer once at startup, fill or reuse in place.
 - **Logging.** A `print(f"creature {i} ate")` per event was tolerable at 10K. At 1M events it is the simulator's bottleneck — `print` flushes, formats, dispatches the GIL. Fix: write to a numpy event log per [§37](#37--the-log-is-the-world), flush in bulk; or simply turn it off.
 
@@ -2493,11 +2493,11 @@ Python gives you a small set of well-suited tools for this regime. Naming the ri
 
 **`np.savez` and `np.savez_compressed`.** Save a dict of named numpy columns to one `.npz` file. The format is uncompressed (or zip-compressed) typed bytes — the same bytes already in memory. Load via `np.load(path)["column_name"]`. This is the canonical Python answer for "snapshot the world" and "load a chunk." It is fast, schema-visible, and language-portable.
 
-**sqlite.** When the data is queried by id, range, or join — the access patterns relational databases were built for — sqlite is the right backend. From [§29](#29--the-wall-at-10k--1m) and [`code/measurement/sqlite_performance_test.py`](code/measurement/sqlite_performance_test.py): ~830K-900K random lookups per second on disk, indistinguishable from memory at the level of a tick budget. The simulator's archive can be a sqlite database with one table per column-family; queries are `SELECT * FROM events WHERE tick BETWEEN ? AND ?`.
+**sqlite.** When the data is queried by id, range, or join — the access patterns relational databases were built for — sqlite is the right backend. From [§29](#29--the-wall-at-10k--1m) and [`code/measurement/sqlite_performance_test.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/sqlite_performance_test.py): ~830K-900K random lookups per second on disk, indistinguishable from memory at the level of a tick budget. The simulator's archive can be a sqlite database with one table per column-family; queries are `SELECT * FROM events WHERE tick BETWEEN ? AND ?`.
 
-**The simlog as reference implementation.** The logger at [`.archive/simlog/logger.py`](.archive/simlog/logger.py) is exactly this architecture: pre-allocated numpy `Container`s as the in-memory window, double-buffered, with a background thread that dumps full containers to disk while the simulation continues writing into the swapped-in container. 700 lines, fully tested, exists as a vendored reference. When this chapter clicks, read it; it is the production version of the streaming pattern.
+**The simlog as reference implementation.** The logger at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is exactly this architecture: pre-allocated numpy `Container`s as the in-memory window, double-buffered, with a background thread that dumps full containers to disk while the simulation continues writing into the swapped-in container. 700 lines, fully tested, exists as a vendored reference. When this chapter clicks, read it; it is the production version of the streaming pattern.
 
-**Chunked operations on disk-resident data.** Some numpy primitives accept arbitrarily-large input via chunked iteration. [`.archive/numpy_unique_args_permutations.py`](.archive/numpy_unique_args_permutations.py) explored `np.unique`'s parameters; the same shape extends to `np.histogram`, `np.argsort` (when paired with `np.lexsort` and stable merging across chunks), and any reduce-style operation — read N rows at a time, update accumulators, drop the chunk before reading the next.
+**Chunked operations on disk-resident data.** Some numpy primitives accept arbitrarily-large input via chunked iteration. [`.archive/numpy_unique_args_permutations.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/numpy_unique_args_permutations.py) explored `np.unique`'s parameters; the same shape extends to `np.histogram`, `np.argsort` (when paired with `np.lexsort` and stable merging across chunks), and any reduce-style operation — read N rows at a time, update accumulators, drop the chunk before reading the next.
 
 **One Python option deliberately not recommended.** `np.memmap` lets numpy treat a disk file as if it were RAM, with the OS paging in only the pages that get accessed. It looks like a free win — and in practice the throughput rarely beats explicit `np.fromfile` of the chunk you actually want, because the OS's prefetch heuristics don't match the simulator's access patterns. If you have it working today and the numbers look right, fine; the book does not recommend reaching for it as the default move.
 
@@ -2553,7 +2553,7 @@ This is the chapter where the GIL question finally lands. The Python reflex when
 
 The disciplined alternative is **`multiprocessing` plus `shared_memory`**. `__main__` allocates the world's columns in a shared-memory region. Worker processes attach to that region, get a numpy view onto the same bytes, and write to *their slice only*. There is no copying across the process boundary; the bytes are shared. The GIL is no longer in the picture because each process has its own GIL, and each process is doing pure C-level numpy work on its own partition.
 
-The shape (full version in [`code/measurement/parallel_motion.py`](code/measurement/parallel_motion.py)):
+The shape (full version in [`code/measurement/parallel_motion.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/parallel_motion.py)):
 
 ```python
 # Worker globals — set once per worker by the Pool initializer.
@@ -2585,7 +2585,7 @@ The shape: **`__main__` owns the memory; workers attach via `init_worker` and ho
 
 ## What it costs and what it buys
 
-From [`code/measurement/parallel_motion.py`](code/measurement/parallel_motion.py), two workloads applied 100 times to 10,000,000 `float32` creatures on this machine (8 physical cores, 16 logical with SMT):
+From [`code/measurement/parallel_motion.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/parallel_motion.py), two workloads applied 100 times to 10,000,000 `float32` creatures on this machine (8 physical cores, 16 logical with SMT):
 
 **Workload A — memory-bound** (`pos += vel * dt`): 12 bytes accessed per element, 2 arithmetic ops. Memory traffic dominates.
 
@@ -2672,7 +2672,7 @@ That is half the chapter. The other half is the question §31 left dangling: **h
 
 ## Coprocessors are IOPS-limited
 
-A worker process is a CPU that can do work, but only after main has told it what work. Telling a worker something — sending a message, releasing a barrier, putting a task on a queue — has a cost, and that cost is a hard ceiling on how fast main can keep workers busy. From [`code/measurement/coordination_patterns.py`](code/measurement/coordination_patterns.py), three coordination patterns measured on this machine (8 physical cores, 7 workers + 1 main, 20,000 rounds × 7 workers = 140,000 round-trips per pattern):
+A worker process is a CPU that can do work, but only after main has told it what work. Telling a worker something — sending a message, releasing a barrier, putting a task on a queue — has a cost, and that cost is a hard ceiling on how fast main can keep workers busy. From [`code/measurement/coordination_patterns.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/coordination_patterns.py), three coordination patterns measured on this machine (8 physical cores, 7 workers + 1 main, 20,000 rounds × 7 workers = 140,000 round-trips per pattern):
 
 | pattern                       |    msgs/sec | jitter p50 | jitter p99 |
 |-------------------------------|------------:|-----------:|-----------:|
@@ -3123,7 +3123,7 @@ That is the snapshot. Recovery is the inverse. No type conversion, no field mapp
 
 ## What it costs, four ways
 
-From [`code/measurement/persistence_shapes.py`](code/measurement/persistence_shapes.py), 1,000,000 creatures across 8 columns (34 MB in memory), persisted four ways on this machine:
+From [`code/measurement/persistence_shapes.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/persistence_shapes.py), 1,000,000 creatures across 8 columns (34 MB in memory), persisted four ways on this machine:
 
 | layout                              | file (MB) | write (ms) | read (ms) |
 |-------------------------------------|----------:|-----------:|----------:|
@@ -3236,7 +3236,7 @@ The disciplined Python form: append the structured event to numpy columns, write
 
 ## The simlog: a working specimen
 
-The library [`.archive/simlog/logger.py`](.archive/simlog/logger.py) implements this triple-store shape directly, in Python, in 700 lines. Its design is worth walking through, because it meets three problems that recur whenever a simulator wants to log everything, and the conclusions it reaches are not specific to any one language or domain.
+The library [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) implements this triple-store shape directly, in Python, in 700 lines. Its design is worth walking through, because it meets three problems that recur whenever a simulator wants to log everything, and the conclusions it reaches are not specific to any one language or domain.
 
 **The IOPS problem → batching.** A naive event logger calls `f.write` once per event. At a million events per minute, that is a million disk operations per minute — bound by IOPS, not bandwidth ([§38](#38--storage-systems-bandwidth-and-iops)). The disk's bandwidth sits mostly idle while it queues operations. The fix: collect events into an in-memory buffer; when the buffer fills, flush it as one large write. IOPS scales with "buffer flushes per second"; bandwidth absorbs the actual byte volume. Logging cost drops from disk-latency-bound to bandwidth-bound — typically 100-1000× faster. **This is the same pattern as §22's cleanup amortisation, applied at the disk boundary.**
 
@@ -3345,7 +3345,7 @@ SQL fits at the boundary, in three specific roles:
 
 Most Python programmers carry an intuition that "in-memory is fast, on-disk is slow." For *cold* access this is true; the first read of a database file from cold storage is a real disk seek. For *warm* access — once the OS page cache has the relevant blocks — the gap is much smaller than the intuition suggests.
 
-From [`code/measurement/sqlite_performance_test.py`](code/measurement/sqlite_performance_test.py), 100,000 random point lookups against a SQLite table populated with the same data, measured on this author's machine:
+From [`code/measurement/sqlite_performance_test.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/sqlite_performance_test.py), 100,000 random point lookups against a SQLite table populated with the same data, measured on this author's machine:
 
 | backing                       | lookups/sec |
 |-------------------------------|------------:|
@@ -3361,7 +3361,7 @@ Two practical consequences:
 
 ## Three concrete examples worth remembering
 
-**SQLite.** On local NVMe, SQLite handles ~50K row inserts per second using one-by-one `INSERT` statements; ~500K-1M per second using prepared statements with batched transactions; ~5M per second using `INSERT INTO ... SELECT FROM ...` over an in-memory table. The simlog exporter at [`.archive/simlog/logger.py`](.archive/simlog/logger.py) uses the last form. **Same database, three orders of magnitude in throughput, depending on whether the workload pushes IOPS or bandwidth.**
+**SQLite.** On local NVMe, SQLite handles ~50K row inserts per second using one-by-one `INSERT` statements; ~500K-1M per second using prepared statements with batched transactions; ~5M per second using `INSERT INTO ... SELECT FROM ...` over an in-memory table. The simlog exporter at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) uses the last form. **Same database, three orders of magnitude in throughput, depending on whether the workload pushes IOPS or bandwidth.**
 
 ```python
 # anti-pattern: bad! — one INSERT per row, ~50K/sec
@@ -3793,7 +3793,7 @@ This is a system. Read-set: the four position arrays plus `max_step`. Write-set:
 
 **pytest is fine.** Pytest is the universal Python testing tool, and it is genuinely good at the things this chapter does *not* cover: discovery, reporting, parameterisation, fixtures-as-setup. Use pytest. The lesson here is not anti-pytest; it is *write your assertions as systems, then put them inside a pytest function so pytest runs them.* The system shape and pytest's harness are orthogonal.
 
-**`unittest.mock` is the wrong tool for ECS-style code.** The boundary-as-queue rule eliminates the things mocks exist to fake — there are no external services to patch, no `requests.get` to intercept, no clocks to freeze. If you find yourself reaching for `mock.patch`, the system you are testing has a leak from §35; the fix is to plumb the leaked dependency through the queue, not to mock it. The simlog's [test_simlog.py](.archive/simlog/test_simlog.py) (713 lines, full coverage of the simlog's contract) uses zero mocks — every test sets up real numpy arrays, runs real `log()` calls, and reads back the real `.npz` output.
+**`unittest.mock` is the wrong tool for ECS-style code.** The boundary-as-queue rule eliminates the things mocks exist to fake — there are no external services to patch, no `requests.get` to intercept, no clocks to freeze. If you find yourself reaching for `mock.patch`, the system you are testing has a leak from §35; the fix is to plumb the leaked dependency through the queue, not to mock it. The simlog's [test_simlog.py](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/test_simlog.py) (713 lines, full coverage of the simlog's contract) uses zero mocks — every test sets up real numpy arrays, runs real `log()` calls, and reads back the real `.npz` output.
 
 **Property-based testing belongs here.** `hypothesis` is the Python ecosystem's property-based-testing library; it generates inputs and shrinks failures. For systems whose read-set is well-typed numpy columns, `hypothesis` integrates cleanly via `hypothesis-numpy`. The simulator's invariants ("population stays bounded", "energy is non-negative", "no slot has two ids") are perfect property-test material — let `hypothesis` generate the world states; assert the invariants on each.
 

@@ -114,20 +114,6 @@ def stage() -> None:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(src, dst)
 
-    # 2b. Copy whole directories that chapters link into. Non-.md files in
-    #     these trees get carried through by mdbook to dist/ as static assets,
-    #     so the cross-links from chapter prose resolve. Without this step,
-    #     every link like `../../code/measurement/foo.py` 404s on the rendered
-    #     site even though the file is in the repo.
-    for src_dir_rel, dst_dir_rel in [
-        ("code/measurement", "code/measurement"),
-        (".archive/simlog",  ".archive/simlog"),
-    ]:
-        src_dir = ROOT / src_dir_rel
-        dst_dir = STAGING / dst_dir_rel
-        if src_dir.exists():
-            shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
-
     # 3. Rewrite cross-link paths and callout blocks in every staged file.
     for md in STAGING.rglob("*.md"):
         text = md.read_text(encoding="utf-8")

@@ -56,7 +56,7 @@ The starvation system *only* writes to `to_remove`. It never touches `creatures`
 
 ## The simlog is what this looks like in production
 
-The reference implementation at [`.archive/simlog/logger.py`](../../.archive/simlog/logger.py) is a 700-line columnar logger built on exactly this pattern. It maintains *two* `Container`s — pre-allocated numpy arrays plus a write pointer. The simulation writes into one container; when that container fills, the simlog atomically swaps containers and a background thread dumps the full one to disk. The simulation never observes a half-flushed buffer; the disk-flushing thread never observes a half-written row. Read it when this chapter clicks; it is the same idea this chapter teaches, sized up for production.
+The reference implementation at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is a 700-line columnar logger built on exactly this pattern. It maintains *two* `Container`s — pre-allocated numpy arrays plus a write pointer. The simulation writes into one container; when that container fills, the simlog atomically swaps containers and a background thread dumps the full one to disk. The simulation never observes a half-flushed buffer; the disk-flushing thread never observes a half-written row. Read it when this chapter clicks; it is the same idea this chapter teaches, sized up for production.
 
 ## Costs and trade
 

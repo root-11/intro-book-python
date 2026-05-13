@@ -14,7 +14,7 @@ This is not "fast in the empty case as an optimisation". It is *free in the empt
 
 Python's tutorial reflex when an attribute might be absent is `disease: Optional[Disease] = None`. Every `Creature` carries the field; healthy creatures carry `None`. This looks free — `None` is a singleton, after all — but every instance still pays one slot, every iteration still pays one `getattr`, and the storage still scales with population, not with prevalence.
 
-From [`code/measurement/empty_tables.py`](../../code/measurement/empty_tables.py), one million creatures with a `disease` field at four prevalence levels:
+From [`code/measurement/empty_tables.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/empty_tables.py), one million creatures with a `disease` field at four prevalence levels:
 
 | prevalence | layout                              | RSS    | process tick | n diseased |
 |-----------:|-------------------------------------|-------:|-------------:|-----------:|

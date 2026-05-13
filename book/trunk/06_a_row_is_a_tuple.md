@@ -10,7 +10,7 @@ This is what we call a *row* throughout the rest of the book — a coherent set 
 
 ## Why "implicit" matters in Python
 
-Python's tutorial reflex when it sees the word *row* is to reach for a class — `@dataclass class Row` or `class Row(NamedTuple)` or, if performance is mentioned, `class Row: __slots__ = (...)`. Each of these constructs the row as an *object*, with a header, a refcount, and field pointers. None of them are free. From [`code/measurement/classes_or_tuples.py`](../../code/measurement/classes_or_tuples.py), the time to materialise 1,000,000 two-field "rows" on this machine, ordered fastest to slowest:
+Python's tutorial reflex when it sees the word *row* is to reach for a class — `@dataclass class Row` or `class Row(NamedTuple)` or, if performance is mentioned, `class Row: __slots__ = (...)`. Each of these constructs the row as an *object*, with a header, a refcount, and field pointers. None of them are free. From [`code/measurement/classes_or_tuples.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/classes_or_tuples.py), the time to materialise 1,000,000 two-field "rows" on this machine, ordered fastest to slowest:
 
 | how the row is built                                     | time for 1M rows |
 |----------------------------------------------------------|-----------------:|
@@ -23,7 +23,7 @@ Python's tutorial reflex when it sees the word *row* is to reach for a class —
 
 Two readings of this table.
 
-First reading: the bare tuple is **~16× faster** than a slotted class and **~23× faster** than a frozen+slots dataclass for per-row construction. The named alternatives all pay for an object header and per-field descriptor lookup that the tuple skips. From [`code/measurement/simple_namespace.py`](../../code/measurement/simple_namespace.py), even a `dict` (`{'x': 10.0, 'y': 20.0}`) constructs faster than any of the named-class options — about 0.036 s for the same million. *Naming the row* is the cost; the tuple is the cheapest row that is still recognisable as a row.
+First reading: the bare tuple is **~16× faster** than a slotted class and **~23× faster** than a frozen+slots dataclass for per-row construction. The named alternatives all pay for an object header and per-field descriptor lookup that the tuple skips. From [`code/measurement/simple_namespace.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/simple_namespace.py), even a `dict` (`{'x': 10.0, 'y': 20.0}`) constructs faster than any of the named-class options — about 0.036 s for the same million. *Naming the row* is the cost; the tuple is the cheapest row that is still recognisable as a row.
 
 Second reading — and the one this book cares about — is the top line: **two bulk numpy column allocations construct 1,000,000 rows-worth of data faster than a million individual tuple literals.** Bulk allocation is roughly 30× faster than the named alternatives and is *not even slower than the cheapest per-row option*. The shape that lets you do this — pre-allocate a column once, fill it with values, and treat row `i` as the implicit tuple `(col0[i], col1[i], ...)` — has no per-row construction cost at all. The tuple at index `i` only exists when you ask for it explicitly; until then it lives in contiguous bytes inside numpy columns. From the §3 footprint exhibit, one million ten-field rows cost 99 MB as numpy SoA columns and 437 MB as a list of tuples — and the SoA version pays *zero* per-row construction cost on top of that, because there are no row objects.
 

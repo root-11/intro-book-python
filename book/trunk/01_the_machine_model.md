@@ -20,7 +20,7 @@ That experience is real, and it is hiding the machine from you. The cost of one 
 
 This is the missing piece of the machine model in Python. The hierarchy is still there; the bottleneck just moved. To *see* the machine, you have to look in places where the interpreter dispatch isn't dominating. Two such places, both measurable on your laptop:
 
-**1. Sum a million int64s, three ways.** [`code/measurement/cache_cliffs.py`](../../code/measurement/cache_cliffs.py) walks N from 10K to 100M and times: `sum(lst)` on a Python list, `arr.sum()` on a contiguous numpy array, and `arr[idx].sum()` where `idx` is a shuffled permutation. On this machine:
+**1. Sum a million int64s, three ways.** [`code/measurement/cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py) walks N from 10K to 100M and times: `sum(lst)` on a Python list, `arr.sum()` on a contiguous numpy array, and `arr[idx].sum()` where `idx` is a shuffled permutation. On this machine:
 
 | N           | Python list | numpy seq | numpy gather | gather/seq |
 |------------:|------------:|----------:|-------------:|-----------:|
@@ -32,9 +32,9 @@ This is the missing piece of the machine model in Python. The hierarchy is still
 
 Read the columns. The Python list is **flat at ~4.6 ns/element across five orders of magnitude**. From inside the interpreter the cache hierarchy does not exist. The numpy sequential column is 25-30× faster and reveals the bandwidth — the inner loop is C, the bytes are typed, the prefetcher works. The numpy gather column is the same data accessed in a shuffled order; once the working set leaves L1 (between 10K and 100K), the per-element cost climbs, and by 100M the gap to sequential is **72×**. That ratio is the L1-to-RAM cost gap on this machine, measured.
 
-**2. Take an exception once vs a million times.** [`code/measurement/try_except.py`](../../code/measurement/try_except.py) compares `try/except ZeroDivisionError` against an explicit `if value != 0` check, across hit rates from 0.0001% to 99.9999%. At 50/50 the `try/except` form is 4× slower; at 99.9999% (almost no exceptions raised) the `try/except` form is *faster* than the `if`. The difference is the CPU's branch predictor: a taken branch with high frequency is essentially free; a mispredicted one costs ~10-20 cycles. The lesson is not "use try/except" or "use if" — it is that constant factors are rate-dependent, and even Python inherits this.
+**2. Take an exception once vs a million times.** [`code/measurement/try_except.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/try_except.py) compares `try/except ZeroDivisionError` against an explicit `if value != 0` check, across hit rates from 0.0001% to 99.9999%. At 50/50 the `try/except` form is 4× slower; at 99.9999% (almost no exceptions raised) the `try/except` form is *faster* than the `if`. The difference is the CPU's branch predictor: a taken branch with high frequency is essentially free; a mispredicted one costs ~10-20 cycles. The lesson is not "use try/except" or "use if" — it is that constant factors are rate-dependent, and even Python inherits this.
 
-**3. Constant factors leak through.** [`code/measurement/string_methods.py`](../../code/measurement/string_methods.py) compares `%`-format, f-strings, and `.format` for the same output. On this machine `%`-format is ~20% faster than f-strings, which are ~5% faster than `.format`. None of this matters in a one-off log line. All of it matters in a tight loop. The "modern idiomatic" choice is not automatically the cheap choice.
+**3. Constant factors leak through.** [`code/measurement/string_methods.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/string_methods.py) compares `%`-format, f-strings, and `.format` for the same output. On this machine `%`-format is ~20% faster than f-strings, which are ~5% faster than `.format`. None of this matters in a one-off log line. All of it matters in a tight loop. The "modern idiomatic" choice is not automatically the cheap choice.
 
 ## What this chapter is asking you to do
 

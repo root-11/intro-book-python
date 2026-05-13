@@ -8,7 +8,7 @@ The *working set* of a loop is the data it touches per pass. The *cache hierarch
 
 If the working set fits in L1 — typically 32 KB per core — the loop runs near memory-bandwidth speed: ~0.1-0.5 ns per element. If it fits in L2 — typically 1-2 MB per core — it is ~0.5-2 ns. If it fits in L3 — typically 16-32 MB shared — it is ~1-5 ns. If it spills to RAM, sequential access drops to ~3-10 ns (prefetcher helping); random access drops to 50-200 ns (no prefetcher help).
 
-These ranges are not theoretical. They are what your machine actually does, measured in [§1's `cache_cliffs.py` exhibit](../../code/measurement/cache_cliffs.py). The numbers from that exhibit, on this machine:
+These ranges are not theoretical. They are what your machine actually does, measured in [§1's `cache_cliffs.py` exhibit](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py). The numbers from that exhibit, on this machine:
 
 | N           | numpy seq | numpy gather | gather/seq |
 |------------:|----------:|-------------:|-----------:|
