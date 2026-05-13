@@ -312,34 +312,40 @@ The trunk of this book uses two containers: `list` for the small bookkeeping (th
 
 ## The flip, measured
 
-Take the same data — N rows, K integers per row — and lay it out four ways. The first two are what the official tutorial teaches. The third is a stdlib-only flip. The fourth is the disciplined endpoint.
+Take the same data — N rows, K integers per row — and lay it out five ways. The first two are what the official tutorial teaches. The middle two are stdlib-only flips. The fifth is the disciplined endpoint.
 
-| layout                                      | what it is                       |
-|---------------------------------------------|----------------------------------|
-| 1. `[(i, i+1, …) for i in range(N)]`        | list of tuples — AoS, default    |
-| 2. `[[i, i+1, …] for i in range(N)]`        | list of lists — AoS, mutable inner |
-| 3. `tuple([i+k for i in range(N)] for k …)` | tuple of lists — SoA, stdlib     |
-| 4. `tuple(np.arange(...) for k in range(K))`| tuple of numpy columns — SoA, typed |
+| layout                                          | what it is                              |
+|-------------------------------------------------|-----------------------------------------|
+| 1. `[(i, i+1, …) for i in range(N)]`            | list of tuples — AoS, default           |
+| 2. `[[i, i+1, …] for i in range(N)]`            | list of lists — AoS, mutable inner      |
+| 3. `tuple([i+k for i in range(N)] for k …)`     | tuple of lists — SoA, stdlib            |
+| 4. `tuple(array.array('q', …) for k …)`         | tuple of `array.array` — SoA, stdlib typed |
+| 5. `tuple(np.arange(...) for k in range(K))`    | tuple of numpy columns — SoA, typed + C |
 
 [`code/measurement/aos_vs_soa_footprint.py`](code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so RSS readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
 
 | layout                              |  RSS    | build  | sum c0 |
 |-------------------------------------|--------:|-------:|-------:|
-| list of tuples            (AoS)     | 437 MB  | 0.76 s | 30.0 ms |
-| list of lists             (AoS)     | 499 MB  | 0.57 s | 26.8 ms |
-| tuple of lists            (SoA)     | 383 MB  | 0.44 s |  3.7 ms |
-| tuple of numpy int64 cols (SoA)     |  99 MB  | 0.20 s |  0.4 ms |
+| list of tuples            (AoS)     | 437 MB  | 0.74 s | 24.9 ms |
+| list of lists             (AoS)     | 498 MB  | 0.61 s | 26.9 ms |
+| tuple of lists            (SoA)     | 383 MB  | 0.46 s |  2.5 ms |
+| tuple of `array.array`    (SoA typed) | 77 MB  | 0.66 s | 11.6 ms |
+| tuple of numpy int64 cols (SoA numpy) |  94 MB  | 0.09 s |  0.4 ms |
 
 > [!NOTE]
-> Measured on this author's machine; reproduce on yours with `uv run code/measurement/aos_vs_soa_footprint.py`. Order-of-magnitude is the durable claim. Numbers will shift with K, N, value range, and CPython version, but the shape — that going SoA shrinks footprint and that going to typed columns collapses both footprint and per-column-op time — is stable across machines.
+> Measured on this author's machine; reproduce on yours with `uv run code/measurement/aos_vs_soa_footprint.py`. Order-of-magnitude is the durable claim. Numbers will shift with K, N, value range, and CPython version, but the shape — that the AoS-to-SoA flip and the boxed-to-typed flip and the Python-loop-to-C-loop flip are three independent wins — is stable across machines.
 
-Three things to notice.
+The five rows separate three independent decisions that the four-row version conflated.
 
 **The mutable AoS is worse than the immutable AoS.** Replacing the inner tuples with lists costs ~60 MB of additional list-header overhead at this scale. The "list of lists" pattern is the most-taught layout in introductory Python and the most-expensive one in this comparison.
 
-**The stdlib SoA flip is already worth doing.** Tuple-of-lists is the same code an intermediate Python programmer might write without ever touching numpy. It saves ~12% memory over the canonical AoS, builds 1.7× faster, and — the surprise — sums column 0 about 8× faster. The win comes from walking *one* contiguous list of 1M `PyLong` pointers instead of walking 1M tuple objects and dereferencing through each one to reach `row[0]`. No numpy required.
+**Step one — AoS → SoA — is the speed flip.** Tuple-of-lists is the same code an intermediate Python programmer might write without ever touching numpy. It saves only ~12% on memory but sums column 0 about **10× faster** than the AoS forms. The win is the access pattern: walking *one* contiguous list of 1M `PyLong` pointers instead of walking 1M tuple objects and dereferencing through each one to reach `row[0]`. Storage is barely better; the loop is dramatically better.
 
-**The typed-numpy step is the order-of-magnitude move.** Going from SoA-stdlib to SoA-numpy shrinks footprint another ~4× and speeds column-sum another ~10×. The `PyLong` dereference is gone; the bytes are typed; the inner loop is C, not Python. This is the layout that the simulator (§11+) and every system after it depends on.
+**Step two — boxed list → typed bytes — is the memory flip.** Going from `list[int]` to `array.array('q', …)` shrinks each column from ~38 MB of pointers-and-`PyLong`-objects to ~8 MB of contiguous int64 bytes. The whole structure drops to **~77 MB total**, smaller than numpy in this run (numpy carries ~20 MB of one-off import overhead). But the column-sum *slows down* — 2.5 ms → 11.6 ms — because Python has to *unbox* each `int64` into a temporary `PyLong` before adding it. The unboxing tax buys back about a third of the SoA speed win. **Typed storage saves bytes; it does not save the inner loop.**
+
+**Step three — Python loop → C loop — is the order-of-magnitude move.** `np.sum` walks the same typed bytes that `array.array` stored, but the loop is in C and the interpreter is stepped out of the way. 11.6 ms → 0.4 ms; about **30× speedup** on the same bytes, no further memory saving (and a small import-overhead cost). This is the layout the simulator (§11+) and every system after it depends on.
+
+Read the three steps together: **the SoA flip is the speed move, the typed-storage flip is the memory move, the C-vectorisation flip is the speed move again at a larger scale.** Each is a separate decision; each can be taken without the others. Numpy happens to bundle the second and third into one library, which is why most teaching collapses them into "use numpy." The exhibit shows they are separate wins.
 
 ## The Python-default trap, named
 

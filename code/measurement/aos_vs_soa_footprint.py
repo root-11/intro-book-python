@@ -3,14 +3,15 @@
 # dependencies = ["numpy"]
 # ///
 """
-§3 exhibit — same payload, four layouts, four footprints.
+§3 exhibit — same payload, five layouts, five footprints.
 
-N rows of K integers each, laid out four ways:
+N rows of K integers each, laid out five ways:
 
     1. list of tuples              (AoS, the canonical Python-default)
     2. list of lists               (AoS, the even-worse case)
     3. tuple of lists              (SoA, stdlib only)
-    4. tuple of numpy int64 arrays (SoA, the disciplined endpoint)
+    4. tuple of array.array        (SoA, stdlib typed — middle ground)
+    5. tuple of numpy int64 arrays (SoA, the disciplined endpoint)
 
 Each layout is built in a fresh subprocess so RSS readings do not bleed
 across runs. Three numbers per layout: construction wall time, peak RSS
@@ -20,6 +21,12 @@ Values are drawn from [1000, 1000+N) to escape CPython's small-int
 interning ([-5, 256] are cached singletons). If we used 0..N the AoS
 layouts would share PyLong objects across rows and the comparison would
 flatter the wrong side.
+
+The two SoA-stdlib rows (3 and 4) separate two effects that the four-row
+version conflated: 'use SoA instead of AoS' (3 beats 1/2) and 'use typed
+storage instead of PyLong boxes' (4 beats 3). The fifth row adds 'use
+vectorised C primitives instead of Python-level iteration' (5 beats 4).
+Three independent wins, three rows apart.
 
 Run:
     uv run code/measurement/aos_vs_soa_footprint.py
@@ -82,6 +89,15 @@ def sum_col0_tuple_of_lists(cols):
     return sum(cols[0])
 
 
+def build_tuple_of_arrays():
+    import array
+    return tuple(array.array('q', (BASE + i + k for i in range(N))) for k in range(K))
+
+
+def sum_col0_tuple_of_arrays(cols):
+    return sum(cols[0])
+
+
 def build_numpy_columns():
     import numpy as np
     return tuple(np.arange(BASE + k, BASE + k + N, dtype=np.int64) for k in range(K))
@@ -92,10 +108,11 @@ def sum_col0_numpy(cols):
 
 
 LAYOUTS = [
-    ("1. list of tuples              (AoS)", build_list_of_tuples,   sum_col0_list_of_tuples),
-    ("2. list of lists               (AoS)", build_list_of_lists,    sum_col0_list_of_lists),
-    ("3. tuple of lists              (SoA stdlib)", build_tuple_of_lists, sum_col0_tuple_of_lists),
-    ("4. tuple of numpy int64 arrays (SoA typed)", build_numpy_columns, sum_col0_numpy),
+    ("1. list of tuples              (AoS)",        build_list_of_tuples,   sum_col0_list_of_tuples),
+    ("2. list of lists               (AoS)",        build_list_of_lists,    sum_col0_list_of_lists),
+    ("3. tuple of lists              (SoA stdlib)", build_tuple_of_lists,   sum_col0_tuple_of_lists),
+    ("4. tuple of array.array        (SoA typed)",  build_tuple_of_arrays,  sum_col0_tuple_of_arrays),
+    ("5. tuple of numpy int64 arrays (SoA numpy)",  build_numpy_columns,    sum_col0_numpy),
 ]
 
 
@@ -132,7 +149,7 @@ def main():
         f"checksum mismatch — layouts disagree on the data: {checksums}"
     print(f"checksum (matches across all layouts): {checksums[0]:,}")
 
-    print("\nRatios vs layout 4 (numpy SoA):")
+    print("\nRatios vs layout 5 (numpy SoA):")
     base = results[-1]
     for r in results[:-1]:
         print(f"  {r['layout']:<46}  "

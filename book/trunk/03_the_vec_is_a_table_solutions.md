@@ -61,22 +61,26 @@ Source: [`code/measurement/aos_vs_soa_footprint.py`](https://codeberg.org/root-1
 ```
 layout                                          build (s)   RSS (MB)  sum c0 (s)
 --------------------------------------------------------------------------------
-1. list of tuples              (AoS)                0.715      436.9      0.0238
-2. list of lists               (AoS)                0.594      498.4      0.0284
-3. tuple of lists              (SoA stdlib)         0.453      382.9      0.0029
-4. tuple of numpy int64 arrays (SoA typed)          0.267       99.4      0.0003
+1. list of tuples              (AoS)                0.744      437.0      0.0249
+2. list of lists               (AoS)                0.615      498.2      0.0269
+3. tuple of lists              (SoA stdlib)         0.463      382.9      0.0025
+4. tuple of array.array        (SoA typed)          0.660       76.7      0.0116
+5. tuple of numpy int64 arrays (SoA numpy)          0.092       93.8      0.0004
 
-Ratios vs layout 4 (numpy SoA):
-  1. list of tuples              (AoS)             4.4× memory     2.7× build    78.6× sum-c0
-  2. list of lists               (AoS)             5.0× memory     2.2× build    93.5× sum-c0
-  3. tuple of lists              (SoA stdlib)      3.9× memory     1.7× build     9.4× sum-c0
+Ratios vs layout 5 (numpy SoA):
+  1. list of tuples              (AoS)             4.7× memory     8.1× build    69.2× sum-c0
+  2. list of lists               (AoS)             5.3× memory     6.7× build    74.7× sum-c0
+  3. tuple of lists              (SoA stdlib)      4.1× memory     5.1× build     6.9× sum-c0
+  4. tuple of array.array        (SoA typed)       0.8× memory     7.2× build    32.2× sum-c0
 ```
 
-Three things to read from this:
+The five rows separate three independent wins:
 
-- **The mutable AoS is worst.** List-of-lists (mutable inner) costs ~60 MB more than list-of-tuples and is the slowest column-sum despite being the most-taught layout in introductory Python.
-- **The stdlib SoA flip is already 8× faster on column-sum.** Going from list-of-tuples to tuple-of-lists — without numpy — buys an order of magnitude on per-column ops by walking *one* contiguous list of pointers instead of N tuples each dereferenced separately.
-- **Typed numpy is the order-of-magnitude move.** SoA-stdlib → SoA-numpy shrinks footprint another ~4× and speeds column-sum another ~10×. The bytes are typed, the inner loop is C, the `PyLong` dereference is gone.
+- **AoS → SoA (1/2 → 3): the speed flip.** ~12% storage win, **10× speedup** on column-sum. Walking one contiguous list of pointers beats walking N tuples and dereferencing through each one to reach `row[0]`. No numpy required.
+- **SoA-list → SoA-typed (3 → 4): the memory flip.** **5× storage win** (~383 MB → ~77 MB) from dropping the `PyLong` boxes. *But the sum slows down* (2.5 ms → 11.6 ms) because Python unboxes each int64 to a `PyLong` before adding it. Typed storage saves bytes; it does not save the inner loop.
+- **SoA-typed → SoA-numpy (4 → 5): the C-vectorisation flip.** Same bytes, **30× speedup** on the same sum. The loop moves into C; the interpreter is stepped out.
+
+The four-row form of this exhibit collapsed steps 2 and 3 into "use numpy." The five-row form shows they are separate. Numpy happens to bundle them; `array.array` lets you take the memory win without the C-loop win, which is sometimes the right trade for a project that wants stdlib-only deps.
 
 ## Exercise 5 — The dict trap
 
