@@ -33,7 +33,7 @@ The through-line is a small ecosystem simulator built in stages from one hundred
 
 This is the **Python edition** — a sister volume to the Rust edition of the same book. Same forty-four sections, same DAG, same simulator. The variation is per-chapter commentary on what Python's defaults push the reader into, and why ECS and EBP win even in a slow language. The thesis the edition carries: **ECS and EBP beat OOP because they process more efficiently (operations grouped over arrays), they extend more cleanly (data-oriented composition over class graphs), and they have smaller memory footprint (typed columns over object graphs).**
 
-What carries this edition is the **evidence**. Every load-bearing claim is backed by a measurement the reader can reproduce on their own laptop in under a minute. The exhibits live in [`code/measurement/`](https://codeberg.org/root-11/intro-book-python/src/branch/main/code/measurement) and run via `uv run code/measurement/<file>.py`.
+What carries this edition is the **evidence**. Every load-bearing claim is backed by a measurement the reader can reproduce on their own laptop in under a minute. The exhibits live in [`code/measurement/`](https://github.com/root-11/intro-book-python/tree/main/code/measurement) and run via `uv run code/measurement/<file>.py`.
 
 This is a work in progress. Section ordering is by the DAG; reading order can be linear (front to back) or by following the cross-links wherever they lead.
 
@@ -1085,6 +1085,14 @@ def starving(energy: np.ndarray) -> np.ndarray:
 An **emission** is 1→N: every input row produces zero or more output rows. `apply_reproduce` is an emission — a parent above the energy threshold produces two offspring (a 1→2 emission).
 
 These three shapes are the same shapes a database query takes. `SELECT * FROM t WHERE p` is a filter, `SELECT a + b FROM t` is an operation, `SELECT explode(arr) FROM t` is an emission. A system is a database operation written in Python against numpy columns instead of SQL against tables. If you have ever written SQL, you already know the vocabulary; the work is recognising your simulation in those terms.
+
+## Return type is half the contract
+
+The three shapes also fix the return type. An operation mutates its write-set in place and returns `None` — the work has already happened by the time the call returns. A filter returns a new array of indices. An emission returns one or more new arrays. The pattern is: **mutators return `None`; producers return the thing they produced.**
+
+The reason for the asymmetry is that the alternative — having a mutator return its own write-set — is a silent aliasing bug. `world = step(world)` reads like it produces a new world, but if `step` mutates and returns the same object, both names point at the same state and the caller cannot tell from the call site which is true. Python's standard library encodes the rule exactly: `list.sort()` returns `None` so that `xs = xs.sort()` fails loudly; `sorted()` returns a new list. The system convention is the same rule applied to columns.
+
+There is one named exception: a function that *builds* a world from nothing — from a seed, a file, or a log — returns the new world. Its signature gives it away: it does not take an existing `world` to mutate. `build_world(seed)`, `load(path)`, `replay(initial, log)` are constructors, not systems. The return value is the only place the new state can go.
 
 ## The OOP method is the anti-shape
 

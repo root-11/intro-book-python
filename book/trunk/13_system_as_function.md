@@ -33,6 +33,14 @@ An **emission** is 1→N: every input row produces zero or more output rows. `ap
 
 These three shapes are the same shapes a database query takes. `SELECT * FROM t WHERE p` is a filter, `SELECT a + b FROM t` is an operation, `SELECT explode(arr) FROM t` is an emission. A system is a database operation written in Python against numpy columns instead of SQL against tables. If you have ever written SQL, you already know the vocabulary; the work is recognising your simulation in those terms.
 
+## Return type is half the contract
+
+The three shapes also fix the return type. An operation mutates its write-set in place and returns `None` — the work has already happened by the time the call returns. A filter returns a new array of indices. An emission returns one or more new arrays. The pattern is: **mutators return `None`; producers return the thing they produced.**
+
+The reason for the asymmetry is that the alternative — having a mutator return its own write-set — is a silent aliasing bug. `world = step(world)` reads like it produces a new world, but if `step` mutates and returns the same object, both names point at the same state and the caller cannot tell from the call site which is true. Python's standard library encodes the rule exactly: `list.sort()` returns `None` so that `xs = xs.sort()` fails loudly; `sorted()` returns a new list. The system convention is the same rule applied to columns.
+
+There is one named exception: a function that *builds* a world from nothing — from a seed, a file, or a log — returns the new world. Its signature gives it away: it does not take an existing `world` to mutate. `build_world(seed)`, `load(path)`, `replay(initial, log)` are constructors, not systems. The return value is the only place the new state can go.
+
 ## The OOP method is the anti-shape
 
 This is the moment to name what most Python tutorials teach instead. The method-on-object shape — `class Creature: def tick(self, dt): self.pos += self.vel * dt` — is the same lesson rotated through `self`, and the rotation costs you everything important. The signature `def tick(self, dt)` does not tell you what the method reads or writes. The body does, but only after you read it. The contract is no longer expressible at the call site; it is implicit in the body of the method, which means you cannot reason about composition without inlining every method.
