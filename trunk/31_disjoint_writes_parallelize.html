@@ -1,0 +1,351 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Disjoint write-sets parallelize freely - An Introduction to Programming, using ECS &amp; EBP in Python</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "ayu";
+            window.path_to_searchindex_js = "../searchindex-eee7dabd.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-a1d46b57.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">An Introduction to Programming, using ECS &amp; EBP in Python</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="31--disjoint-write-sets-parallelize-freely"><a class="header" href="#31--disjoint-write-sets-parallelize-freely">31 — Disjoint write-sets parallelize freely</a></h1>
+<p align="center"><img src="../covers/phase_concurrency.jpg" alt="Concurrency phase" style="max-height: 380px; max-width: 100%;"></p>
+
+<blockquote>
+<p><em>Concept node: see the <a href="../concepts/dag.html">DAG</a> and <a href="../concepts/glossary.html#31--disjoint-write-sets-parallelize-freely">glossary entry 31</a>.</em></p>
+</blockquote>
+<p>Two systems can run in parallel if and only if their write-sets do not overlap. That is the rule. It is small. It is what <a href="25_ownership_of_tables.html">§25</a>’s single-writer ownership buys you.</p>
+<p>Concretely: in the simulator’s tick, <code>motion</code> writes <code>pos_x</code>, <code>pos_y</code>, <code>energy</code>; <code>food_spawn</code> writes <code>food</code>. Their write-sets are disjoint. They can run on two different processes with no coordination — no locks, no atomics, no message-passing. The data layout makes the parallelism free.</p>
+<p>The same shape works at finer grain. The simulator’s three appliers (<code>apply_eat</code>, <code>apply_reproduce</code>, <code>apply_starve</code>) all read <code>pending_event</code> and write disjoint things — <code>apply_eat</code> writes <code>food</code>, <code>to_remove</code>; <code>apply_reproduce</code> writes <code>to_insert</code>; <code>apply_starve</code> writes <code>to_remove</code>. Two of the three append to the same buffer. To parallelise them, give each its own <em>segment</em> of <code>to_remove</code> (one per process), then merge at cleanup. The merge is <code>np.concatenate</code> — O(N) in the merged total, free relative to the work that produced it.</p>
+<h2 id="not-threading-not-asyncio"><a class="header" href="#not-threading-not-asyncio">Not threading. Not asyncio.</a></h2>
+<p>This is the chapter where the GIL question finally lands. The Python reflex when a chapter says “parallel” is to reach for <code>threading.Thread</code> or <code>asyncio</code>. <strong>Both are wrong for CPU-bound parallel work in CPython.</strong></p>
+<p><code>threading</code> does not give you parallel CPU. The Global Interpreter Lock serialises Python bytecode execution: one thread runs Python at a time, regardless of how many threads you started. <em>Numpy bulk operations release the GIL during their C-level work</em>, so a <code>threading.Thread</code> running <code>arr.sum()</code> can overlap with another thread doing the same — but only during the <code>sum()</code>’s C call, not during any Python around it. For workloads dominated by Python orchestration of numpy ops, threading delivers token speedup at best.</p>
+<p><code>asyncio</code> is a scheduler for I/O-bound work. CPU-bound systems give it nothing to overlap. The event loop adds dispatch overhead and removes nothing.</p>
+<p>The disciplined alternative is <strong><code>multiprocessing</code> plus <code>shared_memory</code></strong>. <code>__main__</code> allocates the world’s columns in a shared-memory region. Worker processes attach to that region, get a numpy view onto the same bytes, and write to <em>their slice only</em>. There is no copying across the process boundary; the bytes are shared. The GIL is no longer in the picture because each process has its own GIL, and each process is doing pure C-level numpy work on its own partition.</p>
+<p>The shape (full version in <a href="https://github.com/root-11/intro-book-python/blob/main/code/measurement/parallel_motion.py"><code>code/measurement/parallel_motion.py</code></a>):</p>
+<pre><code class="language-python"># Worker globals — set once per worker by the Pool initializer.
+_arr = None
+_shm = None
+
+def init_worker(shm_name: str) -&gt; None:
+    global _arr, _shm
+    _shm = shared_memory.SharedMemory(name=shm_name)
+    _arr = np.ndarray(SHAPE, dtype=DTYPE, buffer=_shm.buf)
+    # _arr now views the same bytes as __main__'s array.
+
+def worker(args: tuple[int, int]) -&gt; None:
+    start, end = args
+    # Each worker writes only its slice; the writes go directly to
+    # the shared bytes via the numpy view — no copy.
+    _arr[0, start:end] += _arr[1, start:end] * DT
+
+# In __main__:
+shm = shared_memory.SharedMemory(create=True, size=arr.nbytes)
+arr = np.ndarray(SHAPE, dtype=DTYPE, buffer=shm.buf)
+# ... fill arr with the world's data ...
+boundaries = [(i * chunk, (i + 1) * chunk) for i in range(n_workers)]
+with Pool(processes=n_workers, initializer=init_worker, initargs=(shm.name,)) as pool:
+    pool.map(worker, boundaries)
+</code></pre>
+<p>The shape: <strong><code>__main__</code> owns the memory; workers attach via <code>init_worker</code> and hold a numpy view onto the shared bytes; each worker writes only its slice; no shared writes, no locks, no message-passing.</strong></p>
+<h2 id="what-it-costs-and-what-it-buys"><a class="header" href="#what-it-costs-and-what-it-buys">What it costs and what it buys</a></h2>
+<p>From <a href="https://github.com/root-11/intro-book-python/blob/main/code/measurement/parallel_motion.py"><code>code/measurement/parallel_motion.py</code></a>, two workloads applied 100 times to 10,000,000 <code>float32</code> creatures on this machine (8 physical cores, 16 logical with SMT):</p>
+<p><strong>Workload A — memory-bound</strong> (<code>pos += vel * dt</code>): 12 bytes accessed per element, 2 arithmetic ops. Memory traffic dominates.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: right">workers</th><th style="text-align: right">wall (s)</th><th style="text-align: right">speedup</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: right">serial</td><td style="text-align: right">1.842</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: right">1</td><td style="text-align: right">1.840</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: right">2</td><td style="text-align: right">0.433</td><td style="text-align: right">4.25</td></tr>
+<tr><td style="text-align: right">4</td><td style="text-align: right">0.456</td><td style="text-align: right">4.03</td></tr>
+<tr><td style="text-align: right">8</td><td style="text-align: right">0.459</td><td style="text-align: right">4.01</td></tr>
+<tr><td style="text-align: right">16</td><td style="text-align: right">0.414</td><td style="text-align: right">4.45</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Workload B — compute-bound</strong> (<code>out += sin(x)**2 + cos(x)**2</code>): same byte accesses, much heavier per-element CPU work.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: right">workers</th><th style="text-align: right">wall (s)</th><th style="text-align: right">speedup</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: right">serial</td><td style="text-align: right">7.749</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: right">1</td><td style="text-align: right">7.778</td><td style="text-align: right">1.00</td></tr>
+<tr><td style="text-align: right">2</td><td style="text-align: right">2.575</td><td style="text-align: right">3.01</td></tr>
+<tr><td style="text-align: right">4</td><td style="text-align: right">1.608</td><td style="text-align: right">4.82</td></tr>
+<tr><td style="text-align: right">8</td><td style="text-align: right">1.412</td><td style="text-align: right">5.49</td></tr>
+<tr><td style="text-align: right">16</td><td style="text-align: right">1.427</td><td style="text-align: right">5.43</td></tr>
+</tbody>
+</table>
+</div>
+<p>Three readings.</p>
+<p><strong>1 worker matches serial.</strong> The pool round-trip cost is amortised across the run because the rig dispatches <em>once</em> per measurement (each worker runs all 100 ticks on its partition before returning) — a per-tick dispatch would add IPC overhead on top, capping speedup further. See exercise 6.</p>
+<p><strong>Memory-bound caps at ~4×.</strong> This is the <strong>aggregate memory-bandwidth ceiling</strong> on this machine. The 76 MB working set spills L3; once two cores are reading and writing flat-out, the DRAM bus is busy. Adding a third or fourth physical core helps slightly (some bandwidth comes from the cores’ own L1/L2), but past that, more workers compete for the same bandwidth. <em>The ceiling is set by the memory subsystem, not by core count.</em> On a chip with more memory channels (server CPUs, modern desktops with quad-channel DDR5), the ceiling is higher; on a single-channel laptop or a Raspberry Pi, lower.</p>
+<p><strong>Compute-bound caps at ~5.5×, with the plateau between 8 and 16 workers.</strong> The plateau location matches the <strong>physical core count</strong> (8 here); the SMT-doubled logical count of 16 adds essentially nothing because both threads on the same core are now contending for the same arithmetic units. Compute-heavy work scales close to the physical core count; SMT helps work that has gaps the second thread can fill (mostly memory-stall waits), and pure compute has no gaps to fill.</p>
+<p>The two ceilings are different shapes for different reasons. Measure your specific workload — neither is “wrong,” they are different bottlenecks.</p>
+<h2 id="three-things-this-rule-does-for-you"><a class="header" href="#three-things-this-rule-does-for-you">Three things this rule does for you</a></h2>
+<p><strong>No locks.</strong> A lock is a tax paid by every reader and writer of the locked thing. With single-writer ownership, locks are unnecessary; with disjoint write-sets across processes, they remain unnecessary at the parallel boundary. The simulator at this scale has zero <code>Lock</code>, zero <code>RLock</code>, zero <code>Semaphore</code> in its inner systems. The whole concurrency-primitive vocabulary you see in tutorials does not apply once the architecture is right.</p>
+<p><strong>Speedup is structural, not promised.</strong> N processes with disjoint work give close to N× speedup <em>until the bottleneck shifts</em>. Memory-bound work hits the bandwidth ceiling first; compute-bound work runs out of physical cores; per-tick dispatch hits IPC overhead. The ceilings are real and measurable; they are not reasons to avoid the architecture, only reasons to know which ceiling your workload hits.</p>
+<p><strong>Tools without ceremony.</strong> The Python ecosystem’s standard tools — <code>multiprocessing.Pool</code>, <code>concurrent.futures.ProcessPoolExecutor</code>, <code>multiprocessing.shared_memory</code> — are stdlib. No third-party crate, no external service, no orchestrator. The rig in <code>parallel_motion.py</code> is ~150 lines. Build it once for your simulator; reuse it everywhere.</p>
+<p>The single-writer rule (<a href="25_ownership_of_tables.html">§25</a>) was the precondition. Disjoint write-sets is the rule applied across systems. Together, parallelism becomes a scheduling decision, not a design decision.</p>
+<h2 id="a-calibration-note"><a class="header" href="#a-calibration-note">A calibration note</a></h2>
+<p>Python multiprocessing is non-trivial. The clean speedup table above hides real complexity: pickle overhead at process boundaries, fork-vs-spawn semantics that vary by platform, signal handling, queue contention, the difficulty of reasoning about a system across N process boundaries when something goes wrong. The chapter has not lied — the architecture does work and the speedup is real — but it has presented the architecture without the operational cost.</p>
+<p><strong>This chapter teaches the principles, not a production recipe.</strong> Single-writer ownership, disjoint write-sets, partition-don’t-lock, shared-memory-not-pickle: these are correct at every scale. Python multiprocessing is a fine implementation of those principles when your tick is comfortably above the IPC floor (≥ ~16 ms per tick, partitions of ≥ 100K elements). It stops being fine when every percent matters — a physics engine at 1 kHz, a real-time control loop, anything where the operational complexity above eats budget that a compiled language would not.</p>
+<p>The escalation order is short: <strong>numpy → maturin → leave Python.</strong> Maturin (Rust + PyO3) gives you the same parallelism architecture without the Python orchestration tax — the inner loop, the dispatch, and the data are all in compiled Rust, exposed to Python through a thin binding. Past maturin, the answer is not to add another Python-side library; it is to leave Python entirely and write the application in Rust. The Rust standard library is enough for most parallel work; you do not need to reach for a parallel-iteration crate to do this well.</p>
+<p>From-scratch-then-price-the-crate (<a href="41_compression_oriented.html">§41</a>, <a href="42_you_can_only_fix_what_you_wrote.html">§42</a>) applies here too: build it in Python first to feel the architecture; price what the next tier gives you when the budget binds. <em>The book teaches the architecture; the language is a tooling decision.</em></p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<p>You will need a multi-core machine. Most desktops and laptops qualify.</p>
+<ol>
+<li><strong>Run the rig.</strong> <code>uv run code/measurement/parallel_motion.py</code>. Read your speedup column. Find the worker count where the curve flattens — that is your bandwidth ceiling.</li>
+<li><strong>Threading falls short.</strong> Rewrite <code>parallel_motion</code> using <code>threading.Thread</code> instead of <code>multiprocessing.Pool</code>. Keep the same partition pattern. Time it. The speedup is real but smaller (numpy releases the GIL during bulk ops, so threads can overlap during the <code>*= dt</code> step, but not during anything else). Compare to the multiprocessing version.</li>
+<li><strong>A failing case.</strong> Try to run motion and an <code>apply_eat</code> system in parallel where both write <code>energy</code>. Without single-writer discipline, two processes writing the same shared-memory region produce undefined behaviour. Construct the case; observe the corruption (it may be silent — that is the failure mode).</li>
+<li><strong>Per-process segments.</strong> Modify the rig so that, instead of motion, each worker runs <code>apply_starve</code> and produces <em>its own</em> <code>to_remove</code> segment as a separate shared-memory array. After all workers finish, <code>np.concatenate</code> the segments in <code>__main__</code>. Verify the merged result equals a single-process run.</li>
+<li><strong>Find the bandwidth ceiling.</strong> Run the rig at N = 100,000 (fits L2), N = 1,000,000 (fits L3), N = 10,000,000 (spills to RAM), N = 100,000,000 (deeply RAM-resident). Plot the memory-bound speedup vs N. The bandwidth-ceiling worker count shifts with N — small N is bandwidth-rich (per-core caches), large N is bandwidth-limited.</li>
+<li><strong>Per-tick dispatch costs IPC.</strong> Modify the rig so each worker runs <em>one</em> tick per <code>pool.map</code> call instead of all 100 in one call. Re-run. The speedup curve will plateau lower (~3-4× for memory-bound, ~4-5× for compute-bound on this machine) because every tick now pays for one IPC round-trip. The lesson: <em>batch when the access pattern allows</em>. The cost is small per call, real in aggregate.</li>
+<li><strong>Find your physical core count.</strong> <code>lscpu | grep 'Core(s) per socket'</code> (Linux). Compare to <code>os.cpu_count()</code>. The compute-bound ceiling lives near the physical count, not the logical count.</li>
+<li><em>(stretch)</em> <strong><code>concurrent.futures</code> comparison.</strong> Rewrite the rig using <code>concurrent.futures.ProcessPoolExecutor.map</code>. Confirm equivalent performance. The two are largely interchangeable; pick the one whose API your team prefers.</li>
+<li><em>(stretch)</em> <strong>A pure-Python anti-comparison.</strong> Implement the same motion system as a per-creature Python loop (<code>for i in range(N): pos[i] += vel[i] * dt</code>). Run it serially. Run it under <code>threading.Thread</code> with 8 threads. Run it under <code>multiprocessing.Pool</code> with 8 workers. Note: the threading version is no faster than serial (GIL), the multiprocessing version is faster but still slower than the <em>bulk-numpy serial</em> version, because the bulk numpy version was already faster than any pure-Python form. Multiprocessing scales work that is already fast; it does not rescue work that was wrong-shaped.</li>
+</ol>
+<p>Reference notes in <a href="31_disjoint_writes_parallelize_solutions.html">31_disjoint_writes_parallelize_solutions.md</a>.</p>
+<h2 id="whats-next"><a class="header" href="#whats-next">What’s next</a></h2>
+<p><a href="32_partition_dont_lock.html">§32 — Partition, don’t lock</a> takes the next step: when one system <em>must</em> write a single table from multiple processes, you split the table, not the access.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../trunk/30_streaming_wall_solutions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../trunk/31_disjoint_writes_parallelize_solutions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../trunk/30_streaming_wall_solutions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../trunk/31_disjoint_writes_parallelize_solutions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace-2a3cd908.js"></script>
+        <script src="../mode-rust-2c9d5c9a.js"></script>
+        <script src="../editor-16ca416c.js"></script>
+        <script src="../theme-dawn-4493f9c8.js"></script>
+        <script src="../theme-tomorrow_night-9dbe62a9.js"></script>
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid-eefea253.min.js"></script>
+        <script src="../mermaid-init-ccf746f1.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

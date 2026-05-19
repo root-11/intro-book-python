@@ -1,0 +1,402 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Solutions - An Introduction to Programming, using ECS &amp; EBP in Python</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "ayu";
+            window.path_to_searchindex_js = "../searchindex-eee7dabd.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-a1d46b57.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">An Introduction to Programming, using ECS &amp; EBP in Python</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="solutions-38--storage-systems-bandwidth-and-iops"><a class="header" href="#solutions-38--storage-systems-bandwidth-and-iops">Solutions: 38 — Storage systems: bandwidth and IOPS</a></h1>
+<h2 id="exercise-1--measure-your-bandwidth"><a class="header" href="#exercise-1--measure-your-bandwidth">Exercise 1 — Measure your bandwidth</a></h2>
+<pre><code class="language-sh">dd if=/dev/zero of=/tmp/test bs=1M count=1024 oflag=direct
+# example output: "1073741824 bytes (1.1 GB) copied, 1.42 s, 757 MB/s"
+</code></pre>
+<p>Typical 2026 hardware:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>storage</th><th style="text-align: right">sustained sequential write</th></tr>
+</thead>
+<tbody>
+<tr><td>NVMe Gen3</td><td style="text-align: right">1-2 GB/s</td></tr>
+<tr><td>NVMe Gen4</td><td style="text-align: right">3-5 GB/s</td></tr>
+<tr><td>NVMe Gen5</td><td style="text-align: right">5-12 GB/s</td></tr>
+<tr><td>SATA SSD</td><td style="text-align: right">400-550 MB/s</td></tr>
+<tr><td>spinning HDD</td><td style="text-align: right">100-200 MB/s</td></tr>
+</tbody>
+</table>
+</div>
+<p>Read the number off your machine; that’s your <em>bandwidth ceiling</em>. No workload writes faster than this.</p>
+<h2 id="exercise-2--measure-your-iops"><a class="header" href="#exercise-2--measure-your-iops">Exercise 2 — Measure your IOPS</a></h2>
+<pre><code class="language-python">import os, time
+path = "/tmp/iops_test"
+n_ops = 10_000
+chunk = b"X" * 4096                                # 4 KB
+
+with open(path, "wb") as f:
+    t = time.perf_counter()
+    for _ in range(n_ops):
+        f.write(chunk)
+        f.flush()
+        os.fsync(f.fileno())                       # force durable write
+    elapsed = time.perf_counter() - t
+
+print(f"{n_ops/elapsed:,.0f} IOPS")
+</code></pre>
+<p>Typical: 100-2000 fsync-IOPS on consumer NVMe. The IOPS rate is <em>much</em> lower than the bandwidth number suggests because every <code>fsync</code> blocks until the SSD’s internal buffers are durably committed — that’s microseconds per call, even though the data itself is tiny.</p>
+<p>Without <code>fsync</code>, raw write IOPS to a file in the page cache can be 100K+ per second. Durable IOPS (the kind a database needs) are 10-100× lower.</p>
+<h2 id="exercise-3--batched-vs-unbatched"><a class="header" href="#exercise-3--batched-vs-unbatched">Exercise 3 — Batched vs unbatched</a></h2>
+<pre><code class="language-python">import time, os
+n = 1_000_000
+data = b"X" * 32
+
+# 1M separate writes
+with open("/tmp/many.bin", "wb") as f:
+    t = time.perf_counter()
+    for _ in range(n): f.write(data)
+print(f"1M writes:  {(time.perf_counter()-t)*1000:.0f} ms")
+
+# 1 bulk write
+with open("/tmp/one.bin", "wb") as f:
+    t = time.perf_counter()
+    f.write(data * n)
+print(f"1 bulk write: {(time.perf_counter()-t)*1000:.0f} ms")
+</code></pre>
+<p>Typical: many-writes ~200-500 ms; one bulk write ~20-50 ms. The Python <code>for</code> loop’s per-call cost dominates the actual disk traffic at this size.</p>
+<p>If you add <code>f.flush()</code> and <code>os.fsync()</code> after every write, the gap widens to <strong>1000-5000×</strong> — the bulk version still pays one fsync, the many-writes version pays a million.</p>
+<p>This is the simlog’s batching argument made concrete. Per-mutation writes are infeasible; batched writes are bandwidth-bound and fast.</p>
+<h2 id="exercise-4--sqlite-throughput-three-forms"><a class="header" href="#exercise-4--sqlite-throughput-three-forms">Exercise 4 — SQLite throughput, three forms</a></h2>
+<pre><code class="language-python">import sqlite3, time
+
+conn = sqlite3.connect(":memory:")
+conn.execute("CREATE TABLE t (a INTEGER, b INTEGER, c INTEGER)")
+rows = [(i, i*2, i*3) for i in range(1_000_000)]
+
+# Form 1: one INSERT per row, separate transactions
+t = time.perf_counter()
+for r in rows: conn.execute("INSERT INTO t VALUES (?, ?, ?)", r)
+conn.commit()
+print(f"per-row INSERT: {(time.perf_counter()-t)*1000:.0f} ms")
+
+# Form 2: executemany inside a single transaction
+conn.execute("DELETE FROM t")
+t = time.perf_counter()
+with conn:
+    conn.executemany("INSERT INTO t VALUES (?, ?, ?)", rows)
+print(f"executemany:    {(time.perf_counter()-t)*1000:.0f} ms")
+
+# Form 3: INSERT-FROM-SELECT over a separate table
+conn.execute("DELETE FROM t")
+conn.execute("CREATE TABLE source (a INTEGER, b INTEGER, c INTEGER)")
+conn.executemany("INSERT INTO source VALUES (?, ?, ?)", rows)
+t = time.perf_counter()
+conn.execute("INSERT INTO t SELECT * FROM source")
+print(f"INSERT FROM SELECT: {(time.perf_counter()-t)*1000:.0f} ms")
+</code></pre>
+<p>Typical:</p>
+<pre><code>per-row INSERT:        ~20-30 s     (50-100K rows/sec)
+executemany:             1-2 s      (500K-1M rows/sec)
+INSERT FROM SELECT:    100-300 ms   (3-10M rows/sec)
+</code></pre>
+<p>Three orders of magnitude span. The difference: the per-row form pays SQL parsing, locking, and (without a transaction) per-row commit overhead on every call. <code>executemany</code> parses once, batches the per-row work. INSERT-FROM-SELECT keeps everything inside SQLite’s engine; no Python boundary crossing.</p>
+<p>For the simulator’s exporter to SQLite (after a run), INSERT-FROM-SELECT is the right shape — get the data into an in-memory SQLite table first (via column-direct bulk writes), then have SQLite move it to the on-disk table.</p>
+<h2 id="exercise-5--run-the-sqlite-warm-disk-exhibit"><a class="header" href="#exercise-5--run-the-sqlite-warm-disk-exhibit">Exercise 5 — Run the SQLite warm-disk exhibit</a></h2>
+<pre><code class="language-sh">uv run code/measurement/sqlite_performance_test.py
+</code></pre>
+<p>The script requires an external CSV file that the repo doesn’t ship; you’d populate it from your own data first. The expected pattern when run:</p>
+<pre><code>backing             lookups/sec
+:memory:               ~900,000
+local NVMe (warm)      ~830,000
+local NVMe (cold)      ~50-200K  (after page-cache drop)
+</code></pre>
+<p>The cold/warm gap is the disk’s real cost — once pages are in the OS page cache, “disk” is RAM. The cold reads pay actual seek time; the warm reads pay only SQLite’s dispatch overhead.</p>
+<p>For most simulator workloads, this means: a recently-written log file behaves like memory. Reading it weeks later, after the OS has evicted its pages, behaves like a disk. <em>Cold I/O is the wall; warm I/O is not.</em></p>
+<h2 id="exercise-6--compute-your-tick-budget"><a class="header" href="#exercise-6--compute-your-tick-budget">Exercise 6 — Compute your tick budget</a></h2>
+<pre><code>30 Hz tick = 33 ms = 33,000 µs
+1,000 mutations per tick = 33 µs/mutation budget
+
+NVMe latency per random read: ~100 µs   → too slow without batching (would consume 3 ticks/mutation)
+Memory access:                ~100 ns   → fits 330 per mutation slot
+
+Verdict: each mutation cannot afford an individual disk read.
+Must batch — one batched write per tick → 1 IOP per tick → ~100 µs → ~0.3% of budget.
+</code></pre>
+<p>The batching pattern (§22 cleanup amortising disk writes) is what makes the simulator durable at 30 Hz. Without it, every mutation would block on disk; one tick would take seconds.</p>
+<h2 id="exercise-7--the-pandas-oom-to-sqlite-migration"><a class="header" href="#exercise-7--the-pandas-oom-to-sqlite-migration">Exercise 7 — The pandas-OOM-to-sqlite migration</a></h2>
+<pre><code class="language-python">import pandas as pd, sqlite3, time, numpy as np
+
+n = 5_000_000
+df = pd.DataFrame({f"col{i}": np.random.rand(n).astype(np.float64) for i in range(10)})
+print(f"pandas memory: {df.memory_usage(deep=True).sum() / 1e6:.0f} MB")
+# ~400 MB
+
+# Migrate to SQLite
+conn = sqlite3.connect("/tmp/data.db")
+df.to_sql("t", conn, index=False, if_exists="replace")
+del df
+
+# Query against pandas (if you can still hold it in memory)
+# ... vs query against SQLite
+t = time.perf_counter()
+result_sqlite = conn.execute("SELECT col0, col1 FROM t WHERE col0 &gt; 0.99").fetchall()
+print(f"SQLite query: {(time.perf_counter()-t)*1000:.0f} ms, {len(result_sqlite)} rows")
+</code></pre>
+<p>The migration is one <code>df.to_sql(...)</code> call. After it, the data lives in a typed indexed disk-backed table that supports relational queries without consuming RAM. Query times: ~10-100 ms for a million-row filter, similar to pandas warm.</p>
+<p>The pandas form is faster at <em>unrestricted in-memory operations</em> (a join, a groupby). The SQLite form is faster at <em>random point queries with indices</em> and doesn’t blow up on memory. Pick the tool that matches the workload. For analyst-style queries against simulation output: SQLite is the safer default.</p>
+<h2 id="exercise-8--a-second-storage-system-stretch"><a class="header" href="#exercise-8--a-second-storage-system-stretch">Exercise 8 — A second storage system (stretch)</a></h2>
+<pre><code class="language-python">import time, urllib.request
+
+# Latency to a remote: round-trip per read
+url = "https://your-network-filesystem/path/file.bin"
+
+t = time.perf_counter()
+for _ in range(100):
+    with urllib.request.urlopen(url) as r:
+        r.read(1024)
+print(f"100 sequential reads: {(time.perf_counter()-t)*1000:.0f} ms")
+# typical: 10-50 seconds (100-500 ms per round-trip)
+
+# Concurrent reads via aiohttp or httpx
+# (skipping the implementation — the point is the order-of-magnitude difference)
+# concurrent 100 reads: ~500 ms-2s — bounded by aggregate bandwidth
+</code></pre>
+<p>The bandwidth-delay product is the bound. For 100 ms latency and 1 KB reads, throughput per connection is 10 KB/s. Concurrency multiplies that — 100 concurrent connections give 1 MB/s aggregate. For a simulator that depends on a remote storage system, <em>concurrency is the only knob</em>; you can’t make the latency smaller.</p>
+<p>This is why distributed simulations partition the world by location (each node owns its region) and only cross the boundary at the edges. Per-tick remote reads are infeasible past a handful per tick; per-snapshot remote reads (one large transfer at checkpoint time) are fine.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../trunk/38_storage_systems.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../trunk/39_system_of_systems.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../trunk/38_storage_systems.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../trunk/39_system_of_systems.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace-2a3cd908.js"></script>
+        <script src="../mode-rust-2c9d5c9a.js"></script>
+        <script src="../editor-16ca416c.js"></script>
+        <script src="../theme-dawn-4493f9c8.js"></script>
+        <script src="../theme-tomorrow_night-9dbe62a9.js"></script>
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid-eefea253.min.js"></script>
+        <script src="../mermaid-init-ccf746f1.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

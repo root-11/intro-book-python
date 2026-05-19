@@ -1,0 +1,344 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Partition, don&#x27;t lock - An Introduction to Programming, using ECS &amp; EBP in Python</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-2459343d.css">
+        <link rel="stylesheet" href="../css/chrome-ae938929.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "ayu";
+            window.path_to_searchindex_js = "../searchindex-eee7dabd.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-a1d46b57.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">An Introduction to Programming, using ECS &amp; EBP in Python</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="32--partition-dont-lock"><a class="header" href="#32--partition-dont-lock">32 — Partition, don’t lock</a></h1>
+<blockquote>
+<p><em>Concept node: see the <a href="../concepts/dag.html">DAG</a> and <a href="../concepts/glossary.html#32--partition-dont-lock">glossary entry 32</a>.</em></p>
+</blockquote>
+<p align="center"><img src="../illustrations/bridge_clipboard.jpg" alt="Bridges drawn as independent spans — partition into disjoint write-sets" style="max-height: 300px; max-width: 100%;"></p>
+
+<p><a href="31_disjoint_writes_parallelize.html">§31</a> said “disjoint write-sets parallelise freely”. What if the system has to write <em>one</em> table from many processes? Motion at 1M creatures wants to update <code>pos_x</code> and <code>pos_y</code> for every creature; the table is one. Eight processes, one table — looks like a lock case.</p>
+<p>It is not. The fix is to <em>partition the data</em>, not to lock the access.</p>
+<p>Each process takes a slice of the table. Process <em>t</em> writes slots <code>t * N/8 .. (t+1) * N/8</code> and only those slots. The slices are disjoint by construction; no process can write where another is writing. Inside each slice, a single process is the writer — <a href="25_ownership_of_tables.html">§25</a>’s ownership rule still holds, just at the slice level instead of the table level. Numpy slicing into shared memory gives each worker a non-overlapping view of the same underlying bytes. No <code>Lock</code>, no <code>Semaphore</code>, no atomic. The bytes are physically partitioned; the writes cannot collide.</p>
+<p>That is half the chapter. The other half is the question §31 left dangling: <strong>how does main coordinate with the workers in the first place?</strong></p>
+<h2 id="coprocessors-are-iops-limited"><a class="header" href="#coprocessors-are-iops-limited">Coprocessors are IOPS-limited</a></h2>
+<p>A worker process is a CPU that can do work, but only after main has told it what work. Telling a worker something — sending a message, releasing a barrier, putting a task on a queue — has a cost, and that cost is a hard ceiling on how fast main can keep workers busy. From <a href="https://github.com/root-11/intro-book-python/blob/main/code/measurement/coordination_patterns.py"><code>code/measurement/coordination_patterns.py</code></a>, three coordination patterns measured on this machine (8 physical cores, 7 workers + 1 main, 20,000 rounds × 7 workers = 140,000 round-trips per pattern):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>pattern</th><th style="text-align: right">msgs/sec</th><th style="text-align: right">jitter p50</th><th style="text-align: right">jitter p99</th></tr>
+</thead>
+<tbody>
+<tr><td>1. single shared <code>Queue</code></td><td style="text-align: right">88,016</td><td style="text-align: right">32 µs</td><td style="text-align: right">92 µs</td></tr>
+<tr><td>2. per-worker <code>Queue</code></td><td style="text-align: right">57,083</td><td style="text-align: right">77 µs</td><td style="text-align: right">121 µs</td></tr>
+<tr><td>3. shared numpy array</td><td style="text-align: right">1,472,323</td><td style="text-align: right">0.1 µs</td><td style="text-align: right">0.6 µs</td></tr>
+</tbody>
+</table>
+</div>
+<p>Three readings.</p>
+<p><strong>Patterns 1 and 2 — both <code>multiprocessing.Queue</code> based — top out around 60K-90K msgs/sec.</strong> That is the floor of “one kernel call per put, one kernel call per get, one pickle per message.” It is not “Python is slow”; it is “anything that goes through the kernel costs ~10 microseconds, and at one round-trip per task you get 100K tasks per second per worker, and 7 workers do not multiply because main is the bottleneck.”</p>
+<p><strong>Per-worker queues are <em>slower</em> than the single shared queue here</strong>, which is the chapter’s first surprise. The contention argument from textbooks (“avoid lock contention by giving each worker its own queue”) is real, but at this workload size the dominant cost is <em>main’s serial calls</em> — one <code>q.put()</code> per worker per round, seven kernel transitions instead of seven enqueues into a single queue. Contention would matter at higher loads or with more workers; at the simulator’s per-tick scale, pipelining is the thing.</p>
+<p><strong>The shared numpy array runs at 1.47 million messages per second</strong> — 17× faster than the single queue, with jitter two orders of magnitude tighter (0.6 µs at p99 vs 92 µs). No kernel involvement: main writes a generation counter to the shared array, workers spin-wait reading the array, do the work, increment their ack counter. The only synchronisation is x86’s normal cache coherence on aligned 64-bit reads and writes. <strong>This is the IOPS ceiling for in-process Python coordination on this machine.</strong></p>
+<h2 id="batching-is-forced-by-physics"><a class="header" href="#batching-is-forced-by-physics">Batching is forced by physics</a></h2>
+<p>Translate the IOPS ceiling into the simulator’s tick budget. At 30 Hz, the budget is 33 ms. With the shared-array pattern at 1.5M msgs/sec, that is <strong>~50,000 coordination events per tick</strong>. With queue-based patterns at ~90K msgs/sec, it is <strong>~3,000 events per tick</strong>.</p>
+<p>Compare against possible work shapes for a 1,000,000-creature, 20-system simulator:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>per-tick coordination shape</th><th style="text-align: right">events</th><th>feasible?</th></tr>
+</thead>
+<tbody>
+<tr><td>1 message per creature per system: 20,000,000 events</td><td style="text-align: right">20,000,000</td><td>no — even shared-array is 400× short</td></tr>
+<tr><td>1 message per creature: 1,000,000 events</td><td style="text-align: right">1,000,000</td><td>no — shared-array is 20× short</td></tr>
+<tr><td>1 message per system per partition × 7 partitions: 140 events</td><td style="text-align: right">140</td><td>yes — three orders of magnitude under any pattern</td></tr>
+<tr><td>1 message per system: 20 events</td><td style="text-align: right">20</td><td>yes — trivially</td></tr>
+</tbody>
+</table>
+</div>
+<p>The first two are off the table. The third is what the simulator actually does. <strong>Batching is not an optimisation; it is forced by the IOPS ceiling.</strong> A worker cannot be told “process this single creature” and then “process this next single creature” because the telling is much slower than the processing. A worker can be told “process your partition of the creature table” once, and then it does 100,000 creatures’ worth of work before main needs to say anything to it again.</p>
+<p>Once batching is forced, <em>partitioning is the natural batch shape</em>. Each batch is a slice of the table. Each worker owns its slice across many ticks. The coordination message is “run this system on your slice” — short enough to fit in any of the three patterns above, even the slowest.</p>
+<h2 id="the-ventilator-model"><a class="header" href="#the-ventilator-model">The ventilator model</a></h2>
+<p>Putting the pieces together gives the production-quality form of “partition, don’t lock”:</p>
+<p><strong>Main owns</strong> the tick clock, the I/O queue, the shared-memory arrays, and the system DAG. It does not allocate per tick; the buffers were sized at startup.</p>
+<p><strong>Workers (<code>nprocs - 1</code>)</strong> each hold their pre-assigned partition (slots <code>[my_id * chunk, (my_id+1) * chunk)</code>) and a numpy view onto the shared memory. They wait for signals from main, run the indicated system on their slice, signal completion. Workers do not allocate per tick either.</p>
+<p><strong>The signal carries the system index, not the data.</strong> A worker already knows which slice of the world it owns; main only needs to tell it <em>which system to run this phase</em>. The simulator’s twenty systems become twenty small integers — one tells the worker “run motion on your partition”, another tells it “run apply_starve on your partition”, and so on.</p>
+<p>The DAG itself, encoded as a shared array, becomes:</p>
+<pre><code>phase 1: [1]                     # one system runs (no parallelism this phase)
+phase 2: [1, 2, 3, 4, 5, 6]      # 6 systems in parallel
+phase 3: [1, 2, 3, 4, 5]         # 5 partitions of one system
+phase 4: [1, 2, 3]               # 3 partitions
+phase 5: [1, 2, 3]               # 3 systems
+phase 6: [1]                     # cleanup
+phase 7: [1]                     # inspection (if --debug is set)
+</code></pre>
+<p>Read it as a sequence of phases. Within a phase the entries are which-worker-runs-this-task; between phases there is a barrier (main waits for all acks before bumping the generation).</p>
+<h2 id="dag-as-line-sliced-by-phase"><a class="header" href="#dag-as-line-sliced-by-phase">DAG-as-line, sliced by phase</a></h2>
+<p>A tick is <em>an ordered sequence of atomic tasks</em>, partitioned into phases. Each atomic task is a (system, partition) pair. Phase boundaries are barriers — every task in phase N must complete before any task in phase N+1 starts, because of the data dependencies the DAG encodes (<a href="14_systems_compose_into_a_dag.html">§14</a>).</p>
+<p>Inside a phase, the work is independent and can run on as many workers as main has available.</p>
+<p>The slicing question becomes concrete: <strong>how do you snip the line of atomic tasks so that the DAG is respected (phase boundaries become barriers) and the work is as evenly spread across the available workers within each phase, given the jitter the table above measured?</strong></p>
+<p>The DAG’s structure is permanent — which systems exist, which depend on which — and is fixed at design time. <em>What varies tick to tick is the amount of work each system generates.</em> In an MMORPG the population of NPCs in a busy city demands more work in the AI system; a battlefield demands more in swarm coordination. The same DAG runs with the same phases; the partitioning of work <em>inside</em> each phase changes.</p>
+<p>Main’s job is to observe and rebalance: how long did each phase take last tick, how should this tick’s partitions be assigned to spread work evenly given the per-worker jitter measured above?</p>
+<h2 id="load-balancing-at-30-hz"><a class="header" href="#load-balancing-at-30-hz">Load balancing at 30 Hz</a></h2>
+<p>A 30 Hz tick is 33 ms. The shared-array coordination round-trip is sub-microsecond at p99. Main has plenty of headroom — milliseconds, not microseconds — to reassign partitions every tick based on what it observed last tick.</p>
+<p>The pattern: each phase, each worker stamps its completion timestamp in the shared array (the exhibit’s <code>COORD_TIMESTAMP</code> slots). Main reads the timestamps, computes per-worker phase wall times, and adjusts the partition boundaries for the <em>next</em> tick. A worker that finished early gets a slightly larger slice next time; a worker that finished late gets a smaller slice. The DAG-as-array can also adjust <em>how many workers participate</em> in a phase — a short phase that only needs three workers releases the other four to start the next phase early.</p>
+<p>This is closed-loop control over the tick budget. Main observes; main decides; main writes new partition boundaries before the next tick fires. <em>The partitioning is not a static decision; it is a quantity main maintains, like every other piece of simulator state.</em></p>
+<h2 id="choosing-the-partition-shape"><a class="header" href="#choosing-the-partition-shape">Choosing the partition shape</a></h2>
+<p>Within the ventilator model, the <em>initial</em> partition shape is still a design choice. Four options worth naming:</p>
+<p><strong>By entity range</strong> (the default): each worker takes contiguous slot range <code>[i*N/W, (i+1)*N/W)</code>. Simple; works when access is uniform.</p>
+<p><strong>By spatial cell</strong> (after sort-for-locality, <a href="28_sort_for_locality.html">§28</a>): each worker takes a region of the world. Useful when interactions are local — neighbours-only collisions, regional behaviours. Workers at boundary cells need a small synchronisation step (or a halo region copied into each worker’s input).</p>
+<p><strong>By hash</strong>: each worker takes ids whose <code>hash(id) % n_workers</code> matches its index. Useful when access is uniform but you want stable worker-to-data mapping across ticks (worker caches stay warm on the same partition tick after tick).</p>
+<p><strong>By workload weight</strong> (the load-balanced form above): each worker takes a number of rows weighted by <em>expected work</em> per row. The 30-Hz observe-and-rebalance loop above implements this dynamically.</p>
+<p>The partition shape is the design choice; the partition mechanism — numpy slicing into shared memory — is one line.</p>
+<h2 id="a-calibration"><a class="header" href="#a-calibration">A calibration</a></h2>
+<p>This chapter has covered a lot of ground at the architectural level. Three honest qualifications.</p>
+<p><strong>The shared-array pattern is the principle, not a recipe.</strong> The exhibit’s pattern works; it is fast; it is also non-trivial to debug under load. Production implementations typically use <code>multiprocessing.shared_memory</code> plus <code>multiprocessing.Event</code> for the wake-up (instead of a busy-loop) to be friendlier to other processes on the machine. The IOPS ceiling drops from 1.5M to ~500K with the Event, which is still 5-10× the queue patterns.</p>
+<p><strong>Python multiprocessing remains non-trivial.</strong> As §31’s calibration note said: this teaches the architecture, not a production recipe for workloads where every percent matters. The single-writer, partition-don’t-lock, batched-coordination architecture <em>is</em> correct at every scale. If your tick budget cannot tolerate the operational complexity of debugging across N Python processes, the answer is to escalate to maturin (Rust + PyO3) and apply the same architecture in compiled code.</p>
+<p><strong>Real ECS engines do this in compiled code.</strong> Bevy, Unity DOTS, Unreal Mass Entities — they each implement variants of the ventilator model in C++ or Rust. The architecture is genuinely the right shape; the language is a tooling decision.</p>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<ol>
+<li><strong>Run the coordination exhibit.</strong> <code>uv run code/measurement/coordination_patterns.py</code>. Read your three rates. Compute “coordination events per 30 Hz tick” for each pattern. The shared-array number is the budget you have for any per-tick orchestration.</li>
+<li><strong>The batching threshold on your machine.</strong> With your IOPS numbers, compute the smallest partition size that makes coordination cost ≤ 10% of partition work cost. Below that threshold, batching is the only option. Above it, you can afford to dispatch per-something.</li>
+<li><strong>Pre-assigned partitions.</strong> Modify your simulator so each worker holds its <code>(start, end)</code> once at startup, never receives it again. The signal it gets per phase is a small integer (system id). Compare the wall time to a version that re-sends <code>(start, end)</code> every phase. The difference is the marginal IPC saved.</li>
+<li><strong>The DAG-as-array.</strong> Build a length-20 numpy array of <code>int8</code> representing your simulator’s DAG (system ids per phase, separators between phases). Have workers spin-wait on this array. Confirm correctness against a single-process baseline.</li>
+<li><strong>Load-balanced partitioning.</strong> Add per-worker timestamps after each phase (the <code>COORD_TIMESTAMP</code> slot pattern). After each tick, recompute partition boundaries proportionally to per-worker phase times. Run for 1000 ticks; observe the boundaries converge as the workload stabilises.</li>
+<li><strong>Workload heterogeneity.</strong> Construct a workload where 80% of work lives in 20% of the partitions (e.g. one MMORPG city dominates a flat world). Compare a fixed equal-sized partitioning to the load-balanced one from exercise 5. The load-balanced version should converge to slices of unequal size that all complete in roughly the same wall time.</li>
+<li><strong>The boundary-builder lives in <code>__main__</code>.</strong> Write a worker that <em>computes its own slice</em> from <code>(my_id, n_workers, N)</code>. Run it. Now change <code>N</code> mid-tick from <code>__main__</code> and observe the chaos. Confirm that the disciplined form (boundaries computed once in <code>__main__</code>) does not have this failure mode.</li>
+<li><em>(stretch)</em> <strong><code>Event</code> instead of busy-wait.</strong> Replace the spin-loop in the shared-array worker with <code>multiprocessing.Event.wait()</code>. Measure the new throughput. The trade-off: lower CPU usage when idle, slightly higher latency per round-trip.</li>
+<li><em>(stretch)</em> <strong>The 1 kHz physics-engine question.</strong> Compute the per-tick budget at 1 kHz (1 ms). Compute how many shared-array coordination events fit in that budget. At what worker count does coordination overhead become unaffordable? This is the kind of arithmetic that decides whether your physics engine stays in Python multiprocessing or escalates to maturin.</li>
+</ol>
+<p>Reference notes in <a href="32_partition_dont_lock_solutions.html">32_partition_dont_lock_solutions.md</a>.</p>
+<h2 id="whats-next"><a class="header" href="#whats-next">What’s next</a></h2>
+<p><a href="33_false_sharing.html">§33 — False sharing</a> names the hardware-level pitfall that can sink the partition pattern: two processes writing different bytes in the same cache line slow each other down despite logical independence.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../trunk/31_disjoint_writes_parallelize_solutions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../trunk/32_partition_dont_lock_solutions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../trunk/31_disjoint_writes_parallelize_solutions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../trunk/32_partition_dont_lock_solutions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace-2a3cd908.js"></script>
+        <script src="../mode-rust-2c9d5c9a.js"></script>
+        <script src="../editor-16ca416c.js"></script>
+        <script src="../theme-dawn-4493f9c8.js"></script>
+        <script src="../theme-tomorrow_night-9dbe62a9.js"></script>
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-c2a407aa.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-a0b12cfe.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid-eefea253.min.js"></script>
+        <script src="../mermaid-init-ccf746f1.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
