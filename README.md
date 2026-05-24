@@ -137,7 +137,7 @@ This book uses numpy's typed dtypes for hot data. The mapping the reader will se
 | `int` (CPython, ≤ 2³⁰) | — | 28 bytes | unbounded |
 | — | `np.int8`  | 1 byte | -128 to 127 |
 | — | `np.uint8` | 1 byte | 0 to 255 |
-| — | `np.int32` | 4 bytes | ±2¹ |
+| — | `np.int32` | 4 bytes | ±2³¹ |
 | — | `np.uint32` | 4 bytes | 0 to 2³² |
 | — | `np.int64` | 8 bytes | ±2⁶³ |
 | `float` (CPython) | `np.float64` | 8 bytes (CPython has 24-byte object overhead) | ~15 decimal digits |
