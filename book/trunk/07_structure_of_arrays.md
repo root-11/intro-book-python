@@ -58,6 +58,9 @@ SoA is therefore the default in this book. AoS is sometimes the right choice —
 
 The §3 exhibit ([`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py)) is the reference measurement for this chapter. Re-read its sum-column-0 row: list-of-tuples (the AoS twin) summed column 0 of one million ten-field rows in 30 ms; numpy SoA did the same in 0.4 ms. **75× faster for the canonical "system reads one column" operation.** That is the regime your inner loops will live in for the rest of this book.
 
+> [!NOTE]
+> **numpy stores rows; pandas stores columns.** numpy arrays are row-major (C order) by default, with column-major available via `order="F"`. pandas is the other way — column-oriented under the hood (each column stored contiguously), which is why a DataFrame is fast down a column and slow across a row. Neither layout is optimal for all uses: SoA wins when loops read a few fields across many rows; row storage wins when loops touch whole records one at a time.
+
 ## Exercises
 
 You will need `time.perf_counter()` for some of these.

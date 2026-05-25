@@ -27,6 +27,8 @@ _updated: 2026-05-09_
 
 This book teaches programming from first principles of data-oriented design, entity-component-systems (ECS), and existence-based processing (EBP). It uses Python and `numpy` as the only languages.
 
+*EBP* is this book's shorthand. The spelled-out term — *existence-based processing* — is Richard Fabian's, from [*Data-Oriented Design*](https://www.dataorienteddesign.com/dodbook/); §17 builds it from the simulator. An acronym index will not list "EBP" because the source literature spells the term out rather than abbreviating it.
+
 The book is structured around forty-three concepts ([the DAG](concepts/dag.md)) and their canonical wording ([the glossary](concepts/glossary.md)). Sections are short — two to three pages of prose followed by four to twelve compounding exercises. Concepts are *named* only after they are *built*: every section earns its vocabulary through working code, not the other way around.
 
 The through-line is a small ecosystem simulator built in stages from one hundred wandering creatures to a hundred million streamed ones. The simulator's specification is at [`code/sim/SPEC`](code/sim/SPEC.md).
@@ -684,6 +686,9 @@ This makes the SoA win in Python *categorical*, not just *quantitative*. The num
 SoA is therefore the default in this book. AoS is sometimes the right choice — for example when every system reads every field of every entity on every tick (rare), or when N is so small that the loop overhead dominates regardless of layout (think dozens of items, not millions). But this is a tradeoff to *earn* by measurement, not to assume by habit. Write SoA first; switch to AoS only when a benchmark forces you to.
 
 The §3 exhibit ([`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py)) is the reference measurement for this chapter. Re-read its sum-column-0 row: list-of-tuples (the AoS twin) summed column 0 of one million ten-field rows in 30 ms; numpy SoA did the same in 0.4 ms. **75× faster for the canonical "system reads one column" operation.** That is the regime your inner loops will live in for the rest of this book.
+
+> [!NOTE]
+> **numpy stores rows; pandas stores columns.** numpy arrays are row-major (C order) by default, with column-major available via `order="F"`. pandas is the other way — column-oriented under the hood (each column stored contiguously), which is why a DataFrame is fast down a column and slow across a row. Neither layout is optimal for all uses: SoA wins when loops read a few fields across many rows; row storage wins when loops touch whole records one at a time.
 
 ## Exercises
 
