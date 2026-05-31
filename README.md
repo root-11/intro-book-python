@@ -2867,6 +2867,28 @@ False sharing produces high `cache-misses` despite supposedly disjoint writes. I
 
 The takeaway: physical layout matters even for logically disjoint data. Two writes to different shared-memory addresses do not parallelise freely if those addresses are within 64 bytes. The fix is separation or padding. The detection is profiling.
 
+## Line size is not always 64 bytes
+
+64 bytes is the size on the hardware this book measures, but it is not universal. The false-sharing unit by architecture, separated into what the book has run on versus what it cites:
+
+| Architecture | Cache line | Measured | Note |
+|---|---|:---:|:---:|
+| x86-64 (modern Intel/AMD) | 64 B | Y | 1 |
+| ARM Cortex-A | 64 B | Y | 2 |
+| ARM64 Neoverse (server) | 64 B | N | |
+| RISC-V | 64 B | N | 3 |
+| Apple Silicon (M1–M4) | 128 B | N | |
+| IBM POWER (POWER7–POWER10) | 128 B | N | |
+| IBM z/Architecture (s390x) | 256 B | N | |
+
+1. Measured on the i7 / NUC / Ryzen boxes. Intel's adjacent-line prefetch can make the effective unit 128 B — pad to 128 to avoid false sharing.
+2. Measured on a Raspberry Pi 4 (Cortex-A72). Runtime query: `CTR_EL0`.
+3. Implementation-defined; not fixed by the ISA.
+
+Cache lines have grown with the hardware: 32 bytes on pre-Pentium-4 x86 and many embedded cores, 64 across most of today's desktops and phones, 128 on Apple Silicon and POWER, 256 on IBM Z. This book assumes 64 and pads to 128 where false sharing demands it; on anything else, query the line size rather than trust the default: `getconf LEVEL1_DCACHE_LINESIZE`, `sysconf(_SC_LEVEL1_DCACHE_LINESIZE)`, or `/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size`. The coherency granule can differ from the fetch line; the coherency unit is what governs false sharing.
+
+If you have one of the unmeasured machines and run the suite, send the numbers and they go in.
+
 ## Exercises
 
 1. **The pathological counter.** Build the 8-process case with `multiprocessing.shared_memory`: an `int64` array of length 8, each worker incrementing its own slot in a tight loop. Time the parallel version against a single-process loop doing the same total work. The parallel version should be *slower* — true negative scaling. (Hint: at small enough work-per-tick, even spawning the processes is slower; pick a tight inner loop with millions of increments to see the cache effect dominate.)
