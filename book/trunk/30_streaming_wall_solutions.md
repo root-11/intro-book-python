@@ -1,6 +1,6 @@
-# Solutions: 30 — Moving beyond the wall
+# Solutions: 30 - Moving beyond the wall
 
-## Exercise 1 — Compute your streaming threshold
+## Exercise 1 - Compute your streaming threshold
 
 ```
 Per-creature footprint (hot SoA):
@@ -30,7 +30,7 @@ The streaming threshold is in the *hundreds of millions* for hot-only data on a 
 
 This is why the §2 dtype discipline and the §26 hot/cold split bind together. Wider dtypes pull the wall inward; the split pushes the *motion-system* wall outward by isolating the hot working set.
 
-## Exercise 2 — Predict the cost
+## Exercise 2 - Predict the cost
 
 | storage          | latency per read |
 |------------------|-----------------:|
@@ -54,7 +54,7 @@ A simulator that wants to make *thousands* of disk reads per tick fits on no sto
 
 The disk's bandwidth-per-second is high; its operations-per-second is low. Match the access pattern to the bandwidth, not to the IOPS.
 
-## Exercise 3 — Snapshot a small world
+## Exercise 3 - Snapshot a small world
 
 ```python
 import numpy as np
@@ -86,9 +86,9 @@ restore(world, "checkpoint.npz")
 
 `np.savez_compressed` ships the typed bytes verbatim, zip-deflated. The file is portable, language-readable, and self-describing (named arrays). For a 1M-creature world: ~30 MB uncompressed, ~15-25 MB compressed depending on entropy.
 
-The simulator's continuation after `restore` is indistinguishable from the original run — *this is determinism* (§16) plus *persistence-as-serialisation* (§36). The combination is replay.
+The simulator's continuation after `restore` is indistinguishable from the original run - *this is determinism* (§16) plus *persistence-as-serialisation* (§36). The combination is replay.
 
-## Exercise 4 — A windowed log
+## Exercise 4 - A windowed log
 
 ```python
 import numpy as np, sqlite3
@@ -132,7 +132,7 @@ class WindowedLog:
 
 Window queries are O(K) numpy scans (~1 µs at K=10K). Archive queries are O(log N) sqlite reads (~5-30 µs after the page is in cache). The window is the hot path; the archive is the cold path.
 
-## Exercise 5 — Log-as-world
+## Exercise 5 - Log-as-world
 
 ```python
 def replay_to_tick(log: WindowedLog, target_tick: int, snapshots_dir: Path):
@@ -160,7 +160,7 @@ The reconstruction time depends on `target_tick - start_tick`: more events to re
 
 This is the architecture of every event-sourced system, every git, every database WAL.
 
-## Exercise 6 — Read the simlog seriously
+## Exercise 6 - Read the simlog seriously
 
 The vendored simlog at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) implements the windowed-log pattern in 700 lines. Trace one `log(...)` call:
 
@@ -173,7 +173,7 @@ The vendored simlog at [`.archive/simlog/logger.py`](https://github.com/root-11/
 
 The 700 lines you don't have to write include: codebook compression for repeated string fields, type inference (one f64 column holds ints, floats, and string codes), throughput benchmarks, and the auxiliary `to_csv` / `to_sqlite` exporters. The reference implementation is the production version of every chapter from §15 to §30.
 
-## Exercise 7 — Chunked numpy
+## Exercise 7 - Chunked numpy
 
 ```python
 import numpy as np, time
@@ -207,10 +207,10 @@ print(f"chunked: {time.perf_counter() - t:.2f} s, mean={total/n}")
 
 The chunked version's wall time is similar (~3-5 s on NVMe for 2 GB) but caps RAM at 100 MB instead of 2 GB. For files larger than RAM, chunking is the only option; for files smaller than RAM, the full-load is usually slightly faster (fewer syscalls).
 
-## Exercise 8 — Document your bound (stretch)
+## Exercise 8 - Document your bound (stretch)
 
 A simulator's deployment bound is a one-paragraph document:
 
 > **Simulator deployment bound.** On the reference hardware (16 GB RAM, NVMe SSD, 8-core Ryzen 5800), the simulator runs N ≤ 8,000,000 creatures at 30 Hz with the hot-path memory footprint of 160 MB (20 bytes × 8M). Above 8M, the L3 → RAM cliff begins to bind motion's inner loop; we project N=20M to run at 15 Hz (50% deadline missed). The streaming architecture (windowed log + snapshots every 1000 ticks) is required above 50M, where the full SoA exceeds typical desktop RAM.
 
-The document is what tells future readers (including you) when to escalate the architecture and when to just buy more RAM. It is the closing artifact of the Scale phase — the explicit price tag on running at each scale.
+The document is what tells future readers (including you) when to escalate the architecture and when to just buy more RAM. It is the closing artifact of the Scale phase - the explicit price tag on running at each scale.

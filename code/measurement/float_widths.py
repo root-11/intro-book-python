@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-exhibit — float16 vs float32 vs float64: does half the footprint pay for itself?
+exhibit - float16 vs float32 vs float64: does half the footprint pay for itself?
 
 float16 is a 2-byte IEEE 754 half. CUDA hardware runs it natively; most CPUs
 do not. On a typical x86 / ARM core without AVX-512 FP16, numpy implements
@@ -20,11 +20,11 @@ set spills to RAM the bandwidth saving may overtake the conversion cost.
 
 Three operations probe different ratios of bytes-to-arithmetic:
 
-    sum     — one read per element, one accumulate. Bandwidth-bound when
+    sum     - one read per element, one accumulate. Bandwidth-bound when
               the array doesn't fit in cache.
-    a*b→c   — two reads, one write, one multiply per element. Maximum
+    a*b→c   - two reads, one write, one multiply per element. Maximum
               bandwidth pressure.
-    a @ b   — two reads, one multiply-add per element. Same memory traffic
+    a @ b   - two reads, one multiply-add per element. Same memory traffic
               as a*b→c but the FMA is fused; arithmetic intensity matters
               more here.
 
@@ -68,7 +68,7 @@ def measure(n, dtype_name, q):
     rng = np.random.default_rng(seed=0xC0FFEE)
     # Scale to keep sums and dot products inside float16's representable
     # range (max ~65504) across all N. With values in [0, 2**-16), the
-    # largest sum at N=33M is ~512 and the largest dot is ~8 — well inside
+    # largest sum at N=33M is ~512 and the largest dot is ~8 - well inside
     # range, well above f16's subnormal threshold (~6e-5).
     scale = np.float32(2.0 ** -16)
     a = (rng.random(n, dtype=np.float32) * scale).astype(dtype_name, copy=False)
@@ -136,8 +136,8 @@ def main():
     print_table(results, "dot_ns", "a @ b (dot product)")
 
     print("Read the columns:")
-    print("  f16/f32 < 1: float16 is winning — halved bytes beat the conversion.")
-    print("  f16/f32 > 1: conversion overhead dominates — the array fits well")
+    print("  f16/f32 < 1: float16 is winning - halved bytes beat the conversion.")
+    print("  f16/f32 > 1: conversion overhead dominates - the array fits well")
     print("               enough in cache that bandwidth savings don't pay.")
     print("  f64/f32 is the 'pure width' reference: no conversion penalty, just")
     print("               twice the bytes. If f64/f32 < 2 the op is partly")

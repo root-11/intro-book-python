@@ -1,8 +1,8 @@
-# Solutions: 42 — You can only fix what you wrote
+# Solutions: 42 - You can only fix what you wrote
 
 These exercises are audits, not measurements. Answers reflect typical project patterns; your specific project's audit produces specific answers.
 
-## Exercise 1 — Audit your dependencies
+## Exercise 1 - Audit your dependencies
 
 A typical `pyproject.toml`:
 
@@ -33,7 +33,7 @@ Classified by the chapter's categories:
 
 The trivial ones (tomli) can sometimes be replaced by stdlib if Python version allows. The mid-size ones (click) deserve a "would I fork it if I had to" decision. The ecosystem-scale ones are commitments; pretend otherwise at your peril.
 
-## Exercise 2 — The from-scratch test
+## Exercise 2 - The from-scratch test
 
 Pick `tqdm` (small, ~5K LOC). The relevant 80% (a basic progress bar):
 
@@ -71,11 +71,11 @@ class SimpleTqdm:
 
 ~25 lines for the relevant 80% of tqdm. The full library handles edge cases (Jupyter, nested bars, dynamic resize, customisation, threading) that this version omits. For a simulator that just wants a progress bar in a CLI: this is enough.
 
-The exercise reveals two things: how much code the dependency *actually* saves (small — most of tqdm's value is the edge cases), and how cheaply you could fork (a day to rewrite the 80%). The dependency is fine to keep, but you now know the replacement cost.
+The exercise reveals two things: how much code the dependency *actually* saves (small - most of tqdm's value is the edge cases), and how cheaply you could fork (a day to rewrite the 80%). The dependency is fine to keep, but you now know the replacement cost.
 
-## Exercise 3 — A breakage drill
+## Exercise 3 - A breakage drill
 
-Pick one dependency — say, `pydantic`. Pretend it's been abandoned tomorrow.
+Pick one dependency - say, `pydantic`. Pretend it's been abandoned tomorrow.
 
 **Migration plan**:
 
@@ -90,7 +90,7 @@ Pick one dependency — say, `pydantic`. Pretend it's been abandoned tomorrow.
 
 The drill takes an hour. The documented plan saves you a panic when the actual breakage happens.
 
-## Exercise 4 — Small over big
+## Exercise 4 - Small over big
 
 Two packages doing the same job:
 
@@ -102,11 +102,11 @@ Two packages doing the same job:
 | Progress bar    | rolled (~25 LOC)        | `tqdm` (small)     |
 | JSON validation | `msgspec` (small)       | `pydantic` (mid)   |
 
-The small options are usually 70-90% of the functionality with much less surface area. The big options earn their place when their *additional* features are genuinely needed — but most projects don't need them. Default to the small option; upgrade when you hit a specific limitation.
+The small options are usually 70-90% of the functionality with much less surface area. The big options earn their place when their *additional* features are genuinely needed - but most projects don't need them. Default to the small option; upgrade when you hit a specific limitation.
 
 The argparse vs click question is canonical. argparse has a clunkier API; click is friendlier. For a small CLI, the clunkiness is a one-time write; for a large CLI, click's compression earns its place. Pick by *project size*, not by *popularity*.
 
-## Exercise 5 — The pandas question
+## Exercise 5 - The pandas question
 
 ```python
 # pandas form
@@ -145,7 +145,7 @@ When pandas is a habit, not a need:
 
 A useful audit: count how many DataFrame columns are pure numeric. If most are, the project is better served by numpy SoA + a thin formatting layer for the times it wants pretty output.
 
-## Exercise 6 — Vendoring (stretch)
+## Exercise 6 - Vendoring (stretch)
 
 ```sh
 # Copy a small dependency's source into your repo
@@ -175,4 +175,4 @@ Document in the project README:
 
 The trade: more work for more agency. Worth it for small packages you depend on at the bottom of your stack; not worth it for ecosystem-scale ones.
 
-The pattern is the same one the book applies to `simlog`: vendor a small, complete reference implementation under your repo's control. Future readers can read it; future you can fix it. The maintenance is *yours* — explicitly chosen, not absorbed by accident.
+The pattern is the same one the book applies to `simlog`: vendor a small, complete reference implementation under your repo's control. Future readers can read it; future you can fix it. The maintenance is *yours* - explicitly chosen, not absorbed by accident.

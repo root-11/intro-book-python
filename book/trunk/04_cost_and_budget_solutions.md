@@ -1,19 +1,19 @@
-# Solutions: 4 — Cost is layout, and you have a budget
+# Solutions: 4 - Cost is layout, and you have a budget
 
-## Exercise 1 — Pick your rates
+## Exercise 1 - Pick your rates
 
 | system                   | target rate            | budget per tick |
 |--------------------------|------------------------|-----------------|
 | card game                | 30 Hz (or event-driven) | 33 ms          |
 | real-time strategy game  | 30-60 Hz                | 17-33 ms       |
-| market data feed         | depends — 100 Hz – 1 MHz | 10 ms – 1 µs |
-| embedded sensor controller | 1-10 kHz              | 100 µs – 1 ms  |
+| market data feed         | depends - 100 Hz - 1 MHz | 10 ms - 1 µs |
+| embedded sensor controller | 1-10 kHz              | 100 µs - 1 ms  |
 | web API endpoint         | per-request, ~10-200 ms | 10-200 ms      |
 | offline batch (1B rows)  | throughput, not Hz      | minutes-to-hours total |
 
 The point of writing these down is that "this should be fast" is not a budget. "33 ms" is. The instant you have a number, every line of code in the inner loop is either spending bytes of that budget or it isn't.
 
-## Exercise 2 — Count an operation
+## Exercise 2 - Count an operation
 
 ```python
 import timeit
@@ -29,9 +29,9 @@ dict[k] lookup: 15.1 ns
 At 30 Hz (33 ms): **~2.2 million** lookups per tick.
 At 1 kHz (1 ms): **~66,000** lookups per tick.
 
-A 1-million-entity update that does *one* dict lookup per entity would cost 15 ms — half a 30 Hz budget on a single bookkeeping op. Two dict lookups per entity blows the budget on bookkeeping alone, with no actual simulation work done yet.
+A 1-million-entity update that does *one* dict lookup per entity would cost 15 ms - half a 30 Hz budget on a single bookkeeping op. Two dict lookups per entity blows the budget on bookkeeping alone, with no actual simulation work done yet.
 
-## Exercise 3 — The layout difference
+## Exercise 3 - The layout difference
 
 ```python
 import time, numpy as np
@@ -53,9 +53,9 @@ sum(d.values()):  3.6 ns/elem
 ratio: 18×
 ```
 
-The dict version is **interpreter-bound**: the inner loop is a pure-Python `for v in values: total += v`, which pays bytecode dispatch + `PyLong` arithmetic + refcount work per element — about 3-6 ns. The numpy version is **bandwidth-bound**: a tight C loop reading int64s sequentially, the prefetcher loaded ahead, the L1 line warm. Same 1M `int64` payload, two regimes apart, 18× cost gap.
+The dict version is **interpreter-bound**: the inner loop is a pure-Python `for v in values: total += v`, which pays bytecode dispatch + `PyLong` arithmetic + refcount work per element - about 3-6 ns. The numpy version is **bandwidth-bound**: a tight C loop reading int64s sequentially, the prefetcher loaded ahead, the L1 line warm. Same 1M `int64` payload, two regimes apart, 18× cost gap.
 
-## Exercise 4 — The cliff
+## Exercise 4 - The cliff
 
 ```python
 import time, numpy as np
@@ -80,7 +80,7 @@ On this machine the cliff between L2-fitting (200 KB - 1 MB) and L3-spilling (10
 
 This is why the chapter distinguishes bandwidth-bound from latency-bound: same N, same array, very different cliff depending on access pattern. The cliff exists; sequential numpy hides most of it.
 
-## Exercise 5 — Working backwards from the budget
+## Exercise 5 - Working backwards from the budget
 
 Target 60 Hz (16.67 ms = 16,666 µs); 100,000 entities; one cache line touched per entity.
 
@@ -102,7 +102,7 @@ Target 60 Hz (16.67 ms = 16,666 µs); 100,000 entities; one cache line touched p
 
 At 10M entities, latency-bound and interpreter-bound layouts blow the budget by 3-7×. Bandwidth-bound finishes with 88% headroom. Same algorithm, same data, same machine.
 
-## Exercise 6 — A bad design
+## Exercise 6 - A bad design
 
 ```python
 from dataclasses import dataclass
@@ -129,9 +129,9 @@ This is the canonical "obviously fast" Python design. Big-O is O(N); the inner w
   1,000,000  numpy SoA                   0.278 ms     30 Hz:  0.8%     60 Hz:  1.7%
 ```
 
-100× cost gap. The big-O is the same. The constant factor — the per-element interpreter dispatch through four attribute accesses on a heap-allocated `dataclass` — is what blows the budget.
+100× cost gap. The big-O is the same. The constant factor - the per-element interpreter dispatch through four attribute accesses on a heap-allocated `dataclass` - is what blows the budget.
 
-## Exercise 7 — Find your CPU's TDP
+## Exercise 7 - Find your CPU's TDP
 
 Linux:
 ```sh
@@ -147,9 +147,9 @@ Or look up the CPU model on the manufacturer's spec sheet (Intel ARK, AMD produc
 | desktop            |   65-125 W    |
 | workstation        |   125-280 W   |
 
-Burst can run 1.5-2× higher for tens of seconds; sustained settles back to TDP. The number matters because it's the ceiling for *energy per tick* on your machine — useful when budgeting battery life or cooling.
+Burst can run 1.5-2× higher for tens of seconds; sustained settles back to TDP. The number matters because it's the ceiling for *energy per tick* on your machine - useful when budgeting battery life or cooling.
 
-## Exercise 8 — Battery budget
+## Exercise 8 - Battery budget
 
 50 Wh laptop battery, simulator at 30 Hz:
 
@@ -158,7 +158,7 @@ Burst can run 1.5-2× higher for tens of seconds; sustained settles back to TDP.
 
 The layout change cost 2.68 hours, or **43% of battery life**. A change that adds memory loads to the inner loop is a change that shortens battery life by nearly half. For mobile, embedded, or any battery-powered work, this matters more than the wall-clock tick time.
 
-## Exercise 9 — Measure delta power
+## Exercise 9 - Measure delta power
 
 ```sh
 # Terminal 1: sustained sequential numpy sum
@@ -174,11 +174,11 @@ sudo perf stat -a -e power/energy-pkg/ -- sleep 30
 
 Repeat for the random-gather version (`arr[idx].sum()` with shuffled `idx`) and for an idle baseline. Convert each to average watts (J/30s = W).
 
-Expected ordering: **idle < sequential < gather**. The gap between sequential and gather is the energy cost of breaking the prefetcher — same arithmetic, same data volume, but more memory-controller and DRAM activity per useful operation.
+Expected ordering: **idle < sequential < gather**. The gap between sequential and gather is the energy cost of breaking the prefetcher - same arithmetic, same data volume, but more memory-controller and DRAM activity per useful operation.
 
 This exercise needs root for `perf` access to RAPL counters, and works on x86 Linux. On macOS, `powermetrics` is the analog. On bare-metal embedded, an external power meter is the honest answer.
 
-## Exercise 10 — Joules per access
+## Exercise 10 - Joules per access
 
 Approximate energies per memory read:
 
@@ -193,4 +193,4 @@ For 10M `int64` reads:
 - **Sequential (mostly prefetched)**: assume mostly L1-equivalent cost. 10⁷ × 0.1 nJ = 1 mJ.
 - **Random gather (mostly RAM misses)**: 10⁷ × 30 nJ = 300 mJ.
 
-300× more energy. Convert: 1 mJ = 0.28 µWh; 300 mJ = 83 µWh. As a fraction of a 50 Wh battery: 5.6 × 10⁻⁹ vs 1.7 × 10⁻⁶ — both tiny in absolute terms. The *ratio* is what compounds across millions of ticks per day across millions of laptops, or across the lifetime power bill of a data centre. The disciplined layout is also the cheap one, twice over: faster *and* cooler per useful operation.
+300× more energy. Convert: 1 mJ = 0.28 µWh; 300 mJ = 83 µWh. As a fraction of a 50 Wh battery: 5.6 × 10⁻⁹ vs 1.7 × 10⁻⁶ - both tiny in absolute terms. The *ratio* is what compounds across millions of ticks per day across millions of laptops, or across the lifetime power bill of a data centre. The disciplined layout is also the cheap one, twice over: faster *and* cooler per useful operation.

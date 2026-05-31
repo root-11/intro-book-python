@@ -1,8 +1,8 @@
-# Solutions: 29 — The wall at 10K → 1M
+# Solutions: 29 - The wall at 10K → 1M
 
 These exercises ask you to *find the wall*, not to remove it abstractly. The fixes are techniques you have from §26-§28; the diagnostic is the new content.
 
-## Exercises 1 & 2 — Calibration and scale-up
+## Exercises 1 & 2 - Calibration and scale-up
 
 ```sh
 time python my_sim.py --n 10000 --ticks 1000
@@ -20,7 +20,7 @@ Both runs do **the same total entity-ticks** (10⁷). The wall-clock ratio is th
 
 A 1.5-3× wall is normal and the chapter's techniques close it. A 100× wall is a structural bug; nothing in this chapter fixes it short of recognising it.
 
-## Exercise 3 — Profile with cProfile
+## Exercise 3 - Profile with cProfile
 
 ```sh
 python -m cProfile -o profile.out -s cumulative my_sim.py
@@ -31,14 +31,14 @@ python -m pstats profile.out
 
 Typical hot-list culprits at 1M:
 
-- `list.append`  — `to_insert.append` in a loop; pre-size to fix.
-- `numpy.ndarray.__getitem__`  — accidental Python-level fancy indexing.
-- `<dict iteration>`  — id lookup via `dict.get` per creature when an `id_to_slot` array would be O(1).
+- `list.append`  - `to_insert.append` in a loop; pre-size to fix.
+- `numpy.ndarray.__getitem__`  - accidental Python-level fancy indexing.
+- `<dict iteration>`  - id lookup via `dict.get` per creature when an `id_to_slot` array would be O(1).
 - One named system that wasn't supposed to be hot but is.
 
 `cProfile` sees Python-level calls. Numpy primitives show up as one C-call entry (`numpy.add` or similar) regardless of how many elements they process. For numpy-internal hot spots, use py-spy.
 
-## Exercise 4 — Profile with py-spy
+## Exercise 4 - Profile with py-spy
 
 ```sh
 pip install py-spy
@@ -54,7 +54,7 @@ py-spy samples the C stack, which surfaces numpy hot spots that cProfile lumps t
 
 The flame graph's *width* is wall time. Widest function is your bottleneck.
 
-## Exercise 5 — Pre-size cleanup buffers
+## Exercise 5 - Pre-size cleanup buffers
 
 ```python
 # Before
@@ -78,13 +78,13 @@ class CleanupBuffer:
 
 The Python list `append` is amortised O(1) but each doubling is an N-byte copy. At 10K inserts per tick that's a 80K-byte copy every few ticks (negligible). At 100K inserts per tick the doublings happen often enough to be one of the hottest calls in the profile. Pre-sized arrays remove the doubling entirely.
 
-## Exercise 6 — Hot/cold split
+## Exercise 6 - Hot/cold split
 
-In pure numpy SoA (where every column is its own array), splitting the row organisationally does *not* change the profile — the bytes were already separated. §26's framing applies: the split is naming, not bandwidth.
+In pure numpy SoA (where every column is its own array), splitting the row organisationally does *not* change the profile - the bytes were already separated. §26's framing applies: the split is naming, not bandwidth.
 
 If the simulator uses *numpy structured arrays* (one combined dtype for the whole row), the split shows up immediately. Motion's `arr['pos_x'] += arr['vel_x'] * dt` runs at structured-array stride; splitting into `hot_arr['pos_x'] += hot_arr['vel_x'] * dt` runs at SoA speed. Expect ~8× improvement at 1M creatures.
 
-## Exercise 7 — Use index maps
+## Exercise 7 - Use index maps
 
 ```python
 # Before
@@ -98,9 +98,9 @@ def find_creature(world, target_id):
 
 For 100 lookups per tick at N=1M, the linear-scan version costs ~100 × 5 ms = 500 ms per tick (orders-of-magnitude over budget). The index-map version costs ~100 × 50 ns = 5 µs.
 
-The 100,000× speedup vanishes from the profile after this fix. The id_to_slot maintenance in cleanup is paid once per cleanup pass, in the form of one bulk numpy assignment — invisible in the profile.
+The 100,000× speedup vanishes from the profile after this fix. The id_to_slot maintenance in cleanup is paid once per cleanup pass, in the form of one bulk numpy assignment - invisible in the profile.
 
-## Exercise 8 — The pandas wall, hands-on
+## Exercise 8 - The pandas wall, hands-on
 
 ```python
 import pandas as pd, numpy as np, sqlite3, time
@@ -126,17 +126,17 @@ Typical results:
 
 | layout              | memory |  comment |
 |---------------------|-------:|----------|
-| pandas (float64)    |  400 MB | default — float64 inflates the bytes |
+| pandas (float64)    |  400 MB | default - float64 inflates the bytes |
 | numpy float32 cols  |  200 MB | half the bytes per value |
 | sqlite (disk)       |  ~150 MB on disk | typed, indexed, queryable |
 
 If queries are random by primary key: sqlite wins (the index makes it O(log N) per lookup, ~830K-900K lookups/sec on this hardware).
 If queries are full-column reductions: numpy wins (one bandwidth-bound pass).
-If queries are joins or groupbys: it depends — for small results, pandas/numpy; for large results, sqlite or polars.
+If queries are joins or groupbys: it depends - for small results, pandas/numpy; for large results, sqlite or polars.
 
 The decision is the access pattern. Default to numpy SoA when the data fits RAM and queries are scans. Default to sqlite when queries are point lookups or the data exceeds RAM.
 
-## Exercise 9 — Find one new wall (stretch)
+## Exercise 9 - Find one new wall (stretch)
 
 A specific finding pattern:
 
@@ -146,4 +146,4 @@ A specific finding pattern:
 4. Compare flame graphs. The function whose share of total time grew between the two runs is the suspect.
 5. Map the suspect to one of the §26-§28 techniques. Fix it. Re-profile.
 
-In practice, the first one or two passes find the easy walls. Subsequent passes find subtler ones — a `np.unique` inside cleanup that scales O(K log K) on the unique count, a sort that runs on a slowly-changing key, a Python-level `for` loop over a list that should have been a numpy primitive. Every fix is a chapter you have read. The diagnostic is the constant.
+In practice, the first one or two passes find the easy walls. Subsequent passes find subtler ones - a `np.unique` inside cleanup that scales O(K log K) on the unique count, a sort that runs on a slowly-changing key, a Python-level `for` loop over a list that should have been a numpy primitive. Every fix is a chapter you have read. The diagnostic is the constant.

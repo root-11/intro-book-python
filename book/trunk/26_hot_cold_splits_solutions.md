@@ -1,6 +1,6 @@
-# Solutions: 26 — Hot/cold splits
+# Solutions: 26 - Hot/cold splits
 
-## Exercise 1 — Audit access patterns
+## Exercise 1 - Audit access patterns
 
 A typical simulator audit:
 
@@ -15,12 +15,12 @@ A typical simulator audit:
 | `cleanup`         | buffers + every column             | every column        |
 | `inspect`         | every column                       | nothing             |
 
-**Hot columns**: `pos_x`, `pos_y`, `vel_x`, `vel_y`, `energy` — read by 4-5 systems per tick.
-**Cold columns**: `birth_t`, `id`, `gen` — read only by cleanup and logging.
+**Hot columns**: `pos_x`, `pos_y`, `vel_x`, `vel_y`, `energy` - read by 4-5 systems per tick.
+**Cold columns**: `birth_t`, `id`, `gen` - read only by cleanup and logging.
 
 `food` and `pending_event` are their own tables; not part of the creature split.
 
-## Exercise 2 — Build the split, organisationally
+## Exercise 2 - Build the split, organisationally
 
 ```python
 class CreatureHot:
@@ -46,7 +46,7 @@ class Creatures:
 
 Both tables share the same capacity and `n_active`. Cleanup must apply rearrangement to *both* in lockstep.
 
-## Exercise 3 — Time motion at 1M creatures
+## Exercise 3 - Time motion at 1M creatures
 
 ```
 unsplit numpy SoA:   ~0.6 ms per call
@@ -57,7 +57,7 @@ Identical. Each numpy column is already its own contiguous buffer; the split cha
 
 This is the chapter's main point: the split is organisational, not bandwidth-saving, in the Python edition.
 
-## Exercise 4 — Time motion in numpy structured-array form
+## Exercise 4 - Time motion in numpy structured-array form
 
 ```python
 import numpy as np, time
@@ -82,11 +82,11 @@ structured array:  4.93 ms
 ratio:             8×
 ```
 
-The structured array is **8× slower** than separate columns. Why? Each `arr['pos_x']` returns a *strided* view — it walks the buffer with stride 32 bytes (the size of the full row), reading 4-byte `pos_x` values every 32 bytes. The prefetcher pulls 32 bytes per row even though only 4 are used; the remaining 28 are wasted bandwidth (and the cold fields, especially `birth_t` at 8 bytes, are dragged through cache anyway).
+The structured array is **8× slower** than separate columns. Why? Each `arr['pos_x']` returns a *strided* view - it walks the buffer with stride 32 bytes (the size of the full row), reading 4-byte `pos_x` values every 32 bytes. The prefetcher pulls 32 bytes per row even though only 4 are used; the remaining 28 are wasted bandwidth (and the cold fields, especially `birth_t` at 8 bytes, are dragged through cache anyway).
 
-This is the AoS-pattern in numpy clothing. The split *would* help here — splitting the structured array into two structured arrays, hot and cold, reduces the stride from 32 to 20 (40% bandwidth saving). But the simpler fix is to leave the structured-array world and use one numpy column per field, which is what the simulator does.
+This is the AoS-pattern in numpy clothing. The split *would* help here - splitting the structured array into two structured arrays, hot and cold, reduces the stride from 32 to 20 (40% bandwidth saving). But the simpler fix is to leave the structured-array world and use one numpy column per field, which is what the simulator does.
 
-## Exercise 5 — Cleanup must touch both
+## Exercise 5 - Cleanup must touch both
 
 ```python
 def cleanup(world: Creatures, to_remove: list[int]):
@@ -108,7 +108,7 @@ def cleanup(world: Creatures, to_remove: list[int]):
 
 The same keep_mask, applied to every column of every sub-table. Missing one column → misalignment between hot and cold (§9 bug across tables).
 
-## Exercise 6 — A bad split
+## Exercise 6 - A bad split
 
 ```python
 # anti-pattern: bad! energy is hot, but we put it in cold
@@ -119,14 +119,14 @@ class CreatureCold: energy, birth_t, id, gen        # energy stored here
 def motion_bad(hot, cold, dt):
     hot.pos_x += hot.vel_x * dt
     hot.pos_y += hot.vel_y * dt
-    # apply_starve still reads cold.energy every tick — extra column-access overhead
+    # apply_starve still reads cold.energy every tick - extra column-access overhead
 ```
 
-In numpy SoA the timing penalty is small (`cold.energy` is still its own contiguous array). In *structured-array* layout the penalty would be real — `energy` would be at stride-32-bytes inside the cold record. The categorical error is *naming hot fields cold*: code that follows the convention "cold means rarely read" will draw wrong conclusions about which fields can be omitted from inspection-time reads, persistence, etc.
+In numpy SoA the timing penalty is small (`cold.energy` is still its own contiguous array). In *structured-array* layout the penalty would be real - `energy` would be at stride-32-bytes inside the cold record. The categorical error is *naming hot fields cold*: code that follows the convention "cold means rarely read" will draw wrong conclusions about which fields can be omitted from inspection-time reads, persistence, etc.
 
 The lesson: hot/cold is not about names; it is about *access frequency*. Audit, then split.
 
-## Exercise 7 — The all-fields case (stretch)
+## Exercise 7 - The all-fields case (stretch)
 
 ```python
 def serialize_world(world):
@@ -142,6 +142,6 @@ def serialize_world(world):
              gen    = world.cold.gen[: world.n_active])
 ```
 
-The split's overhead here is the function signature — eight columns spread across two namespaces — but the *runtime cost* is identical to the unsplit version: every column gets read once, written to disk once. The serialiser does not benefit from the split.
+The split's overhead here is the function signature - eight columns spread across two namespaces - but the *runtime cost* is identical to the unsplit version: every column gets read once, written to disk once. The serialiser does not benefit from the split.
 
 This is a fine tradeoff: serialisation runs once per checkpoint (every minute? every hour?), not once per tick. Paying eight extra characters in the function call to keep the inner loop's namespace clean is cheap. The split is earned by the *hot path*, not the cold path.

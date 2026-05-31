@@ -1,8 +1,8 @@
-# Solutions: 41 — Compression-oriented programming
+# Solutions: 41 - Compression-oriented programming
 
 These exercises are reflective; the work is *audit and rewrite*, not measurement. The answers reflect typical patterns rather than any specific run.
 
-## Exercise 1 — Find a too-early abstraction
+## Exercise 1 - Find a too-early abstraction
 
 A frequent finding in code reviews: a `class WorldComponent(ABC)` with abstract `update`, `serialize`, `inspect` methods, implemented by exactly one subclass (`Creature`). The hierarchy was designed for a hypothetical "future components"; future-them never arrived. Inlining the abstract methods directly into `Creature` deletes the hierarchy and makes the code shorter.
 
@@ -15,7 +15,7 @@ Other shapes that turn out speculative on close inspection:
 
 All can be inlined. The cost of the inlining is small (a few lines deleted); the benefit is large (one fewer concept to track).
 
-## Exercise 2 — Three concrete versions
+## Exercise 2 - Three concrete versions
 
 ```python
 def filter_by_hunger(world, hunger_threshold: float) -> np.ndarray:
@@ -39,7 +39,7 @@ def filter_by_location(world, x: float, y: float, radius: float) -> np.ndarray:
 
 Three two-line functions. Each is self-documenting; each reads cleanly. The shared shape is "compute mask, index ids".
 
-## Exercise 3 — Resist extraction
+## Exercise 3 - Resist extraction
 
 The "obvious" abstraction:
 
@@ -59,11 +59,11 @@ Compare:
 - The three concrete functions read directly. Each name describes what it does.
 - The lambda-based abstraction reads worse. The call site has to inline what was previously a named function; the closures obscure the intent.
 
-The abstraction is *not* a compression — it does not save code (the call sites are now longer than the function bodies); it does not improve clarity (named functions beat anonymous lambdas); it does not enable composition (the lambdas don't have natural names to reuse).
+The abstraction is *not* a compression - it does not save code (the call sites are now longer than the function bodies); it does not improve clarity (named functions beat anonymous lambdas); it does not enable composition (the lambdas don't have natural names to reuse).
 
 Resist. Keep the three concrete functions. The "DRY" instinct here is wrong; the named functions are easier to read, test, and maintain than the generic helper.
 
-## Exercise 4 — Add a fourth case
+## Exercise 4 - Add a fourth case
 
 ```python
 def filter_by_proximity_to_food(world) -> np.ndarray:
@@ -86,7 +86,7 @@ The `filter_by` abstraction from exercise 3 *can't handle this* without major ch
 
 This is exactly the failure mode the chapter warns about: an abstraction that fits three cases is *not* a guarantee it'll fit the fourth. The discipline is to wait for the fourth (and a fifth, a sixth) before committing to the abstraction.
 
-## Exercise 5 — Audit a `Protocol`
+## Exercise 5 - Audit a `Protocol`
 
 Searching a typical codebase for `typing.Protocol`:
 
@@ -102,16 +102,16 @@ Verdict: speculative. Delete the protocol; the type annotation in the caller bec
 When does a protocol earn its place?
 
 - *Three or more independent implementations exist*. (Plural is the test; one is not enough; two is borderline.)
-- *The implementations come from different parties* — your code, a third-party library, a test mock. If all three are in your control, you can just refactor; if one is third-party, the protocol is the only seam available.
+- *The implementations come from different parties* - your code, a third-party library, a test mock. If all three are in your control, you can just refactor; if one is third-party, the protocol is the only seam available.
 - *The interface is stable across implementations*. A protocol that grows to fit every new case turns into the `@property` setter trap: every change costs every consumer.
 
 Without these conditions, a protocol is over-engineering. Delete it; replace with the concrete type; you can always add the protocol back when the third implementation arrives.
 
-## Exercise 6 — A library audit (stretch)
+## Exercise 6 - A library audit (stretch)
 
 Pick a well-regarded library: `requests`, `httpx`, `polars`, `attrs`.
 
-**`requests`**: The `Session` abstraction is a real compression — every HTTP-heavy project rewrote "keep a connection alive, attach default headers, handle cookies" before `requests` existed. The library captured the pattern. `requests.get`, `requests.post`, etc. fit the dominant case (one-shot request) and the cumulative case (a session). Real compression.
+**`requests`**: The `Session` abstraction is a real compression - every HTTP-heavy project rewrote "keep a connection alive, attach default headers, handle cookies" before `requests` existed. The library captured the pattern. `requests.get`, `requests.post`, etc. fit the dominant case (one-shot request) and the cumulative case (a session). Real compression.
 
 **`polars`**: A re-thinking of `pandas` from a columnar-execution perspective. The patterns it abstracts (lazy query plans, column-store, streaming) were extracted from concrete experience with big-data workflows. Some abstractions feel speculative (the eager-vs-lazy split has had ergonomic issues); the core compression is real.
 

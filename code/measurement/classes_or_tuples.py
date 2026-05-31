@@ -124,7 +124,7 @@ results.sort()
 for exe_time, string in results:
     print(f"{exe_time:.6f} for {string}")
 
-# Pre-recorded numbers (this author's machine) — your absolute numbers will
+# Pre-recorded numbers (this author's machine) - your absolute numbers will
 # differ but the ordering and order-of-magnitude are stable:
 #   ~0.0006 s for numpy SoA (two bulk np.full calls, 1M rows-worth)
 #   ~0.005  s for tuple (1M individual constructions)

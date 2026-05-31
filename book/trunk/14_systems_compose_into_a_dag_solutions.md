@@ -1,6 +1,6 @@
-# Solutions: 14 — Systems compose into a DAG
+# Solutions: 14 - Systems compose into a DAG
 
-## Exercise 1 — Draw the DAG
+## Exercise 1 - Draw the DAG
 
 Reading each system's read-set and write-set:
 
@@ -33,7 +33,7 @@ apply_starve    → cleanup       (to_remove)
 
 This matches the chapter's diagram. The three appliers form a "fan-out"; `cleanup` is the "fan-in" that consumes their outputs.
 
-## Exercise 2 — Spot the cycle
+## Exercise 2 - Spot the cycle
 
 If `apply_starve` writes `food` (returning fuel when a creature dies), the chain becomes:
 
@@ -41,15 +41,15 @@ If `apply_starve` writes `food` (returning fuel when a creature dies), the chain
 food_spawn → next_event → apply_starve → food_spawn? (already ran this tick!)
 ```
 
-`food_spawn` writes `food`; `apply_starve` reads `pending_event` (from `next_event`, which reads `food` from `food_spawn`); `apply_starve` writes `food` — but `food_spawn` already wrote `food` earlier this tick. The cycle is:
+`food_spawn` writes `food`; `apply_starve` reads `pending_event` (from `next_event`, which reads `food` from `food_spawn`); `apply_starve` writes `food` - but `food_spawn` already wrote `food` earlier this tick. The cycle is:
 
 ```
 food_spawn → next_event → apply_starve → food_spawn   (back-edge: both write `food`)
 ```
 
-A cycle of writers to the same column is the same-tick contradiction the chapter warns against. **Break it by buffering**: `apply_starve` writes to a `food_returns` buffer; `food_spawn` next tick reads `food_returns` and incorporates it into the new `food` table. The cycle becomes a tick boundary — the [§15 mutations buffer](15_state_changes_between_ticks.md) discipline.
+A cycle of writers to the same column is the same-tick contradiction the chapter warns against. **Break it by buffering**: `apply_starve` writes to a `food_returns` buffer; `food_spawn` next tick reads `food_returns` and incorporates it into the new `food` table. The cycle becomes a tick boundary - the [§15 mutations buffer](15_state_changes_between_ticks.md) discipline.
 
-## Exercise 3 — Topological sort by hand
+## Exercise 3 - Topological sort by hand
 
 ```
 A writes X
@@ -72,9 +72,9 @@ Dependencies:
 - A, C, B, D
 - A, {B || C}, D       (B and C concurrent)
 
-All three are correct; the schedule chooses one. Multiple valid sorts is the norm — any sort respecting the edges is correct, and the DAG itself does not pick.
+All three are correct; the schedule chooses one. Multiple valid sorts is the norm - any sort respecting the edges is correct, and the DAG itself does not pick.
 
-## Exercise 4 — Topological sort in Python (Kahn's algorithm)
+## Exercise 4 - Topological sort in Python (Kahn's algorithm)
 
 ```python
 def topo_sort(systems: list[tuple[str, set[str], set[str]]]) -> list[str]:
@@ -127,7 +127,7 @@ print(topo_sort(sim))
 #  'apply_reproduce', 'apply_starve', 'cleanup']
 ```
 
-A valid order. `inspect` lands earlier than the chapter diagram suggests because it has no consumers — Kahn's algorithm pulls it as soon as its read-set is satisfied. Both placements (right after `motion` or right at the end) are correct topological sorts.
+A valid order. `inspect` lands earlier than the chapter diagram suggests because it has no consumers - Kahn's algorithm pulls it as soon as its read-set is satisfied. Both placements (right after `motion` or right at the end) are correct topological sorts.
 
 For exercise 3:
 
@@ -139,7 +139,7 @@ sys2 = [("A", set(), {"X"}),
 print(topo_sort(sys2))     # ['A', 'B', 'C', 'D']
 ```
 
-## Exercise 5 — Compose two systems
+## Exercise 5 - Compose two systems
 
 ```python
 import numpy as np
@@ -179,7 +179,7 @@ print(w.pending_event)        # one event per tick
 
 The tick is two function calls in topological order. The DAG is two nodes, one edge (`motion → next_event` via `pos_x`/`pos_y`).
 
-## Exercise 6 — Add `cleanup`
+## Exercise 6 - Add `cleanup`
 
 ```python
 def cleanup(w: World) -> None:
@@ -208,7 +208,7 @@ print(f"after 10 ticks: {len(w.pos_x)} creatures left")    # 90
 
 Three function calls, top to bottom in dependency order. Adding a fourth system means writing one line and re-running `topo_sort` if the order is non-trivial. There is no `register()`, no `subscribe()`. *The sequence is the program; the program is the sequence.*
 
-## Exercise 7 — The wrong way: an observer
+## Exercise 7 - The wrong way: an observer
 
 ```python
 class EventBus:
@@ -226,18 +226,18 @@ bus.subscribe("tick", next_event)
 bus.subscribe("tick", cleanup)
 
 w = World(100)
-bus.fire("tick", w, 1.0 / 30.0)        # works — but only because we registered in order
+bus.fire("tick", w, 1.0 / 30.0)        # works - but only because we registered in order
 ```
 
 Three subtle problems with this version:
 
-1. **Order is implicit in registration order.** Swap the two `subscribe` lines for `next_event` and `motion` — the program runs without error, with stale data. There is no signal that the order is wrong.
+1. **Order is implicit in registration order.** Swap the two `subscribe` lines for `next_event` and `motion` - the program runs without error, with stale data. There is no signal that the order is wrong.
 2. **A new subscriber inserted at runtime can change the order silently.** Some plugin loads at startup, calls `bus.subscribe("tick", validate_invariants)`, and inserts itself in the middle. The loop now runs in a different order; whether that's correct depends entirely on the plugin's read/write set, which the bus doesn't know.
-3. **Reading the program is harder.** To know what `bus.fire("tick", ...)` does, you must find every `bus.subscribe("tick", ...)` call across the entire codebase, in import order. Compare to `def tick(w, dt): motion(w, dt); next_event(w); cleanup(w)` — three lines, locally readable, ordering visible.
+3. **Reading the program is harder.** To know what `bus.fire("tick", ...)` does, you must find every `bus.subscribe("tick", ...)` call across the entire codebase, in import order. Compare to `def tick(w, dt): motion(w, dt); next_event(w); cleanup(w)` - three lines, locally readable, ordering visible.
 
 The function-call form tells you what runs when. The bus form tells you what *can* run when. The DAG-explicit version is the one that can be reasoned about, parallelised, tested, and trusted.
 
-## Exercise 8 — A query planner (stretch)
+## Exercise 8 - A query planner (stretch)
 
 Take five SQL queries and decompose into relational-algebra operators:
 

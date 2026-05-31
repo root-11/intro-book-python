@@ -1,6 +1,6 @@
-# Solutions: 33 — False sharing
+# Solutions: 33 - False sharing
 
-## Exercise 1 — The pathological counter
+## Exercise 1 - The pathological counter
 
 ```python
 import numpy as np, time
@@ -27,11 +27,11 @@ if __name__ == "__main__":
     shm.close(); shm.unlink()
 ```
 
-Expected: ~3-5 seconds for 4 workers × 5M increments. A *single-process* loop doing the same total work (20M increments) typically finishes in 2-3 seconds. **The parallel version is slower than serial** — true negative scaling. Every increment by any worker invalidates the cache line in the other workers' caches; the cache-coherence protocol serialises what looked like four independent loops.
+Expected: ~3-5 seconds for 4 workers × 5M increments. A *single-process* loop doing the same total work (20M increments) typically finishes in 2-3 seconds. **The parallel version is slower than serial** - true negative scaling. Every increment by any worker invalidates the cache line in the other workers' caches; the cache-coherence protocol serialises what looked like four independent loops.
 
 This is the canonical pathological case. The fix is structural: separate or pad.
 
-## Exercise 2 — The padded version
+## Exercise 2 - The padded version
 
 ```python
 def worker_padded(shm_name, my_id):
@@ -51,11 +51,11 @@ if __name__ == "__main__":
     print(f"4 workers, padded to cache lines: {time.perf_counter()-t:.2f} s")
 ```
 
-Expected: ~0.8-1.2 seconds — *near-linear speedup* from the serial baseline. Each worker now writes to its own cache line; no coherence traffic between cores. The wall time is roughly 1/N of the single-process equivalent.
+Expected: ~0.8-1.2 seconds - *near-linear speedup* from the serial baseline. Each worker now writes to its own cache line; no coherence traffic between cores. The wall time is roughly 1/N of the single-process equivalent.
 
 The structural change: each counter sits on its own 64-byte boundary. The data the workers actually touch is non-adjacent in memory; the cache lines do not overlap.
 
-## Exercise 3 — A real example
+## Exercise 3 - A real example
 
 In the simulator's per-process `to_remove` segments pattern from §31 exercise 4: each worker writes to its own segment, allocated as its own `multiprocessing.shared_memory` block. The segments live at *different* OS-allocated virtual addresses; they cannot share a cache line because they are not within 64 bytes of each other.
 
@@ -63,7 +63,7 @@ The risk is only if you make the mistake of allocating one big shared-memory blo
 
 A diagnostic: write a small test that runs the `to_remove` build on 8 workers and compares wall time to a single-worker baseline doing 8× the work. Near-linear speedup → no false sharing. Sublinear → investigate.
 
-## Exercise 4 — Adjacent in shared memory
+## Exercise 4 - Adjacent in shared memory
 
 ```python
 def worker_adjacent(shm_name, my_id):
@@ -86,7 +86,7 @@ The separate version: each worker writes to its own block at a different address
 
 The lesson: *physical separation in memory* is what matters, not *logical separation by index*. The Python interpreter sees no difference between the two cases; the cache hardware sees a different cache line, which is the difference.
 
-## Exercise 5 — Find your cache-line size (stretch)
+## Exercise 5 - Find your cache-line size (stretch)
 
 ```sh
 getconf LEVEL1_DCACHE_LINESIZE                   # usually 64 on x86, 64 or 128 on ARM
@@ -96,9 +96,9 @@ Most x86 desktops: 64 bytes.
 Apple Silicon (M1/M2): 128 bytes at some cache levels (the "P-core" cluster's L1 was 128 in early reports, refined since).
 Some server chips: 64 with a hint of false-sharing at 128 due to adjacent-line prefetching.
 
-For portable code, padding to 128 bytes is a defensive choice — overpaying by 2× on x86, breaking even on ARM. For x86-only targets, 64 is exact.
+For portable code, padding to 128 bytes is a defensive choice - overpaying by 2× on x86, breaking even on ARM. For x86-only targets, 64 is exact.
 
-## Exercise 6 — `perf stat` your rig (stretch)
+## Exercise 6 - `perf stat` your rig (stretch)
 
 ```sh
 perf stat -e cache-references,cache-misses -- uv run code/measurement/parallel_motion.py

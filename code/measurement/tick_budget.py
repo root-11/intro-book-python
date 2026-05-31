@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§11 exhibit — what fits in a tick at increasing N?
+§11 exhibit - what fits in a tick at increasing N?
 
 Define a minimal motion system: position += velocity * dt. Run it once per
 tick. Measure wall time per tick at N from 10K to 10M. Report the cost as
@@ -104,7 +104,7 @@ def main():
         soa_ms = time_tick(lambda: build_soa(n, rng), tick_soa)
         print(f"{n:>11,}  {'numpy SoA':<22}  {soa_ms:>9.3f}   "
               f"{fits(soa_ms, BUDGET_30HZ_MS):<14}   {fits(soa_ms, BUDGET_60HZ_MS):<14}")
-        # Skip dataclass at 10M — would take minutes per tick.
+        # Skip dataclass at 10M - would take minutes per tick.
         if n <= 1_000_000:
             aos_ms = time_tick(lambda: build_aos(n, rng), tick_aos)
             print(f"{n:>11,}  {'Python dataclass list':<22}  {aos_ms:>9.3f}   "

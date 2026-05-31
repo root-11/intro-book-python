@@ -1,6 +1,6 @@
-# Solutions: 43 — Tests are systems; TDD from day one
+# Solutions: 43 - Tests are systems; TDD from day one
 
-## Exercise 1 — A test as a system
+## Exercise 1 - A test as a system
 
 ```python
 def test_no_creature_moves_too_far(world, max_step: float = 5.0) -> np.ndarray:
@@ -22,7 +22,7 @@ def tick_with_test(world):
 
 The test fits in the DAG with read-set `pos_x`, `prev_pos_x`, `pos_y`, `prev_pos_y` and empty write-set. It runs after `motion` (which it depends on) and asserts. In production, the system is gated behind a `--test` flag; in CI it runs every tick.
 
-## Exercise 2 — A property test
+## Exercise 2 - A property test
 
 ```python
 def property_test_population_bounded(seed: int, ticks: int, factor: float = 2.0):
@@ -42,11 +42,11 @@ world_b = property_test_population_bounded(seed=0xCAFE, ticks=1000)
 assert hash_world(world_a) == hash_world(world_b)
 ```
 
-The property test runs the simulator and asserts an invariant after every tick. If the invariant fails, the assertion identifies the exact tick — the failure is *localised in time*, not just "test failed somewhere in the run."
+The property test runs the simulator and asserts an invariant after every tick. If the invariant fails, the assertion identifies the exact tick - the failure is *localised in time*, not just "test failed somewhere in the run."
 
 The determinism check confirms the test itself is reproducible: same seed, same outcome, every run. This is what [§16](16_determinism_by_order.md) guarantees.
 
-## Exercise 3 — A replay test
+## Exercise 3 - A replay test
 
 ```python
 def replay_test(seed: int, ticks: int):
@@ -73,12 +73,12 @@ def replay_test(seed: int, ticks: int):
         tick(replayed)
 
     assert hash_world(live) == hash_world(replayed), \
-        "replay diverged — non-deterministic dependency leaking"
+        "replay diverged - non-deterministic dependency leaking"
 ```
 
-The hashes must match. If they don't, somewhere a system reads from outside the queue — the §35 boundary is breached. The replay test is the catch-all for "did we accidentally make this non-deterministic?"
+The hashes must match. If they don't, somewhere a system reads from outside the queue - the §35 boundary is breached. The replay test is the catch-all for "did we accidentally make this non-deterministic?"
 
-## Exercise 4 — TDD a new system
+## Exercise 4 - TDD a new system
 
 ```python
 # Step 1: write the test first
@@ -110,7 +110,7 @@ def apply_slow_growth_fixed(world):
     slow = world.energy[:world.n_active] > 50
     world.age[:world.n_active][fast] += 1
     world.age[:world.n_active][slow] = world.age[:world.n_active][slow] + 1  # but only every other tick
-    # actual implementation depends on the design — half-rate, threshold, etc.
+    # actual implementation depends on the design - half-rate, threshold, etc.
 ```
 
 The test is written first; the implementation follows. The test catches the bug; the implementation is iterated until the test passes. This is TDD's value: the test is the spec, refined until both the spec and the implementation agree.
@@ -121,7 +121,7 @@ For numpy/ECS-style code, TDD especially pays off because:
 - Pure functions of inputs are trivially testable.
 - No mocks: tests set up real numpy arrays and read them.
 
-## Exercise 5 — Read the simlog tests
+## Exercise 5 - Read the simlog tests
 
 `.archive/simlog/test_simlog.py` is the production-grade version of "tests as systems." Things to notice:
 
@@ -132,7 +132,7 @@ For numpy/ECS-style code, TDD especially pays off because:
 
 Reading the tests is a more useful exercise than reading the implementation. The tests *show* what the library guarantees; the implementation *delivers* those guarantees.
 
-## Exercise 6 — The InspectionSystem connection
+## Exercise 6 - The InspectionSystem connection
 
 | feature                  | inspection system                       | test system                            |
 |--------------------------|-----------------------------------------|-----------------------------------------|
@@ -147,7 +147,7 @@ The functions are structurally identical. The difference is in *what the report 
 
 In a mature simulator, the same function serves both roles. It returns a list of "violators"; in `--inspect` mode the caller prints them; in `--test` mode the caller asserts they're empty. *Same source code, different decision at the call site.*
 
-## Exercise 7 — pytest-xdist as a determinism check
+## Exercise 7 - pytest-xdist as a determinism check
 
 ```sh
 pip install pytest-xdist
@@ -163,9 +163,9 @@ Common leaks pytest-xdist catches:
 - Global state shared between tests (one test mutates a module-level variable that another reads).
 - Unseeded random calls in fixtures.
 
-The fix is the §16 recipe — seeded RNG, no set iteration, no wall clock — applied to test code too. Tests are systems; the same discipline that keeps simulators reproducible keeps tests reproducible.
+The fix is the §16 recipe - seeded RNG, no set iteration, no wall clock - applied to test code too. Tests are systems; the same discipline that keeps simulators reproducible keeps tests reproducible.
 
-## Exercise 8 — A test runner that is the simulator's scheduler (stretch)
+## Exercise 8 - A test runner that is the simulator's scheduler (stretch)
 
 ```python
 def run_simulator(systems: list, world, ticks: int):
@@ -198,6 +198,6 @@ Some test systems can fail loudly (raise AssertionError); others log and continu
 
 For real-world use, pytest is still the right outer wrapper (discovery, reporting, parameterisation). But the *assertions inside* the pytest tests are systems over the simulator's tables. Pytest is plumbing; the systems are the logic.
 
-This is the final connection. *Every concept in the book — systems, DAGs, single-writer ownership, determinism, ECS, EBP — applies to tests without translation, because tests are systems.* You have not learned a separate testing framework; you have learned that the simulator and its tests are one shape, instantiated twice with different system lists.
+This is the final connection. *Every concept in the book - systems, DAGs, single-writer ownership, determinism, ECS, EBP - applies to tests without translation, because tests are systems.* You have not learned a separate testing framework; you have learned that the simulator and its tests are one shape, instantiated twice with different system lists.
 
 The trunk is closed. Forty-three concepts; one through-line; one shape applied at every scale.

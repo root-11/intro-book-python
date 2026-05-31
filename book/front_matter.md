@@ -13,13 +13,13 @@ _updated: 2026-05-09_
 
 This book teaches programming from first principles of data-oriented design, entity-component-systems (ECS), and existence-based processing (EBP). It uses Python and `numpy` as the only languages.
 
-*EBP* is this book's shorthand. The spelled-out term — *existence-based processing* — is Richard Fabian's, from [*Data-Oriented Design*](https://www.dataorienteddesign.com/dodbook/); §17 builds it from the simulator. An acronym index will not list "EBP" because the source literature spells the term out rather than abbreviating it.
+*EBP* is this book's shorthand. The spelled-out term - *existence-based processing* - is Richard Fabian's, from [*Data-Oriented Design*](https://www.dataorienteddesign.com/dodbook/); §17 builds it from the simulator. An acronym index will not list "EBP" because the source literature spells the term out rather than abbreviating it.
 
-The book is structured around forty-three concepts ([the DAG](../concepts/dag.md)) and their canonical wording ([the glossary](../concepts/glossary.md)). Sections are short — two to three pages of prose followed by four to twelve compounding exercises. Concepts are *named* only after they are *built*: every section earns its vocabulary through working code, not the other way around.
+The book is structured around forty-three concepts ([the DAG](../concepts/dag.md)) and their canonical wording ([the glossary](../concepts/glossary.md)). Sections are short - two to three pages of prose followed by four to twelve compounding exercises. Concepts are *named* only after they are *built*: every section earns its vocabulary through working code, not the other way around.
 
 The through-line is a small ecosystem simulator built in stages from one hundred wandering creatures to a hundred million streamed ones. The simulator's specification is at [`code/sim/SPEC`](../code/sim/SPEC.md).
 
-This is the **Python edition** — a sister volume to the Rust edition of the same book. Same forty-four sections, same DAG, same simulator. The variation is per-chapter commentary on what Python's defaults push the reader into, and why ECS and EBP win even in a slow language. The thesis the edition carries: **ECS and EBP beat OOP because they process more efficiently (operations grouped over arrays), they extend more cleanly (data-oriented composition over class graphs), and they have smaller memory footprint (typed columns over object graphs).**
+This is the **Python edition** - a sister volume to the Rust edition of the same book. Same forty-four sections, same DAG, same simulator. The variation is per-chapter commentary on what Python's defaults push the reader into, and why ECS and EBP win even in a slow language. The thesis the edition carries: **ECS and EBP beat OOP because they process more efficiently (operations grouped over arrays), they extend more cleanly (data-oriented composition over class graphs), and they have smaller memory footprint (typed columns over object graphs).**
 
 What carries this edition is the **evidence**. Every load-bearing claim is backed by a measurement the reader can reproduce on their own laptop in under a minute. The exhibits live in [`code/measurement/`](https://github.com/root-11/intro-book-python/tree/main/code/measurement) and run via `uv run code/measurement/<file>.py`.
 
@@ -29,19 +29,19 @@ This is a work in progress. Section ordering is by the DAG; reading order can be
 
 You used Python last week. You wrote a class, put instances in a list, iterated over them. Your code worked, but it was slower than you expected, and you have started wondering whether the standard idioms are the bottleneck.
 
-This book is for people who want to find out. The premise is that they are — and that the architecture this book teaches is what Python is fast in, when Python is fast at all.
+This book is for people who want to find out. The premise is that they are - and that the architecture this book teaches is what Python is fast in, when Python is fast at all.
 
 Many online books include a playground that runs the code in your browser. This one does not, on purpose: the measurements only mean something when they come from *your* hardware.
 
 ## Background
 
-You should be comfortable with high-school algebra and a command line — running a command, changing directories, reading error messages without panic. A laptop with internet is enough; the book uses Python 3.11+, `numpy`, and `uv` for environment management. Everything else is standard library.
+You should be comfortable with high-school algebra and a command line - running a command, changing directories, reading error messages without panic. A laptop with internet is enough; the book uses Python 3.11+, `numpy`, and `uv` for environment management. Everything else is standard library.
 
 You do *not* need prior expertise in numerics, parallel computing, or game development. The book teaches numpy and the simulator together; the language is a vehicle, not the subject.
 
 ## A first taste
 
-Before any vocabulary is named, here is what an ECS world looks like in fifteen lines of Python. One hundred creatures, each with a position and a velocity, moving for thirty ticks of simulated time. No classes, no instances, no method calls — four `numpy` arrays indexed in lockstep, and a function (the per-tick update) that advances every creature in one stride.
+Before any vocabulary is named, here is what an ECS world looks like in fifteen lines of Python. One hundred creatures, each with a position and a velocity, moving for thirty ticks of simulated time. No classes, no instances, no method calls - four `numpy` arrays indexed in lockstep, and a function (the per-tick update) that advances every creature in one stride.
 
 ```python
 import numpy as np
@@ -61,11 +61,11 @@ for tick in range(30):
 
 Run it locally. Three lines print, the script stops. That is the entire shape of what the rest of the book grows: tables (the four arrays), a tick (the outer loop), a system (the per-tick update). Everything that follows is the discipline that lets this same shape carry a hundred million creatures without falling apart.
 
-The familiar Python shape — a `Creature` class, a list of instances, a `step()` method — works at this size too. It stops working at a million, and the reason is in [§2](trunk/02_numbers_and_how_they_fit.md): an order of magnitude more memory per creature, an order of magnitude slower per tick. The book teaches the layout that survives the next zero.
+The familiar Python shape - a `Creature` class, a list of instances, a `step()` method - works at this size too. It stops working at a million, and the reason is in [§2](trunk/02_numbers_and_how_they_fit.md): an order of magnitude more memory per creature, an order of magnitude slower per tick. The book teaches the layout that survives the next zero.
 
 ## Running the code
 
-Python has no equivalent of the Rust Playground — there is no browser-hosted runner that reproduces the numbers a chapter quotes. Every measurement and exhibit in this book runs locally, using [`uv`](https://docs.astral.sh/uv/) to manage the Python toolchain and environment. To run anything, you will want a clone of the book's repo:
+Python has no equivalent of the Rust Playground - there is no browser-hosted runner that reproduces the numbers a chapter quotes. Every measurement and exhibit in this book runs locally, using [`uv`](https://docs.astral.sh/uv/) to manage the Python toolchain and environment. To run anything, you will want a clone of the book's repo:
 
 ```sh
 git clone https://codeberg.org/root-11/intro-book-python.git
@@ -73,7 +73,7 @@ cd intro-book-python
 uv run code/measurement/cache_cliffs.py
 ```
 
-Each `code/measurement/<name>.py` file is one exercise group, runnable in isolation. The numbers it prints are *yours* — they come from your hardware. The exercise asks "how fast does *your* machine run this?", and that question only has a real answer locally.
+Each `code/measurement/<name>.py` file is one exercise group, runnable in isolation. The numbers it prints are *yours* - they come from your hardware. The exercise asks "how fast does *your* machine run this?", and that question only has a real answer locally.
 
 From the simulator chapters onward (§11+), the exercises stop being self-contained scripts. They build the through-line: a Python program that grows from one hundred wandering creatures to a hundred million streamed ones. That program holds state between runs, which is what `uv run` and the project layout buy you.
 

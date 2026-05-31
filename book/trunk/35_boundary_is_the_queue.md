@@ -1,4 +1,4 @@
-# 35 — The boundary is the queue
+# 35 - The boundary is the queue
 
 <p align="center"><img src="../covers/phase_io_persistence.jpg" alt="I/O & persistence phase" style="max-height: 380px; max-width: 100%;"></p>
 
@@ -38,7 +38,7 @@ What happens *inside* the boundary: pure transformation. Systems read from `inpu
 
 **Testability.** A test fills the in-queue with a synthetic input, runs one tick, asserts on the out-queue. The test does not need to mock `open()`, `socket`, or the system clock; the queue interface is the only thing the simulator sees.
 
-**Distribution.** A distributed simulator with multiple nodes communicates via queues — each node's out-queue feeds another node's in-queue. The queue interface is the same on a single machine and across a network.
+**Distribution.** A distributed simulator with multiple nodes communicates via queues - each node's out-queue feeds another node's in-queue. The queue interface is the same on a single machine and across a network.
 
 **Auditability.** Every input that ever reached the simulator is in the in-queue's history. Every output is in the out-queue's history. The simulator's full external interface is two append-only logs.
 
@@ -55,7 +55,7 @@ response = requests.get(URL)            # 4. HTTP from a handler
 threshold = float(os.environ["BURN"])   # 5. config read inside a system
 ```
 
-Each one looks innocuous in isolation. Each one breaks determinism the moment two runs of the same simulator produce different output for "the same" inputs — because the inputs were not actually the same; one run saw a different clock, a different `BURN`, a different network response. The bug is silent and intermittent.
+Each one looks innocuous in isolation. Each one breaks determinism the moment two runs of the same simulator produce different output for "the same" inputs - because the inputs were not actually the same; one run saw a different clock, a different `BURN`, a different network response. The bug is silent and intermittent.
 
 The disciplined Python form: every external read goes through the in-queue; every external write goes through the out-queue. Logging becomes a system that appends rows to a `log_events` column ([§37](37_log_is_world.md)). Time becomes a parameter, read once by the tick driver and passed down ([§16](16_determinism_by_order.md)). Config becomes part of `inputs_t` at the tick where it changes; the simulator never reads it directly.
 
@@ -63,7 +63,7 @@ The disciplined Python form: every external read goes through the in-queue; ever
 
 Three reasonable shapes for the queue itself. Pick the one that matches the data.
 
-**Numpy parallel columns** for high-throughput, fixed-schema events. An `eaten` event is `(tick: u32, eater_id: u32, food_id: u32, energy_delta: f32)` — four columns, appended in lockstep. This is the simlog shape ([§30](30_streaming_wall.md)'s reference implementation), and the right pick when the simulator generates many events per tick. Bulk-numpy reads at consume-time; bulk-numpy writes at produce-time.
+**Numpy parallel columns** for high-throughput, fixed-schema events. An `eaten` event is `(tick: u32, eater_id: u32, food_id: u32, energy_delta: f32)` - four columns, appended in lockstep. This is the simlog shape ([§30](30_streaming_wall.md)'s reference implementation), and the right pick when the simulator generates many events per tick. Bulk-numpy reads at consume-time; bulk-numpy writes at produce-time.
 
 **A list of small dicts or named tuples** for low-volume, mixed-schema events arriving from the outside (user input, sparse network messages). The volume is small enough that the per-row construction cost from [§6](06_a_row_is_a_tuple.md) does not bind. Use named tuples if the schema is fixed; use a dict-of-columns approach if it varies.
 
@@ -91,4 +91,4 @@ Reference notes in [35_boundary_is_the_queue_solutions.md](35_boundary_is_the_qu
 
 ## What's next
 
-[§36 — Persistence is table serialization](36_persistence_is_serialization.md) takes the next step: when the simulator pauses and resumes, persistence is just writing the columns and reading them back. No translation, no impedance mismatch.
+[§36 - Persistence is table serialization](36_persistence_is_serialization.md) takes the next step: when the simulator pauses and resumes, persistence is just writing the columns and reading them back. No translation, no impedance mismatch.

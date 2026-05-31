@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§32 exhibit — coprocessors are IOPS-limited; batching is forced.
+§32 exhibit - coprocessors are IOPS-limited; batching is forced.
 
 Three measurements:
 
@@ -44,7 +44,7 @@ import numpy as np
 
 N_WORKERS = 7              # leave one logical core for main
 N_ROUNDS = 20_000          # rounds of dispatch (each round = 1 task per worker)
-PAD_INT64S = 8             # 64 bytes per worker — one cache line
+PAD_INT64S = 8             # 64 bytes per worker - one cache line
 
 
 def make_padded_arr(name: str, n_int64s: int) -> tuple[shared_memory.SharedMemory, np.ndarray]:

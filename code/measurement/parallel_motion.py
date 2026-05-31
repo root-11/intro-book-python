@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§31 exhibit — the GIL is a creativity failure, not a language failure.
+§31 exhibit - the GIL is a creativity failure, not a language failure.
 
 Two motion-system workloads run in the same multiprocessing+shared_memory
 rig over N=10,000,000 creatures, for 100 ticks each:
@@ -24,14 +24,14 @@ The rig:
       descriptors (start, end). Each worker writes only its slice; no
       copy crosses the process boundary.
     - One pool.map dispatch per run: each worker runs ALL 100 ticks on
-      its partition before returning. This amortises IPC overhead — a
+      its partition before returning. This amortises IPC overhead - a
       naive form (one pool.map per tick) is slower; see the per-tick
       exercise in §31.
 
 Two reasons the speedup curve does not reach physical-core count:
-    1. Memory bandwidth saturation (workload A — caps below 8× even on
+    1. Memory bandwidth saturation (workload A - caps below 8× even on
        8 physical cores, because the bus is full).
-    2. SMT diminishing returns (workload B — 16 logical cores on 8
+    2. SMT diminishing returns (workload B - 16 logical cores on 8
        physical cores; the second SMT thread per core adds 10-30%, not
        100%).
 
@@ -74,7 +74,7 @@ def all_ticks_memory_bound(args: tuple[int, int]) -> None:
 
 def all_ticks_compute_bound(args: tuple[int, int]) -> None:
     """Run all N_TICKS ticks of `out += sin² + cos²` on this partition.
-    The result is ~1.0 per element — the chapter cares about the cost,
+    The result is ~1.0 per element - the chapter cares about the cost,
     not the answer."""
     start, end = args
     for _ in range(N_TICKS):
@@ -105,7 +105,7 @@ def reset_state(arr: np.ndarray, seed: int) -> None:
 
 
 def run_serial(fn) -> float:
-    """Single-process baseline — runs in __main__, also through `fn` so
+    """Single-process baseline - runs in __main__, also through `fn` so
     apples-to-apples with the parallel runs."""
     t0 = time.perf_counter()
     fn((0, N))

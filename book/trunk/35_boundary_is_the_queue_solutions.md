@@ -1,6 +1,6 @@
-# Solutions: 35 — The boundary is the queue
+# Solutions: 35 - The boundary is the queue
 
-## Exercise 1 — Build the queues
+## Exercise 1 - Build the queues
 
 ```python
 import numpy as np
@@ -35,7 +35,7 @@ world.out_queue = Queue(capacity=10_000, schema={
 
 The in-queue is filled by the tick driver *before* the tick runs. The out-queue is filled by systems *during* the tick. Both are drained at the tick boundary (the in-queue by the systems that consume it; the out-queue by the I/O layer that ships events outward).
 
-## Exercise 2 — Refactor a system that reads time
+## Exercise 2 - Refactor a system that reads time
 
 ```python
 # Before
@@ -55,16 +55,16 @@ def run_tick(world):
 
 The system is now a pure function of its inputs. The tick driver is the seam where the wall clock enters; everything inside the tick is deterministic.
 
-## Exercise 3 — Refactor a system that prints
+## Exercise 3 - Refactor a system that prints
 
 ```python
-# Before — print() from inside a system
+# Before - print() from inside a system
 def apply_starve_bad(creatures):
     for c in creatures:
         if c.energy <= 0:
             print(f"creature {c.id} starved")     # ← side effect; non-deterministic
 
-# After — append to the out-queue
+# After - append to the out-queue
 def apply_starve(world: World, out_queue: Queue):
     starvers = np.where(world.energy <= 0)[0]
     for s in starvers:
@@ -81,7 +81,7 @@ def run_tick(world):
 
 Logging is now deterministic: the events captured in the queue are bit-identical across two runs with the same seed. The actual writing-to-stdout is a separate concern handled by the tick driver, which is allowed to do I/O because it is *outside* the tick. Tests can assert on `world.out_queue.drain()` without redirecting stdout.
 
-## Exercise 4 — Replay test
+## Exercise 4 - Replay test
 
 ```python
 import numpy as np
@@ -113,7 +113,7 @@ assert hash_world(original) == hash_world(replayed)
 
 The two worlds must be bit-identical. If they're not, somewhere a system reads from outside the queue. The queue *is* the input.
 
-## Exercise 5 — Two simulators from one queue
+## Exercise 5 - Two simulators from one queue
 
 ```python
 queue_recording = [...]                            # captured once
@@ -132,7 +132,7 @@ assert hash_world(sim_a) == hash_world(sim_b)
 
 Same queue, same seed, same world. The simulators must converge. If they diverge, find the system that reads from outside (exercise 6).
 
-## Exercise 6 — Find every leak
+## Exercise 6 - Find every leak
 
 ```sh
 grep -rEn 'time\.|print|logger|requests|os\.environ|input\(' code/sim/
@@ -150,7 +150,7 @@ Typical matches (and their fates):
 
 Every match is a candidate determinism leak. The disciplined form: every system is a pure function of its parameter list; everything that comes from outside enters via the in-queue.
 
-## Exercise 7 — Audit an open-source simulator (stretch)
+## Exercise 7 - Audit an open-source simulator (stretch)
 
 Open a simulator from `mesa` (Mesa-ABM is one of Python's prominent ABM frameworks). Look at a `step()` method:
 
@@ -159,6 +159,6 @@ Open a simulator from `mesa` (Mesa-ABM is one of Python's prominent ABM framewor
 - **`time.time()` for performance metrics**: usually inside `__main__` infrastructure, not the model. Good.
 - **`self.datacollector.collect(self)`**: this is the *out-queue* in Mesa's vocabulary. Mesa explicitly separates "model step" from "data collection." Same pattern.
 
-Mesa is actually fairly disciplined about the boundary. Many less mature ABM/simulation frameworks aren't — a common pattern is `logger.info(...)` calls scattered through agent step methods, plus `os.environ.get(...)` reads of configuration. Auditing for these is what makes a simulator into a *reproducible* simulator.
+Mesa is actually fairly disciplined about the boundary. Many less mature ABM/simulation frameworks aren't - a common pattern is `logger.info(...)` calls scattered through agent step methods, plus `os.environ.get(...)` reads of configuration. Auditing for these is what makes a simulator into a *reproducible* simulator.
 
 The audit is itself a system. Run it once before declaring the simulator deterministic; run it as a CI check on every PR that touches the simulator.

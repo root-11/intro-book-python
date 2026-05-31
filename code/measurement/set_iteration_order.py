@@ -2,13 +2,13 @@
 # requires-python = ">=3.11"
 # ///
 """
-§16 exhibit — set iteration order is process-dependent.
+§16 exhibit - set iteration order is process-dependent.
 
 CPython sets randomise their iteration order across processes via
 PYTHONHASHSEED. The same set, with the same insertions, in the same
 program, iterates in a different order in a different process. This is
-*by design* — randomised hashing protects servers from hash-flooding
-attacks — but it is also a source of non-determinism that this chapter
+*by design* - randomised hashing protects servers from hash-flooding
+attacks - but it is also a source of non-determinism that this chapter
 forbids inside the simulator.
 
 Dicts are insertion-ordered since CPython 3.7. They survive the
@@ -54,7 +54,7 @@ def main() -> None:
         print(f"  run {i}: {set_out}")
     set_orders = {set_out for set_out, _ in runs}
     if len(set_orders) > 1:
-        print(f"  → {len(set_orders)} distinct orders — sets are non-deterministic.")
+        print(f"  → {len(set_orders)} distinct orders - sets are non-deterministic.")
     else:
         print("  → orders match this time. Rerun; sets are random across processes.")
 
@@ -63,13 +63,13 @@ def main() -> None:
         print(f"  run {i}: {dict_out}")
     dict_orders = {dict_out for _, dict_out in runs}
     if len(dict_orders) == 1:
-        print("  → orders match — dicts are insertion-ordered since CPython 3.7.")
+        print("  → orders match - dicts are insertion-ordered since CPython 3.7.")
     else:
-        print("  → orders differ — unexpected. Check your CPython version.")
+        print("  → orders differ - unexpected. Check your CPython version.")
 
     print("\nLesson: any system in the simulator that iterates a set is a "
           "non-determinism source.")
-    print("Use sorted(set), or a numpy array, or a list — never raw set "
+    print("Use sorted(set), or a numpy array, or a list - never raw set "
           "iteration order.")
 
 

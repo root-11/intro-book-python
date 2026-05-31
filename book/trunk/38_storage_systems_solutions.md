@@ -1,6 +1,6 @@
-# Solutions: 38 — Storage systems: bandwidth and IOPS
+# Solutions: 38 - Storage systems: bandwidth and IOPS
 
-## Exercise 1 — Measure your bandwidth
+## Exercise 1 - Measure your bandwidth
 
 ```sh
 dd if=/dev/zero of=/tmp/test bs=1M count=1024 oflag=direct
@@ -19,7 +19,7 @@ Typical 2026 hardware:
 
 Read the number off your machine; that's your *bandwidth ceiling*. No workload writes faster than this.
 
-## Exercise 2 — Measure your IOPS
+## Exercise 2 - Measure your IOPS
 
 ```python
 import os, time
@@ -38,11 +38,11 @@ with open(path, "wb") as f:
 print(f"{n_ops/elapsed:,.0f} IOPS")
 ```
 
-Typical: 100-2000 fsync-IOPS on consumer NVMe. The IOPS rate is *much* lower than the bandwidth number suggests because every `fsync` blocks until the SSD's internal buffers are durably committed — that's microseconds per call, even though the data itself is tiny.
+Typical: 100-2000 fsync-IOPS on consumer NVMe. The IOPS rate is *much* lower than the bandwidth number suggests because every `fsync` blocks until the SSD's internal buffers are durably committed - that's microseconds per call, even though the data itself is tiny.
 
 Without `fsync`, raw write IOPS to a file in the page cache can be 100K+ per second. Durable IOPS (the kind a database needs) are 10-100× lower.
 
-## Exercise 3 — Batched vs unbatched
+## Exercise 3 - Batched vs unbatched
 
 ```python
 import time, os
@@ -64,11 +64,11 @@ print(f"1 bulk write: {(time.perf_counter()-t)*1000:.0f} ms")
 
 Typical: many-writes ~200-500 ms; one bulk write ~20-50 ms. The Python `for` loop's per-call cost dominates the actual disk traffic at this size.
 
-If you add `f.flush()` and `os.fsync()` after every write, the gap widens to **1000-5000×** — the bulk version still pays one fsync, the many-writes version pays a million.
+If you add `f.flush()` and `os.fsync()` after every write, the gap widens to **1000-5000×** - the bulk version still pays one fsync, the many-writes version pays a million.
 
 This is the simlog's batching argument made concrete. Per-mutation writes are infeasible; batched writes are bandwidth-bound and fast.
 
-## Exercise 4 — SQLite throughput, three forms
+## Exercise 4 - SQLite throughput, three forms
 
 ```python
 import sqlite3, time
@@ -109,9 +109,9 @@ INSERT FROM SELECT:    100-300 ms   (3-10M rows/sec)
 
 Three orders of magnitude span. The difference: the per-row form pays SQL parsing, locking, and (without a transaction) per-row commit overhead on every call. `executemany` parses once, batches the per-row work. INSERT-FROM-SELECT keeps everything inside SQLite's engine; no Python boundary crossing.
 
-For the simulator's exporter to SQLite (after a run), INSERT-FROM-SELECT is the right shape — get the data into an in-memory SQLite table first (via column-direct bulk writes), then have SQLite move it to the on-disk table.
+For the simulator's exporter to SQLite (after a run), INSERT-FROM-SELECT is the right shape - get the data into an in-memory SQLite table first (via column-direct bulk writes), then have SQLite move it to the on-disk table.
 
-## Exercise 5 — Run the SQLite warm-disk exhibit
+## Exercise 5 - Run the SQLite warm-disk exhibit
 
 ```sh
 uv run code/measurement/sqlite_performance_test.py
@@ -126,11 +126,11 @@ local NVMe (warm)      ~830,000
 local NVMe (cold)      ~50-200K  (after page-cache drop)
 ```
 
-The cold/warm gap is the disk's real cost — once pages are in the OS page cache, "disk" is RAM. The cold reads pay actual seek time; the warm reads pay only SQLite's dispatch overhead.
+The cold/warm gap is the disk's real cost - once pages are in the OS page cache, "disk" is RAM. The cold reads pay actual seek time; the warm reads pay only SQLite's dispatch overhead.
 
 For most simulator workloads, this means: a recently-written log file behaves like memory. Reading it weeks later, after the OS has evicted its pages, behaves like a disk. *Cold I/O is the wall; warm I/O is not.*
 
-## Exercise 6 — Compute your tick budget
+## Exercise 6 - Compute your tick budget
 
 ```
 30 Hz tick = 33 ms = 33,000 µs
@@ -140,12 +140,12 @@ NVMe latency per random read: ~100 µs   → too slow without batching (would co
 Memory access:                ~100 ns   → fits 330 per mutation slot
 
 Verdict: each mutation cannot afford an individual disk read.
-Must batch — one batched write per tick → 1 IOP per tick → ~100 µs → ~0.3% of budget.
+Must batch - one batched write per tick → 1 IOP per tick → ~100 µs → ~0.3% of budget.
 ```
 
 The batching pattern (§22 cleanup amortising disk writes) is what makes the simulator durable at 30 Hz. Without it, every mutation would block on disk; one tick would take seconds.
 
-## Exercise 7 — The pandas-OOM-to-sqlite migration
+## Exercise 7 - The pandas-OOM-to-sqlite migration
 
 ```python
 import pandas as pd, sqlite3, time, numpy as np
@@ -171,7 +171,7 @@ The migration is one `df.to_sql(...)` call. After it, the data lives in a typed 
 
 The pandas form is faster at *unrestricted in-memory operations* (a join, a groupby). The SQLite form is faster at *random point queries with indices* and doesn't blow up on memory. Pick the tool that matches the workload. For analyst-style queries against simulation output: SQLite is the safer default.
 
-## Exercise 8 — A second storage system (stretch)
+## Exercise 8 - A second storage system (stretch)
 
 ```python
 import time, urllib.request
@@ -187,10 +187,10 @@ print(f"100 sequential reads: {(time.perf_counter()-t)*1000:.0f} ms")
 # typical: 10-50 seconds (100-500 ms per round-trip)
 
 # Concurrent reads via aiohttp or httpx
-# (skipping the implementation — the point is the order-of-magnitude difference)
-# concurrent 100 reads: ~500 ms-2s — bounded by aggregate bandwidth
+# (skipping the implementation - the point is the order-of-magnitude difference)
+# concurrent 100 reads: ~500 ms-2s - bounded by aggregate bandwidth
 ```
 
-The bandwidth-delay product is the bound. For 100 ms latency and 1 KB reads, throughput per connection is 10 KB/s. Concurrency multiplies that — 100 concurrent connections give 1 MB/s aggregate. For a simulator that depends on a remote storage system, *concurrency is the only knob*; you can't make the latency smaller.
+The bandwidth-delay product is the bound. For 100 ms latency and 1 KB reads, throughput per connection is 10 KB/s. Concurrency multiplies that - 100 concurrent connections give 1 MB/s aggregate. For a simulator that depends on a remote storage system, *concurrency is the only knob*; you can't make the latency smaller.
 
 This is why distributed simulations partition the world by location (each node owns its region) and only cross the boundary at the edges. Per-tick remote reads are infeasible past a handful per tick; per-snapshot remote reads (one large transfer at checkpoint time) are fine.

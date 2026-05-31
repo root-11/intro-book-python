@@ -249,7 +249,7 @@ class SimLog:
 # Each field value is stored as a (row_id, key_code, value) triple.
 # Float and integer values live in separate streams.
 # String values are auto-encoded via an evolving codebook.
-# No mask arrays needed — missing fields simply have no entry.
+# No mask arrays needed - missing fields simply have no entry.
 
 class _SparseContainer:
     __slots__ = ('f_rids', 'f_keys', 'f_vals',
@@ -1002,7 +1002,7 @@ class SimLogSparseNP:
         meta = dict(self._base_meta)
         meta['row_count'] = count
         meta_bytes = np.frombuffer(json.dumps(meta).encode(), dtype=np.uint8)
-        # slice up to ptr — already numpy, no conversion needed
+        # slice up to ptr - already numpy, no conversion needed
         np.savez(path,
             _meta=meta_bytes,
             rids=container.rids[:ptr],
@@ -1010,7 +1010,7 @@ class SimLogSparseNP:
             vals=container.vals[:ptr],
         )
 
-    # read path — identical to SimLogSparse
+    # read path - identical to SimLogSparse
     def _iter_chunks(self):
         for chunk_path in sorted(self._path.glob('chunk_*.npz')):
             with np.load(chunk_path) as data:

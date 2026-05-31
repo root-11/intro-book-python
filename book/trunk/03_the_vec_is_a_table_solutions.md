@@ -1,32 +1,32 @@
-# Solutions: 3 — The `Vec` is a table
+# Solutions: 3 - The `Vec` is a table
 
-## Exercise 1 — Pointer-chase or value-read
+## Exercise 1 - Pointer-chase or value-read
 
 ```python
 >>> import sys, numpy as np
 >>> sys.getsizeof(0)            # 28
 >>> sys.getsizeof(1000)         # 28
->>> sys.getsizeof(10**100)      # 72  — large ints grow per limb
+>>> sys.getsizeof(10**100)      # 72  - large ints grow per limb
 >>> np.array([0, 1000, 10**18], dtype=np.int64).nbytes
 24
 ```
 
 Three int64s in a numpy array: 24 bytes, no per-element headers. Three `PyLong`s in a list: 28 + 28 + 72 = 128 bytes for the values *plus* 8 × 3 = 24 bytes of pointers in the list's backing array *plus* the list header. The numpy column is the values; everything else in the list version is bookkeeping.
 
-## Exercise 2 — The interning trap
+## Exercise 2 - The interning trap
 
 ```python
 >>> a = [0] * 1_000_000
 >>> b = [1000 + i for i in range(1_000_000)]
->>> len(set(id(x) for x in a[:100]))         # 1   — all the same object
->>> len(set(id(x) for x in b[:100]))         # 100 — every value is its own PyLong
+>>> len(set(id(x) for x in a[:100]))         # 1   - all the same object
+>>> len(set(id(x) for x in b[:100]))         # 100 - every value is its own PyLong
 ```
 
 `[0] * 1_000_000` does not allocate a million `PyLong(0)`s; it allocates a million pointers, all to one shared `0` object. The list weighs 8 MB of pointers + one 28-byte int. The intuition "a list of small ints is cheap" is true *inside CPython's small-int cache* (`[-5, 256]`) and false everywhere else.
 
-`id(257) == id(257)` and `id(1000) == id(1000)` may both return `True` *within a single statement* because the parser caches literal constants in a compilation unit. Across statements, identity is not guaranteed for values outside `[-5, 256]`. Don't lean on that — it's an implementation detail of how the bytecode compiler stores literals, not a runtime property of integers.
+`id(257) == id(257)` and `id(1000) == id(1000)` may both return `True` *within a single statement* because the parser caches literal constants in a compilation unit. Across statements, identity is not guaranteed for values outside `[-5, 256]`. Don't lean on that - it's an implementation detail of how the bytecode compiler stores literals, not a runtime property of integers.
 
-## Exercise 3 — Capacity vs length
+## Exercise 3 - Capacity vs length
 
 ```python
 import sys
@@ -48,9 +48,9 @@ print(f"growth points up to N=1000: {len(sizes)}")
 growth points up to N=1000: 28
 ```
 
-`list` over-allocates and re-allocates in chunks, like Rust's `Vec::push`. The growth pattern (currently `~1.125 ×` capacity) is a CPython implementation detail — different versions and `pypy`/`micropython` will pick different multipliers. The principle is identical to `Vec`: amortised O(1) push, occasional copy. The takeaway is the same as in any growable container: if you know the final size, pre-allocate (`np.zeros(N, ...)` for numpy; `[None] * N` then assign for lists) instead of pushing.
+`list` over-allocates and re-allocates in chunks, like Rust's `Vec::push`. The growth pattern (currently `~1.125 ×` capacity) is a CPython implementation detail - different versions and `pypy`/`micropython` will pick different multipliers. The principle is identical to `Vec`: amortised O(1) push, occasional copy. The takeaway is the same as in any growable container: if you know the final size, pre-allocate (`np.zeros(N, ...)` for numpy; `[None] * N` then assign for lists) instead of pushing.
 
-## Exercise 4 — Run the §3 exhibit
+## Exercise 4 - Run the §3 exhibit
 
 ```sh
 uv run code/measurement/aos_vs_soa_footprint.py
@@ -82,7 +82,7 @@ The five rows separate three independent wins:
 
 The four-row form of this exhibit collapsed steps 2 and 3 into "use numpy." The five-row form shows they are separate. Numpy happens to bundle them; `array.array` lets you take the memory win without the C-loop win, which is sometimes the right trade for a project that wants stdlib-only deps.
 
-## Exercise 5 — The dict trap
+## Exercise 5 - The dict trap
 
 ```python
 import time, random, numpy as np
@@ -108,9 +108,9 @@ numpy 100K gather:   0.75 ms
 ratio: 46×
 ```
 
-Both look up "by integer." The dict pays a hash, a probe, and a `PyObject*` dereference per access — all in pure Python. The numpy gather is one indirection through a typed buffer in C. Same operation, 46× cost gap. When the keys are dense integers, dicts are not the right tool — the only thing they buy you is sparse indexing, and a dense column gets you indexing for free.
+Both look up "by integer." The dict pays a hash, a probe, and a `PyObject*` dereference per access - all in pure Python. The numpy gather is one indirection through a typed buffer in C. Same operation, 46× cost gap. When the keys are dense integers, dicts are not the right tool - the only thing they buy you is sparse indexing, and a dense column gets you indexing for free.
 
-## Exercise 6 — swap-remove vs remove
+## Exercise 6 - swap-remove vs remove
 
 ```python
 import time
@@ -137,13 +137,13 @@ print(f"100 swap_remove:    {(t1-t0)*1000:.3f} ms")
 
 ~200× difference. `lst.pop(i)` for `i` in the middle costs O(N) because every element after `i` shifts down one slot; 100 mid-list pops at N=1M is ~50M element moves. The swap-remove pattern is O(1): overwrite the gap with the last element, then truncate. It changes the *order* of remaining elements, which is fine wherever order doesn't carry meaning. [§21](21_swap_remove.md) builds the rest of the discipline around it.
 
-## Exercise 7 — Read your own array
+## Exercise 7 - Read your own array
 
 ```python
 >>> import numpy as np
 >>> a = np.arange(10, dtype=np.int64)
 >>> raw = a.tobytes()
->>> len(raw)                                  # 80 — exactly 10 × 8 bytes
+>>> len(raw)                                  # 80 - exactly 10 × 8 bytes
 >>> b = np.frombuffer(raw, dtype=np.int64)
 >>> (a == b).all()                            # True
 ```

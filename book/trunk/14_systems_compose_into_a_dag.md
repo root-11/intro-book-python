@@ -1,12 +1,12 @@
-# 14 — Systems compose into a DAG
+# 14 - Systems compose into a DAG
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 14](../../concepts/glossary.md#14--systems-compose-into-a-dag).*
 
 A program with one system is uninteresting; a program with many systems must say *what runs in what order*. The order is given by data dependencies: a system that reads a table must run *after* every system that writes that table within the same tick. No ordering is fixed by intuition; everything is given by the read-sets and write-sets [§13](13_system_as_function.md) just made you declare.
 
-<p align="center"><img src="../illustrations/dag_planning_checklist.jpg" alt="PLAN / ANALYZE / DESIGN / BUILD / TEST / IMPROVE — the planning DAG" style="max-height: 300px; max-width: 100%;"></p>
+<p align="center"><img src="../illustrations/dag_planning_checklist.jpg" alt="PLAN / ANALYZE / DESIGN / BUILD / TEST / IMPROVE - the planning DAG" style="max-height: 300px; max-width: 100%;"></p>
 
-Draw the dependency graph. Each system is a node. For every system that reads table `T` and every system that writes `T`, draw an edge `writer → reader`. The result is a *directed acyclic graph* — the DAG. A topological sort gives a valid execution order: any sort that respects the edges is correct. The program executes one such sort.
+Draw the dependency graph. Each system is a node. For every system that reads table `T` and every system that writes `T`, draw an edge `writer → reader`. The result is a *directed acyclic graph* - the DAG. A topological sort gives a valid execution order: any sort that respects the edges is correct. The program executes one such sort.
 
 The simulator's tick from [`code/sim/SPEC.md`](../../code/sim/SPEC.md):
 
@@ -31,13 +31,13 @@ This is the same shape as a *query plan* in a database. The query optimiser take
 
 This is where the Pythonic "loose coupling" idioms come asking, and the right answer is to refuse them. Three patterns to name and exclude:
 
-**Observers / event buses.** A system subscribes to an event ("a creature was born") and runs some handler. The order in which handlers fire is whoever subscribed first, or whatever the framework picks, or — most commonly — *unspecified by design*. This is the opposite of what this chapter is asking for. The DAG fixes order; an event bus deliberately does not.
+**Observers / event buses.** A system subscribes to an event ("a creature was born") and runs some handler. The order in which handlers fire is whoever subscribed first, or whatever the framework picks, or - most commonly - *unspecified by design*. This is the opposite of what this chapter is asking for. The DAG fixes order; an event bus deliberately does not.
 
 **Django/Flask-style signals.** Frameworks teach `signal.connect(handler)` so that any module can wire itself into any lifecycle point. The result is a tick whose execution order depends on which modules were imported, in what order, and which `connect` calls ran. The DAG depends on declared data dependencies; signals depend on import order.
 
 **Callbacks.** A system "calls back" to user code at some point in its body. Now the user code is part of the tick, but it has no declared read-set, no declared write-set, and runs at a moment determined by the *implementation* of the calling system. The contract from §13 is gone.
 
-In all three cases the problem is the same: **order is not declared; it is emergent from runtime accidents.** A reader that runs before its writer reads stale data — yesterday's snapshot of a table that was supposed to have been updated. A reader that runs after its consumer reads garbage — a half-written table mid-update. The DAG is the contract that prevents both. Each of the three patterns above replaces the contract with a hope.
+In all three cases the problem is the same: **order is not declared; it is emergent from runtime accidents.** A reader that runs before its writer reads stale data - yesterday's snapshot of a table that was supposed to have been updated. A reader that runs after its consumer reads garbage - a half-written table mid-update. The DAG is the contract that prevents both. Each of the three patterns above replaces the contract with a hope.
 
 A simulator's tick is a topologically-sorted call list:
 
@@ -59,13 +59,13 @@ Eight function calls, in topological order. Adding a system means adding a line 
 
 A cycle is a contradiction. Suppose system A writes table T, system B reads T and writes U, system A reads U. Now A both produces T (which B reads) and consumes U (which B writes). A and B cannot both run before each other in the same tick.
 
-A cycle in the system graph is a design bug; it must be broken — usually by buffering one system's write so it is consumed *next* tick instead of *this* tick. That buffering is exactly what [§15 — State changes between ticks](15_state_changes_between_ticks.md) names. Cycles do not disappear when you write a simulation; they get a name and a discipline.
+A cycle in the system graph is a design bug; it must be broken - usually by buffering one system's write so it is consumed *next* tick instead of *this* tick. That buffering is exactly what [§15 - State changes between ticks](15_state_changes_between_ticks.md) names. Cycles do not disappear when you write a simulation; they get a name and a discipline.
 
 ## Parallelism for free
 
-Once the DAG is explicit, parallelism becomes trivial. Any two systems on the same DAG level — neither one a transitive dependency of the other — can run on different processes. In the simulator above, `apply_eat`, `apply_reproduce`, and `apply_starve` all consume `pending_event` and produce *disjoint* output tables (`energy` / `food`, `to_insert`, `to_remove`); they can run in parallel without coordination. The schedule is implied by the graph. [§31](31_disjoint_writes_parallelize.md) picks this up under the GIL.
+Once the DAG is explicit, parallelism becomes trivial. Any two systems on the same DAG level - neither one a transitive dependency of the other - can run on different processes. In the simulator above, `apply_eat`, `apply_reproduce`, and `apply_starve` all consume `pending_event` and produce *disjoint* output tables (`energy` / `food`, `to_insert`, `to_remove`); they can run in parallel without coordination. The schedule is implied by the graph. [§31](31_disjoint_writes_parallelize.md) picks this up under the GIL.
 
-The observer-pattern alternative cannot offer this. Without an explicit DAG, the framework cannot tell which handlers are independent and which are not — so it either runs everything serially or relies on the user to add manual synchronisation. The DAG-first design gets parallelism *for free* the moment the read-sets and write-sets are accurate; the observer-first design has to invent it back.
+The observer-pattern alternative cannot offer this. Without an explicit DAG, the framework cannot tell which handlers are independent and which are not - so it either runs everything serially or relies on the user to add manual synchronisation. The DAG-first design gets parallelism *for free* the moment the read-sets and write-sets are accurate; the observer-first design has to invent it back.
 
 ## Exercises
 
@@ -78,7 +78,7 @@ The observer-pattern alternative cannot offer this. Without an explicit DAG, the
    - D reads Y and Z, writes W
    
    Which systems can run in parallel? What's a valid execution order? Are there multiple valid orders?
-4. **Topological sort in Python.** Implement `def topo_sort(systems: list[tuple[str, set[str], set[str]]]) -> list[str]` taking `(name, read_set, write_set)` triples and returning a valid execution order. Use Kahn's algorithm. Apply it to your answer to exercise 1 — it should produce the same ordering (or one of the valid alternatives).
+4. **Topological sort in Python.** Implement `def topo_sort(systems: list[tuple[str, set[str], set[str]]]) -> list[str]` taking `(name, read_set, write_set)` triples and returning a valid execution order. Use Kahn's algorithm. Apply it to your answer to exercise 1 - it should produce the same ordering (or one of the valid alternatives).
 5. **Compose two systems.** Write `motion` (operation, writes `pos_x, pos_y`) and `next_event` (operation, writes `pending_event`). Wire them into a `tick(world, dt)` function that calls them in order. Inspect `pending_event` after the tick.
 6. **Add `cleanup`.** Add a `cleanup` system that processes `to_remove` and `to_insert` (both initially empty arrays). Wire it after `next_event`. Confirm the call list reads top-to-bottom in dependency order.
 7. **The wrong way: an observer.** Implement the same three-system tick using an event-bus pattern: `bus.subscribe("tick", motion); bus.subscribe("tick", next_event); bus.subscribe("tick", cleanup); bus.fire("tick", world)`. Run it. Note that the order is now implicit in registration order, and any new subscriber inserted at runtime can change the order silently. Compare reading the resulting code to reading the function-call form. Which one tells you what runs when?
@@ -90,4 +90,4 @@ Reference notes in [14_systems_compose_into_a_dag_solutions.md](14_systems_compo
 
 ## What's next
 
-[§15 — State changes between ticks](15_state_changes_between_ticks.md) is the rule that makes the DAG actually work: mutations buffer; the world transitions atomically.
+[§15 - State changes between ticks](15_state_changes_between_ticks.md) is the rule that makes the DAG actually work: mutations buffer; the world transitions atomically.

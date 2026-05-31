@@ -1,6 +1,6 @@
-# Solutions: 39 — System of systems
+# Solutions: 39 - System of systems
 
-## Exercise 1 — Audit cadence
+## Exercise 1 - Audit cadence
 
 A typical simulator's cadence audit:
 
@@ -21,7 +21,7 @@ A typical simulator's cadence audit:
 
 The cadences that aren't "every tick" are candidates for one of the chapter's three patterns. Any system that's currently capped (e.g. "only the first 100 path-finds per tick") is a candidate for the anytime pattern.
 
-## Exercise 2 — Anytime path-finder
+## Exercise 2 - Anytime path-finder
 
 ```python
 import time, random, numpy as np
@@ -74,9 +74,9 @@ print(f"5ms:  {len(r1)} waypoints, score={s1:.2f}")
 print(f"50ms: {len(r2)} waypoints, score={s2:.2f}")
 ```
 
-Quality improves with deadline. Plot score-vs-deadline by repeating at 1 ms, 5 ms, 10 ms, 50 ms, 100 ms, 500 ms — typically logarithmic improvement (each doubling of time buys roughly the same quality increment).
+Quality improves with deadline. Plot score-vs-deadline by repeating at 1 ms, 5 ms, 10 ms, 50 ms, 100 ms, 500 ms - typically logarithmic improvement (each doubling of time buys roughly the same quality increment).
 
-## Exercise 3 — Time-sliced spatial search
+## Exercise 3 - Time-sliced spatial search
 
 ```python
 from dataclasses import dataclass
@@ -120,7 +120,7 @@ assert single.best_id == sliced.best_id, "time-sliced version must match single-
 
 The time-sliced result is identical to the single-pass result. The work is the same; the *granularity* differs. The simulator can call `step(max_cells=budget_cells)` every tick with a budget computed from the remaining tick time.
 
-## Exercise 4 — Out-of-loop AI
+## Exercise 4 - Out-of-loop AI
 
 ```python
 import multiprocessing, time, queue
@@ -164,9 +164,9 @@ if __name__ == "__main__":
 
 The simulator's tick continues at 30 Hz. Snapshots dispatch every second. The AI takes 5 seconds; its result arrives in the result queue ~5 seconds late, and the simulator picks it up on the next polling cycle. No blocking. The tick rate is preserved exactly.
 
-This is the architecture for "AI as a side process," "remote pricing service," "GPU model inference" — any work that takes longer than a tick. The queue is the seam.
+This is the architecture for "AI as a side process," "remote pricing service," "GPU model inference" - any work that takes longer than a tick. The queue is the seam.
 
-## Exercise 5 — Mixed cadence
+## Exercise 5 - Mixed cadence
 
 ```python
 def tick(world, current_tick):
@@ -190,7 +190,7 @@ Run twice with the same seed; hash after 1000 ticks. The hashes must match. The 
 
 For the AI to be deterministic across runs, the snapshot it processes and the time it takes must match. In practice this means either (a) testing with mocked AI that returns deterministic results based on snapshot content, or (b) accepting that real AI introduces stochasticity at the input queue and treating it as "another input source" rather than part of the simulator's determinism guarantee.
 
-## Exercise 6 — The scale-up arithmetic
+## Exercise 6 - The scale-up arithmetic
 
 Suppose your simulator at full scale needs 1B creatures × 32 bytes/row = 32 GB of state, 30 Hz tick, 16-core parallelism.
 
@@ -209,7 +209,7 @@ For a workload of 100B creatures (3.2 TB state): now you've left single-machine 
 
 The threshold where distribution becomes mandatory: when *one machine* can't physically hold the workload (~10 TB+ for most cloud providers, even larger on bare metal). Below that, every reasonable problem fits on one box.
 
-## Exercise 7 — Anytime under varying budget (stretch)
+## Exercise 7 - Anytime under varying budget (stretch)
 
 ```python
 def plan_route_with_budget(start, goal, obstacles, remaining_ms: float):
@@ -234,6 +234,6 @@ def tick(world, current_tick):
 
 Some ticks have plenty of budget left (the rest of the work was cheap); some have very little (a heavy cleanup happened). The path-finder takes whatever's available.
 
-Plot the path quality over a 1000-tick run. The line is jittery — quality varies tick-to-tick with the available budget — but the *trend* is positive: even the worst tick still produces a valid path; better ticks produce better paths; the simulator never blocks.
+Plot the path quality over a 1000-tick run. The line is jittery - quality varies tick-to-tick with the available budget - but the *trend* is positive: even the worst tick still produces a valid path; better ticks produce better paths; the simulator never blocks.
 
 This is the production pattern for AI in real-time systems: *spend whatever budget you have, never block, never miss a deadline*. The simulator's overall frame rate is preserved; AI quality is a function of the time it gets.

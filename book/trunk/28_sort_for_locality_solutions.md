@@ -1,6 +1,6 @@
-# Solutions: 28 — Sort for locality
+# Solutions: 28 - Sort for locality
 
-## Exercise 1 — Compute spatial cells
+## Exercise 1 - Compute spatial cells
 
 ```python
 import numpy as np
@@ -22,9 +22,9 @@ print(f"first 5 cells: {unique[:5].tolist()}")
 print(f"histogram of cell counts: {np.bincount(counts)[:20]}")
 ```
 
-For uniformly distributed creatures in a 100×100 world with 10-unit cells, expect ~100 cells (10×10 grid), ~10 creatures per cell on average. The histogram is Poisson-shaped — most cells have 5-15 creatures, a few have 0 or 25+.
+For uniformly distributed creatures in a 100×100 world with 10-unit cells, expect ~100 cells (10×10 grid), ~10 creatures per cell on average. The histogram is Poisson-shaped - most cells have 5-15 creatures, a few have 0 or 25+.
 
-## Exercise 2 — Sort by cell
+## Exercise 2 - Sort by cell
 
 ```python
 def sort_for_locality(world, cell_size: float):
@@ -42,9 +42,9 @@ for i in range(10):
     print(f"  ({world.pos_x[i]:.2f}, {world.pos_y[i]:.2f}) cell={spatial_cell(world.pos_x[i:i+1], world.pos_y[i:i+1], 10.0)[0]}")
 ```
 
-After the sort, the first 10 positions belong to creatures in the same (or adjacent) cells — their `(pos_x, pos_y)` values cluster instead of scattering randomly.
+After the sort, the first 10 positions belong to creatures in the same (or adjacent) cells - their `(pos_x, pos_y)` values cluster instead of scattering randomly.
 
-## Exercise 3 — Maintain `id_to_slot`
+## Exercise 3 - Maintain `id_to_slot`
 
 ```python
 # Before sort: held_id is at some slot
@@ -65,7 +65,7 @@ assert before_pos == after_pos, "data moved but is the same value"
 
 The held id resolves to a new slot. The position at the new slot equals the position at the old slot. The id_to_slot map is the bridge; without it, the held reference would dereference garbage.
 
-## Exercise 4 — Time `next_event` before and after
+## Exercise 4 - Time `next_event` before and after
 
 ```python
 import time, numpy as np
@@ -98,11 +98,11 @@ print(f"post-sort: {t_post*1000:.2f} ms")
 print(f"ratio:     {t_pre/t_post:.2f}×")
 ```
 
-Expect a ~1.5-3× speedup on the post-sort version. The reason: post-sort, the `pos_x[i+1:end]` slice is more likely to contain creatures in the same spatial cell — so the boolean mask has more `True` values clustered together, and the subsequent indexing operations are more cache-friendly.
+Expect a ~1.5-3× speedup on the post-sort version. The reason: post-sort, the `pos_x[i+1:end]` slice is more likely to contain creatures in the same spatial cell - so the boolean mask has more `True` values clustered together, and the subsequent indexing operations are more cache-friendly.
 
 The exact ratio depends on the spatial distribution and the scan-window size. A scan window of 100 might capture exactly one cell (if cells average 10 creatures) or several adjacent cells; the locality benefit is biggest when the scan window matches the typical cell occupancy.
 
-## Exercise 5 — Sort cadence
+## Exercise 5 - Sort cadence
 
 ```python
 results = {}
@@ -130,7 +130,7 @@ sort every 1000000 ticks: 1.20 s   (no resort; scan cost stays high)
 
 The optimum is wherever the sort's amortised cost balances the scan's per-tick savings. For most simulators that's "resort every 10-100 ticks," depending on motion speed. A re-sort triggered by *accumulated drift* (resort once total motion since last sort exceeds half a cell width) generalises this to scenarios with variable motion rates.
 
-## Exercise 6 — Z-order curve (stretch)
+## Exercise 6 - Z-order curve (stretch)
 
 ```python
 def _spread2(v: int) -> int:
@@ -166,8 +166,8 @@ def morton_cell(pos_x, pos_y, cell_size):
     return spread_vec(cx) | (spread_vec(cy) << 1)
 ```
 
-Compared to the simple `(cx << 16) | cy` packing, Z-order keeps cells (1,0), (0,1), (1,1) close to (0,0) in the linear order — instead of (1,0) being adjacent to (0,0) but (0,1) being far away. The result is that 2D adjacency is *approximately* preserved in 1D adjacency.
+Compared to the simple `(cx << 16) | cy` packing, Z-order keeps cells (1,0), (0,1), (1,1) close to (0,0) in the linear order - instead of (1,0) being adjacent to (0,0) but (0,1) being far away. The result is that 2D adjacency is *approximately* preserved in 1D adjacency.
 
 For typical simulator workloads where `next_event_scan` looks at horizontal-and-vertical neighbours, Z-order outperforms simple packing by 10-30%. The difference is biggest for densely-packed simulations where vertical neighbours within the scan window matter.
 
-The full Hilbert curve preserves 2D locality even better but is more expensive to compute. For most simulators, Z-order is the sweet spot — close to optimal, vectorisable in numpy.
+The full Hilbert curve preserves 2D locality even better but is more expensive to compute. For most simulators, Z-order is the sweet spot - close to optimal, vectorisable in numpy.

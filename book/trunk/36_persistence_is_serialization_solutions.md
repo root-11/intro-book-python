@@ -1,6 +1,6 @@
-# Solutions: 36 — Persistence is table serialization
+# Solutions: 36 - Persistence is table serialization
 
-## Exercise 1 — Snapshot the world
+## Exercise 1 - Snapshot the world
 
 ```python
 import numpy as np
@@ -35,7 +35,7 @@ restored = load("world.npz", capacity=world.capacity)
 
 File size: `n_active × bytes_per_row + small zip overhead`. For 1M creatures × 36 bytes = 36 MB plus ~80 KB of zip metadata. Slicing to `[: n_active]` avoids saving the unused tail.
 
-## Exercise 2 — Round-trip test
+## Exercise 2 - Round-trip test
 
 ```python
 def hash_world(world) -> str:
@@ -52,16 +52,16 @@ restored = load("rt.npz", capacity=world.capacity)
 h_after = hash_world(restored)
 assert h_before == h_after
 
-# Continue from the loaded state — should match a never-paused run
+# Continue from the loaded state - should match a never-paused run
 for _ in range(100): tick(restored)
 control = build_world(seed=42); restore_from(world)   # same starting state
 for _ in range(100): tick(control)
 assert hash_world(restored) == hash_world(control)
 ```
 
-The snapshot/load round-trip must be bit-identical. Combined with the [§16](16_determinism_by_order.md) deterministic rules, this gives you full pause-and-resume capability — the loaded world runs forward identically to one that never paused.
+The snapshot/load round-trip must be bit-identical. Combined with the [§16](16_determinism_by_order.md) deterministic rules, this gives you full pause-and-resume capability - the loaded world runs forward identically to one that never paused.
 
-## Exercise 3 — Run the persistence exhibit
+## Exercise 3 - Run the persistence exhibit
 
 ```sh
 uv run code/measurement/persistence_shapes.py
@@ -78,9 +78,9 @@ np.savez_compressed                       25.52       989.2        95.9
 
 Plus the AoS-list construction cost itself: ~1050 ms. So pickling a million dataclass instances costs 3.3 seconds total (build + write); the equivalent numpy SoA snapshot is **3 ms** for the write (~1000× faster) without the construction step at all (the columns *are* the data).
 
-The pickle-of-columns row is fastest for the simulator's per-tick snapshot use case. `np.savez` adds 7× the write time for cross-language portability — a fair price for a checkpoint format you'd like to read from Rust or Julia. Compression adds another 38× write time for 25% disk savings — only worth it for archival.
+The pickle-of-columns row is fastest for the simulator's per-tick snapshot use case. `np.savez` adds 7× the write time for cross-language portability - a fair price for a checkpoint format you'd like to read from Rust or Julia. Compression adds another 38× write time for 25% disk savings - only worth it for archival.
 
-## Exercise 4 — The OOP comparison, in your fingers
+## Exercise 4 - The OOP comparison, in your fingers
 
 ```python
 from pydantic import BaseModel
@@ -107,9 +107,9 @@ print(f"pydantic+json write: {(time.perf_counter()-t)*1000:.0f} ms")
 
 Typical: ~5-15 seconds for 1M creatures, file size ~250+ MB. Two-to-three orders of magnitude slower than `np.savez`. The pydantic + json combination pays for: per-row instance construction, per-field validation, per-row dict construction, per-field JSON encoding, per-row JSON boundary.
 
-The numpy-column form does none of this — the bytes are written verbatim. The OOP version's "advantages" (human-readable JSON, validation) are mostly mirages for a million-row simulator state: nobody reads it by hand, and validation should live at the queue boundary (§35), not at every snapshot.
+The numpy-column form does none of this - the bytes are written verbatim. The OOP version's "advantages" (human-readable JSON, validation) are mostly mirages for a million-row simulator state: nobody reads it by hand, and validation should live at the queue boundary (§35), not at every snapshot.
 
-## Exercise 5 — Schema versioning
+## Exercise 5 - Schema versioning
 
 ```python
 SCHEMA_VERSION = 2
@@ -137,7 +137,7 @@ The migration is *additive at load time*: old snapshots load with the new column
 
 In practice most simulators bump the version on every breaking change and write a one-shot script to migrate old snapshot files when needed.
 
-## Exercise 6 — Pickle-version stability
+## Exercise 6 - Pickle-version stability
 
 ```python
 import pickle
@@ -149,11 +149,11 @@ with open("phighest.pkl", "wb") as f:
 
 File size difference: usually <5%. The wire format is similar; the main difference is `protocol=5` (added in 3.8) supports out-of-band buffers for large arrays, slightly more efficient for huge payloads.
 
-The question is *forward compatibility*: in CPython 3.20, will `protocol=4` still load? Almost certainly yes — protocol 4 has been stable for over a decade and `pickle` maintains backward compatibility. Will `protocol=pickle.HIGHEST_PROTOCOL` from today still load in 3.20? Probably yes too, but the guarantee is weaker.
+The question is *forward compatibility*: in CPython 3.20, will `protocol=4` still load? Almost certainly yes - protocol 4 has been stable for over a decade and `pickle` maintains backward compatibility. Will `protocol=pickle.HIGHEST_PROTOCOL` from today still load in 3.20? Probably yes too, but the guarantee is weaker.
 
 For long-term archives, prefer `np.savez` (`.npy` format frozen since 2007) over pickle at any protocol. For short-term internal snapshots where the same Python process reads what it wrote: protocol=HIGHEST is fine.
 
-## Exercise 7 — Memory-mapped snapshot (stretch)
+## Exercise 7 - Memory-mapped snapshot (stretch)
 
 ```python
 import numpy as np, time
@@ -168,17 +168,17 @@ t = time.perf_counter()
 full = np.load(path)
 print(f"np.load full: {(time.perf_counter()-t)*1000:.0f} ms")
 
-# Memory-mapped — does no actual I/O until first access
+# Memory-mapped - does no actual I/O until first access
 t = time.perf_counter()
 mm = np.load(path, mmap_mode='r')
 print(f"np.load mmap: {(time.perf_counter()-t)*1000:.2f} ms")
 
-# Touch one element — pages get faulted in
+# Touch one element - pages get faulted in
 t = time.perf_counter()
 val = float(mm[1_000_000])
 print(f"first read:   {(time.perf_counter()-t)*1e6:.0f} µs")
 
-# Touch the whole thing — pays the I/O now
+# Touch the whole thing - pays the I/O now
 t = time.perf_counter()
 s = float(mm.sum())
 print(f"full sum:     {(time.perf_counter()-t)*1000:.0f} ms")
@@ -190,9 +190,9 @@ Typical:
 np.load full: 60 ms       (reads the whole file into memory)
 np.load mmap: 0.1 ms      (just opens the file; no I/O)
 first read:   80 µs       (faults in one 4-KB page)
-full sum:     50 ms       (faults in all pages — pays I/O now)
+full sum:     50 ms       (faults in all pages - pays I/O now)
 ```
 
-The mmap form is *much* faster at *open time* and faster overall *if the program only reads part of the data*. For the simulator: if a snapshot has 20 columns and the inspector only wants one, mmap reads only that column's bytes from disk. For a full restore, mmap pays the same total I/O — just amortised across first accesses.
+The mmap form is *much* faster at *open time* and faster overall *if the program only reads part of the data*. For the simulator: if a snapshot has 20 columns and the inspector only wants one, mmap reads only that column's bytes from disk. For a full restore, mmap pays the same total I/O - just amortised across first accesses.
 
 For per-tick snapshots that get fully restored, the standard `np.load` is fine. For large checkpoints where you might want to inspect one column without paying for all of them, mmap wins.

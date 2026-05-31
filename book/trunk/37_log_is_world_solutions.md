@@ -1,6 +1,6 @@
-# Solutions: 37 — The log is the world
+# Solutions: 37 - The log is the world
 
-## Exercise 1 — Log the simulator
+## Exercise 1 - Log the simulator
 
 ```python
 import numpy as np
@@ -19,7 +19,7 @@ class TripleStore:
         self.vals[i] = val
         self.n += 1
 
-# Key codes — a 1-byte enum
+# Key codes - a 1-byte enum
 KEY_POS_X     = 0
 KEY_POS_Y     = 1
 KEY_ENERGY    = 2
@@ -41,9 +41,9 @@ def cleanup_with_log(world, buffer, log):
     # ... apply mutations as before ...
 ```
 
-Each triple is `(rid, key, val)` — entity id, column code, value. The log is three parallel numpy columns. After 100 ticks of a 1000-creature simulation with moderate churn: ~100K-1M triples, depending on event rate.
+Each triple is `(rid, key, val)` - entity id, column code, value. The log is three parallel numpy columns. After 100 ticks of a 1000-creature simulation with moderate churn: ~100K-1M triples, depending on event rate.
 
-## Exercise 2 — Reconstruct from the log
+## Exercise 2 - Reconstruct from the log
 
 ```python
 def replay(initial_state: dict, events: TripleStore, up_to_tick: int = None) -> dict:
@@ -58,7 +58,7 @@ def replay(initial_state: dict, events: TripleStore, up_to_tick: int = None) -> 
             pass
         if key == KEY_BORN:
             alive.add(rid)
-            # extend world arrays — left as exercise; in a real implementation use slot recycling
+            # extend world arrays - left as exercise; in a real implementation use slot recycling
         elif key == KEY_DIED:
             alive.discard(rid)
         elif key == KEY_POS_X:
@@ -75,7 +75,7 @@ assert hash_world(live_world) == hash_world(replayed_world)
 
 If the replay matches the live world bit-for-bit, the log captures every mutation. If it doesn't, an event type is missing from the log (or the apply logic differs between live and replay). The cleanup pass is the canonical place to record events; *every* mutation flows through it (§22), so logging there gives complete coverage.
 
-## Exercise 3 — Save and load the log
+## Exercise 3 - Save and load the log
 
 ```python
 def save_log(log: TripleStore, path: str):
@@ -101,9 +101,9 @@ replayed = replay(initial_state(seed=42), reloaded)
 assert hash_world(live) == hash_world(replayed)
 ```
 
-The log is just three numpy columns; the [§36](36_persistence_is_serialization.md) `np.savez` pattern applies unchanged. Round-trip is byte-identical because the log is *only* bytes — no objects, no pointers, no schema mismatches.
+The log is just three numpy columns; the [§36](36_persistence_is_serialization.md) `np.savez` pattern applies unchanged. Round-trip is byte-identical because the log is *only* bytes - no objects, no pointers, no schema mismatches.
 
-## Exercise 4 — Snapshot + log
+## Exercise 4 - Snapshot + log
 
 ```python
 def reconstruct_at(tick_T, snapshots_dir, log_path):
@@ -121,12 +121,12 @@ def reconstruct_at(tick_T, snapshots_dir, log_path):
     return replay_in_range(world, log, start_tick, tick_T)
 
 # Snapshots every 1000 ticks; log keeps growing
-# Worst-case replay: 1000 ticks worth of events — much faster than replaying from t=0
+# Worst-case replay: 1000 ticks worth of events - much faster than replaying from t=0
 ```
 
 This is the production replay architecture. Snapshots cap the replay window; the log holds everything in between. Storage scales with `O(events) + O(snapshots × world_size)`; recovery time is `O(events_per_snapshot_interval)`.
 
-## Exercise 5 — Run simlog
+## Exercise 5 - Run simlog
 
 Tracing one `log(time, value, **fields)` call through `.archive/simlog/logger.py`:
 
@@ -141,7 +141,7 @@ Cost: ~0.9-1.9 µs per `log()` call, almost all in steps 1-3. Steps 4-6 amortise
 
 The 700 lines you don't have to write: codebook serialisation, `to_csv` and `to_sqlite` post-processors, type-coercion edge cases, capacity tuning, signal handling for graceful shutdown.
 
-## Exercise 6 — The codebook saving
+## Exercise 6 - The codebook saving
 
 ```python
 import numpy as np
@@ -149,7 +149,7 @@ n_events = 1_000_000
 
 # Literal-string form
 strings = np.array(["eat"] * n_events, dtype=object)
-# size: each "eat" is a Python str — ~50 bytes object + 3 bytes content
+# size: each "eat" is a Python str - ~50 bytes object + 3 bytes content
 # total: ~50 MB
 
 # Codebook form  
@@ -162,7 +162,7 @@ codebook = {"eat": 0}                                 # one-row codebook
 
 This is the structural argument for codebooks: as the corpus grows, the codebook stays the same size while the event log doubles. The ratio improves linearly with corpus size.
 
-## Exercise 7 — The `logging` module trap
+## Exercise 7 - The `logging` module trap
 
 ```python
 import logging, time
@@ -192,14 +192,14 @@ Typical results:
 
 The logging module is a string-formatting + per-event-flush + level-filtering machine. None of those features helps the simulator. The triple-store form is faster on every axis and queryable without parsing.
 
-## Exercise 8 — The simlog API, three views (stretch)
+## Exercise 8 - The simlog API, three views (stretch)
 
-**As a class (`class Simlog`)**: pip-installable, reusable across simulators. Public API stays stable across versions. Best for code that crosses package boundaries — used by Mesa-like frameworks, audit-log tools, third-party simulators. Cost: a layer of indirection between simulator and log; can't access simulator internals.
+**As a class (`class Simlog`)**: pip-installable, reusable across simulators. Public API stays stable across versions. Best for code that crosses package boundaries - used by Mesa-like frameworks, audit-log tools, third-party simulators. Cost: a layer of indirection between simulator and log; can't access simulator internals.
 
 **As a module inside your simulator**: same shape, no external boundary. The logger knows about your simulator's specific table shapes and field codes. Faster (no abstraction layer); not reusable. Best for a single bespoke simulator that doesn't ship its logger.
 
 **As an ECS system**: a logging system whose read-set is `to_remove`, `to_insert`, and other commit-time tables; whose write-set is the log columns. Runs in the DAG, possibly merged with `cleanup`. Fastest (the logging *is* part of the tick); most coupled (can't be unplugged without removing the system). Best for production simulators where logging is essential, not optional.
 
-The three forms map to a familiar tradeoff: reusability vs. integration. Pick the form that matches the deployment context. For Bjorn's reference simulator: the ECS-system form is right — the simulator and the log are one architecture. For a library aimed at other simulators: the class form. For a one-off prototype: the module form.
+The three forms map to a familiar tradeoff: reusability vs. integration. Pick the form that matches the deployment context. For Bjorn's reference simulator: the ECS-system form is right - the simulator and the log are one architecture. For a library aimed at other simulators: the class form. For a one-off prototype: the module form.
 
 The same structural pattern (triple-store, codebook, double-buffer) supports all three. The choice is *packaging*, not *design*.

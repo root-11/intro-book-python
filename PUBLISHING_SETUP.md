@@ -1,4 +1,4 @@
-# Publishing setup — Forgejo → Codeberg + GitHub
+# Publishing setup - Forgejo → Codeberg + GitHub
 
 This document is a one-time setup checklist. After it is done, every push to `main` on Forgejo automatically:
 
@@ -28,18 +28,18 @@ The Rust edition uses the same template with `intro-book` everywhere instead of 
 
 ---
 
-## Phase A — Create the public repos (one-time)
+## Phase A - Create the public repos (one-time)
 
 ### A1. Codeberg public repo
 
 1. Sign in to https://codeberg.org as `root-11`.
 2. Create a new repo named **`intro-book-python`** (matching the front_matter URLs).
 3. Mark it public.
-4. Do NOT initialise with README/LICENSE — Forgejo will push to it.
+4. Do NOT initialise with README/LICENSE - Forgejo will push to it.
 
 ### A2. GitHub public repo
 
-1. Sign in to https://github.com as `root-11` (or whatever your handle is — update `PUBLISHING_SETUP.md`, `front_matter.md`, and `publish.yml` if different).
+1. Sign in to https://github.com as `root-11` (or whatever your handle is - update `PUBLISHING_SETUP.md`, `front_matter.md`, and `publish.yml` if different).
 2. Create a new repo named **`intro-book-python`**.
 3. Mark it public.
 4. Do NOT initialise with README/LICENSE.
@@ -50,7 +50,7 @@ If you haven't already mirrored the Rust edition to GitHub: create `root-11/intr
 
 ---
 
-## Phase B — Generate SSH keys for the CI runner (one-time)
+## Phase B - Generate SSH keys for the CI runner (one-time)
 
 The runner pushes via SSH (not HTTPS+PAT) because it's simpler and doesn't expire. Two keys, one per host. Generate them on the pi (or wherever Forgejo's runner config lives):
 
@@ -63,9 +63,9 @@ This produces four files. The `.pub` files go to the host; the private keys go i
 
 ### B1. Add the public keys to Codeberg and GitHub
 
-**Important: deploy keys are per-repo on both platforms.** A deploy key authorised for `intro-book` cannot push to `intro-book-python` — same scoping rule on Codeberg as on GitHub. You have two options per platform; pick the same model on both for consistency.
+**Important: deploy keys are per-repo on both platforms.** A deploy key authorised for `intro-book` cannot push to `intro-book-python` - same scoping rule on Codeberg as on GitHub. You have two options per platform; pick the same model on both for consistency.
 
-#### Option 1 — User-level SSH keys (simpler, recommended)
+#### Option 1 - User-level SSH keys (simpler, recommended)
 
 One keypair per platform, attached to your *user account*; covers all current and future repos.
 
@@ -74,9 +74,9 @@ One keypair per platform, attached to your *user account*; covers all current an
 
 This is the simplest path for a single-author book. Two keys total (one per platform), one private key per Forgejo repo's secret.
 
-#### Option 2 — Per-repo deploy keys (tighter, more setup)
+#### Option 2 - Per-repo deploy keys (tighter, more setup)
 
-If you want each key scoped to one repo, generate **one keypair per repo per platform** — so four keypairs total for two repos × two platforms. For each:
+If you want each key scoped to one repo, generate **one keypair per repo per platform** - so four keypairs total for two repos × two platforms. For each:
 
 - **Codeberg:** Repo → Settings → Deploy Keys → "Add Deploy Key". Paste the `.pub`. Tick "Enable write access".
 - **GitHub:** Repo → Settings → Deploy keys → "Add deploy key". Paste the `.pub`. Tick "Allow write access".
@@ -87,7 +87,7 @@ Each Forgejo repo's `CODEBERG_SSH_KEY` / `GIT_HUB_SSH_KEY` secret then holds the
 
 ---
 
-## Phase C — Configure Forgejo secrets (one-time per repo)
+## Phase C - Configure Forgejo secrets (one-time per repo)
 
 For each Forgejo repo (Rust edition + Python edition), add these secrets via the repo's Settings → Actions → Secrets UI:
 
@@ -104,7 +104,7 @@ If the Forgejo Actions UI doesn't have a secrets manager, the equivalent is envi
 
 ---
 
-## Phase D — Configure Forgejo Push Mirror for source `main` (one-time per repo)
+## Phase D - Configure Forgejo Push Mirror for source `main` (one-time per repo)
 
 This is what gets the *source code* onto Codeberg and GitHub `main` branches, so `git clone` works for readers.
 
@@ -126,7 +126,7 @@ Forgejo will now push the `main` branch to both remotes after every commit you m
 
 ---
 
-## Phase E — First-time push to populate everything
+## Phase E - First-time push to populate everything
 
 ```bash
 cd ~/code/intro-py
@@ -143,7 +143,7 @@ Watch the workflow log on Forgejo to confirm both push steps succeed. If GitHub 
 
 ---
 
-## Phase F — Set the default branch on each platform
+## Phase F - Set the default branch on each platform
 
 Each platform serves `https://<host>/<user>/<repo>` based on its default branch.
 

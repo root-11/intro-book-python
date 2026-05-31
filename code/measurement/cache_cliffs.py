@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§1 exhibit — the interpreter masks the cliffs; numpy reveals them.
+§1 exhibit - the interpreter masks the cliffs; numpy reveals them.
 
 For each working-set size N from 10K to 100M, sum N int64 values three ways:
 
@@ -13,12 +13,12 @@ For each working-set size N from 10K to 100M, sum N int64 values three ways:
 
 We print *time per element*. Two lessons:
 
-    1. Method A — the Python list — is roughly flat in ns/element across
+    1. Method A - the Python list - is roughly flat in ns/element across
        sizes. Interpreter dispatch (per-iteration `PyObject_Add`, `PyLong`
        boxing/unboxing, refcount work) dominates the per-element cost,
        so the cache hierarchy is invisible from inside pure Python.
 
-    2. Methods B and C — numpy — reveal a staircase. Sequential sums are
+    2. Methods B and C - numpy - reveal a staircase. Sequential sums are
        bandwidth-limited but well-prefetched. Random gather forces a fresh
        address per element; once the working set leaves L1, then L2, then
        L3, the cost stairsteps up. The ratio of B to C at large N is
@@ -92,9 +92,9 @@ def main():
 
     print()
     print("Read the columns:")
-    print("  Python list — roughly flat across sizes; interpreter dispatch dominates.")
-    print("  numpy seq   — staircase; cliffs reveal L1/L2/L3/RAM transitions.")
-    print("  numpy gather — random access; gap to seq widens as working set spills caches.")
+    print("  Python list - roughly flat across sizes; interpreter dispatch dominates.")
+    print("  numpy seq   - staircase; cliffs reveal L1/L2/L3/RAM transitions.")
+    print("  numpy gather - random access; gap to seq widens as working set spills caches.")
 
 
 if __name__ == "__main__":

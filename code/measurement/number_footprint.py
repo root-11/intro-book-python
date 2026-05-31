@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§2 exhibit — width budget exists in numpy, not in stdlib.
+§2 exhibit - width budget exists in numpy, not in stdlib.
 
 Three measurements:
 
@@ -42,7 +42,7 @@ def rss_kb():
 
 
 def section_per_value_sizeof():
-    print("Per-value size (bytes) — what does one PyLong / PyFloat actually cost?")
+    print("Per-value size (bytes) - what does one PyLong / PyFloat actually cost?")
     print("-" * 64)
     samples = [
         ("int 0",                     0),
@@ -88,7 +88,7 @@ def measure_layout(layout_name, build_fn, sum_fn, q):
 
 
 def build_list_int_small():
-    return [i & 0xFF for i in range(N)]  # values 0..255 — interned
+    return [i & 0xFF for i in range(N)]  # values 0..255 - interned
 
 
 def build_list_int_large():
@@ -141,7 +141,7 @@ def main():
 
     print(f"N = {N:,} numbers, each layout in a fresh subprocess")
     print("data:   for numpy rows = arr.nbytes;   for list rows = RSS delta")
-    print("RSS:    process RSS delta — numpy rows include ~20 MB of one-off init")
+    print("RSS:    process RSS delta - numpy rows include ~20 MB of one-off init")
     header = f"{'layout':<42}  {'data (MB)':>10}  {'RSS (MB)':>9}  {'build (s)':>9}  {'sum (ms)':>9}"
     print(header)
     print("-" * len(header))

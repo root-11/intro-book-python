@@ -1,17 +1,17 @@
-# Solutions: 13 — A system is a function over tables
+# Solutions: 13 - A system is a function over tables
 
-## Exercise 1 — Identify the shape
+## Exercise 1 - Identify the shape
 
 | operation                                              | shape       |
 |--------------------------------------------------------|-------------|
 | Squaring every entry of a `np.ndarray[float32]`        | operation (1→1) |
 | Filtering even integers from `np.ndarray[int32]`       | filter (1→{0,1}) |
 | Splitting each `str` in a `list[str]` into words       | emission (1→N) |
-| Summing a `np.ndarray[int32]`                          | reduction (N→1) — a fourth shape, distinct from the three |
+| Summing a `np.ndarray[int32]`                          | reduction (N→1) - a fourth shape, distinct from the three |
 
-Reductions deserve a footnote: they collapse a column into a scalar. They are systems too — read-set is the column, write-set is one scalar. The book mostly uses reductions inline (`sum`, `max`, `count_nonzero`) rather than as named systems, but the contract still applies.
+Reductions deserve a footnote: they collapse a column into a scalar. They are systems too - read-set is the column, write-set is one scalar. The book mostly uses reductions inline (`sum`, `max`, `count_nonzero`) rather than as named systems, but the contract still applies.
 
-## Exercise 2 — Write motion as a system
+## Exercise 2 - Write motion as a system
 
 ```python
 import numpy as np
@@ -35,7 +35,7 @@ for t in range(10):
 
 Two lines in the body. No per-creature loop, no method dispatch, no `self`. The `+=` operator on a numpy column is a single C-level pass.
 
-## Exercise 3 — Declare the contract
+## Exercise 3 - Declare the contract
 
 ```python
 def motion(pos_x, pos_y, vel_x, vel_y, dt):
@@ -53,7 +53,7 @@ The signature plus the docstring is the entire contract. A reader of `motion` do
 
 A test that the contract is honest (a [§43 test-as-system](43_tests_are_systems.md)) compares the declared write-set to the columns the function actually mutated. If `motion` ever silently writes to `energy`, the test catches it.
 
-## Exercise 4 — Write a filter
+## Exercise 4 - Write a filter
 
 ```python
 def starving(energy: np.ndarray) -> np.ndarray:
@@ -70,7 +70,7 @@ print(starving(energy))     # [1 3]
 
 The filter is read-only. It returns the indices that satisfy the predicate; a separate "apply" system writes them into `to_remove`. This separation is the [§22 mutations buffer](22_mutations_buffer.md) discipline applied at the smallest scale: filter and apply are separate systems with different read-sets and write-sets.
 
-## Exercise 5 — Write an emission
+## Exercise 5 - Write an emission
 
 ```python
 def reproduce(parent_energy: np.ndarray, threshold: float):
@@ -96,7 +96,7 @@ print(f"offspring:  {o}")              # [3.5 3.5 4.5 4.5 5.5 5.5]
 
 `np.repeat(arr, 2)` is the emission primitive: each input row produces two output rows in column form. For a 1→N emission with variable N per row, `np.repeat(arr, counts)` takes a per-row count array. The shape is "filter, then expand"; the apply system later inserts the rows into the table.
 
-## Exercise 6 — Observe non-systems
+## Exercise 6 - Observe non-systems
 
 A canonical non-system from the wild:
 
@@ -105,7 +105,7 @@ class GameObject:
     def update(self):
         self.pos += self.vel * GLOBAL_DT
         if self.energy <= 0:
-            print(f"{self.name} died")          # side effect — not in any signature
+            print(f"{self.name} died")          # side effect - not in any signature
             self.dead = True
             World.remove(self)                  # mutates global state
         for nearby in World.find_nearby(self):  # reads global state
@@ -121,7 +121,7 @@ What the signature `def update(self)` declares: nothing. What the body actually 
 
 You cannot tell any of this from the signature. To compose `update` with another system, you'd have to inline the body and trace every method call. Two `update` calls cannot run in parallel because both write `World.objects`. Tests cannot mock the read-set without mocking the world. The function has no contract anyone can read; it has *behaviour*, which is not the same thing.
 
-## Exercise 7 — The OOP cost in your fingers
+## Exercise 7 - The OOP cost in your fingers
 
 ```sh
 uv run code/measurement/tick_budget.py
@@ -136,9 +136,9 @@ The 1M-creatures row:
 
 The dataclass form has *one motion system* eating 82.6% of the 30 Hz budget; the simulator has 5.7 ms left for everything else (collision, energy, reproduction, rendering). At 60 Hz the loop has already missed its deadline. The system-as-function-over-numpy form runs the same logic in 0.278 ms and leaves 32.7 ms (98%) of the 30 Hz budget for the rest of the simulator.
 
-The 100× cost gap is the cost of putting the per-creature loop inside the *interpreter* instead of inside *numpy*. There is no syntactic refactor of the OOP version that closes this gap — the cost is structural.
+The 100× cost gap is the cost of putting the per-creature loop inside the *interpreter* instead of inside *numpy*. There is no syntactic refactor of the OOP version that closes this gap - the cost is structural.
 
-## Exercise 8 — A test as a system (stretch)
+## Exercise 8 - A test as a system (stretch)
 
 ```python
 def no_creature_moved_too_far(prev_pos_x, prev_pos_y,
@@ -158,6 +158,6 @@ violators = no_creature_moved_too_far(prev_x, prev_y, x, y, 1.0)
 assert violators.size == 0, f"creatures {violators} teleported"
 ```
 
-This is a *system* by the chapter's definition: declared read-set, no write-set, no hidden state. Its presence in the program is what an *invariant* looks like — the rest of the program is required to keep `no_creature_moved_too_far` returning an empty array. Failing this test is the simulator telling you the motion system has a bug.
+This is a *system* by the chapter's definition: declared read-set, no write-set, no hidden state. Its presence in the program is what an *invariant* looks like - the rest of the program is required to keep `no_creature_moved_too_far` returning an empty array. Failing this test is the simulator telling you the motion system has a bug.
 
-The Rust edition would write this as a `fn` taking slices; the only difference is that Python tests run inside the same loop while Rust tests usually run as `#[cfg(test)]` builds. The discipline is identical — the test is a system over the same tables, with the same contract shape, that happens to *report* rather than *transform*. [§43 — tests are systems](43_tests_are_systems.md) generalises this.
+The Rust edition would write this as a `fn` taking slices; the only difference is that Python tests run inside the same loop while Rust tests usually run as `#[cfg(test)]` builds. The discipline is identical - the test is a system over the same tables, with the same contract shape, that happens to *report* rather than *transform*. [§43 - tests are systems](43_tests_are_systems.md) generalises this.

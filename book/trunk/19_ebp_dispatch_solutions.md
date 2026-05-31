@@ -1,6 +1,6 @@
-# Solutions: 19 — EBP dispatch
+# Solutions: 19 - EBP dispatch
 
-## Exercise 1 — Re-read your alive-fraction numbers
+## Exercise 1 - Re-read your alive-fraction numbers
 
 The §18 alive-fraction exhibit is the EBP-vs-filtered comparison:
 
@@ -14,7 +14,7 @@ At 1% sparsity (typical for transient state): EBP is **10×** faster than the fi
 
 The takeaway: EBP is the right default for sparse states; bool masks are the right default for near-universal states. Both happen to be correct on a wide range of hardware; AoS is wrong at every fraction.
 
-## Exercise 2 — Implement both, on creatures
+## Exercise 2 - Implement both, on creatures
 
 ```python
 import numpy as np, timeit
@@ -45,7 +45,7 @@ filtered: 2756 µs   EBP: 421 µs   ratio: 6.5×
 
 At 10% sparsity, EBP is 6.5× faster on this machine. The filtered version reads `is_hungry` in full (1M bytes scanned) plus `energy` at the masked positions. The EBP version reads only `hungry` (the K = 100K hungry indices, 400 KB) plus `energy` at those positions. EBP's working set is 90% smaller.
 
-## Exercise 3 — The isinstance trap
+## Exercise 3 - The isinstance trap
 
 ```python
 from dataclasses import dataclass
@@ -76,9 +76,9 @@ print(f"isinstance chain: {t_i*1e3:.1f} ms")
 isinstance chain: 32.4 ms
 ```
 
-At 1M entities with 10% Hungry, the `isinstance` chain costs **77× more than EBP** (32.4 ms vs 0.42 ms). The cost is not the `isinstance` call alone — it's per-entity interpreter dispatch *plus* `isinstance`, *plus* `getattr(e, "energy")`, *plus* the attribute write back to a heap-allocated object. Predicate-per-entity is the structural cost; `isinstance` is its idiomatic embodiment.
+At 1M entities with 10% Hungry, the `isinstance` chain costs **77× more than EBP** (32.4 ms vs 0.42 ms). The cost is not the `isinstance` call alone - it's per-entity interpreter dispatch *plus* `isinstance`, *plus* `getattr(e, "energy")`, *plus* the attribute write back to a heap-allocated object. Predicate-per-entity is the structural cost; `isinstance` is its idiomatic embodiment.
 
-## Exercise 4 — The polymorphic-method trap
+## Exercise 4 - The polymorphic-method trap
 
 ```python
 class Creature:
@@ -105,11 +105,11 @@ Typical: ~50-80 ms. The source-code branching disappeared (no `if isinstance` in
 
 1. Looks up `update` via the MRO chain (one for `Creature`, one for `Hungry`).
 2. Sets up a Python frame for the method call.
-3. Dispatches to a different code path depending on the runtime type — a *cache miss* every time the type changes.
+3. Dispatches to a different code path depending on the runtime type - a *cache miss* every time the type changes.
 
-The "cleaner code" form is *more* expensive than the visible-branch form — the predicate is consulted as often, and each consultation is more work than `isinstance`.
+The "cleaner code" form is *more* expensive than the visible-branch form - the predicate is consulted as often, and each consultation is more work than `isinstance`.
 
-## Exercise 5 — The list-comprehension filter
+## Exercise 5 - The list-comprehension filter
 
 ```python
 def list_comp_dispatch(creatures, dt):
@@ -120,13 +120,13 @@ def list_comp_dispatch(creatures, dt):
 # Two passes: one to filter, one to work. Plus a list allocation.
 ```
 
-The cost is the filtered-iteration baseline *plus* the list allocation. At 1M entities with 10% hungry, expect ~30-40 ms — comparable to the `isinstance` chain, with extra allocation pressure.
+The cost is the filtered-iteration baseline *plus* the list allocation. At 1M entities with 10% hungry, expect ~30-40 ms - comparable to the `isinstance` chain, with extra allocation pressure.
 
-The shape *looks* like EBP (a list containing only the hungry ones). The difference is *when* the filtering happens. EBP's `hungry` table is built when the *transition* occurs (energy crosses below threshold) — once per creature per state change. The list-comp form rebuilds it every read — once per query, on the entire population.
+The shape *looks* like EBP (a list containing only the hungry ones). The difference is *when* the filtering happens. EBP's `hungry` table is built when the *transition* occurs (energy crosses below threshold) - once per creature per state change. The list-comp form rebuilds it every read - once per query, on the entire population.
 
 For a simulator with multiple consumers of "the hungry creatures" per tick, this gap compounds: EBP pays 1× the build cost, list-comp pays K× (K = number of consumers).
 
-## Exercise 6 — A multi-state system
+## Exercise 6 - A multi-state system
 
 ```python
 hungry = ids[energy < 10]
@@ -165,7 +165,7 @@ The filtered version is *one* loop with *three* shared write-sets (`energy`, `li
 
 The §31 multiprocessing pattern is the same systems, run on disjoint slices of `hungry`. The filtered version cannot be split that cleanly because the consumer can't tell, before reading each creature, which branch it will take.
 
-## Exercise 7 — A naive EBP bug (stretch)
+## Exercise 7 - A naive EBP bug (stretch)
 
 ```python
 hungry = list(np.arange(5, dtype=np.uint32))     # five creatures hungry
@@ -178,7 +178,7 @@ for cid in hungry:
         hungry.append(cid + 100)                 # also become *very_hungry*
 ```
 
-The bug: the `for` loop's iteration is over `hungry`'s state at iteration start; appending to `hungry` mid-iteration may or may not extend the iteration depending on the iterator's implementation. With a Python list, appending *does* extend the iteration; with a generator over a numpy slice, it does not. Either way, the behavior is fragile — and reasoning about which creatures end up processed depends on the iteration's implementation detail.
+The bug: the `for` loop's iteration is over `hungry`'s state at iteration start; appending to `hungry` mid-iteration may or may not extend the iteration depending on the iterator's implementation. With a Python list, appending *does* extend the iteration; with a generator over a numpy slice, it does not. Either way, the behavior is fragile - and reasoning about which creatures end up processed depends on the iteration's implementation detail.
 
 The fix is the deferred-cleanup pattern from §15:
 

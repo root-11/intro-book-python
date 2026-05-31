@@ -1,6 +1,6 @@
-# Solutions: 15 — State changes between ticks
+# Solutions: 15 - State changes between ticks
 
-## Exercise 1 — The list bug
+## Exercise 1 - The list bug
 
 ```python
 class Creature:
@@ -27,7 +27,7 @@ The iterator advances by index. When `cs.remove(c)` shifts every later element d
 
 The bug is *silent*. The simulation runs, the program terminates, the answer is wrong. Nothing complains. The fact that you have to count the survivors to detect it is precisely why the discipline of buffered mutation exists.
 
-## Exercise 2 — The dict bug
+## Exercise 2 - The dict bug
 
 ```python
 cs = {i: Creature(-1 if i < 30 else 10) for i in range(100)}
@@ -43,10 +43,10 @@ except RuntimeError as e:
 
 # Local "fix": iterate a snapshot of the keys
 cs = {i: Creature(-1 if i < 30 else 10) for i in range(100)}
-for cid in list(cs.keys()):                    # snapshot — O(N) allocation
+for cid in list(cs.keys()):                    # snapshot - O(N) allocation
     if cs[cid].energy <= 0:
         del cs[cid]
-print(f"survivors: {len(cs)}")                  # 70 — correct!
+print(f"survivors: {len(cs)}")                  # 70 - correct!
 ```
 
 The dict version *crashes loudly*, which is better than silently wrong, but its lesson trains the reader to apply a *local* fix (`list(cs.keys())`) without recognising the structural problem. The local fix:
@@ -57,7 +57,7 @@ The dict version *crashes loudly*, which is better than silently wrong, but its 
 
 Both bugs are the same lesson: **mutating a container while another piece of code is reading it is the bug**, regardless of whether the language catches it.
 
-## Exercise 3 — The buffered fix
+## Exercise 3 - The buffered fix
 
 ```python
 import numpy as np
@@ -84,9 +84,9 @@ energy, ids = cleanup(energy, ids, to_remove)
 print(f"30 starvers → {(energy <= 0).sum()} remain after one tick")    # 0
 ```
 
-The starvation system is *read-only*: it scans `energy` and writes only to `to_remove`. The `energy` array does not change during `apply_starve` — it changes exactly once per tick, in `cleanup`. There is no window in which two systems could see different states.
+The starvation system is *read-only*: it scans `energy` and writes only to `to_remove`. The `energy` array does not change during `apply_starve` - it changes exactly once per tick, in `cleanup`. There is no window in which two systems could see different states.
 
-## Exercise 4 — The cleanup pass
+## Exercise 4 - The cleanup pass
 
 ```python
 def cleanup(world, to_remove: list[int], to_insert: list[dict]) -> None:
@@ -116,9 +116,9 @@ def cleanup(world, to_remove: list[int], to_insert: list[dict]) -> None:
     to_insert.clear()
 ```
 
-Removals first means freed slots immediately host inserts on the same tick; the table doesn't grow when births and deaths balance. Inserts first would force every newborn to push the table to a fresh slot before the dying creatures return their slots — a one-tick high-water mark proportional to the death rate. [§24](24_append_only_and_recycling.md) makes this explicit.
+Removals first means freed slots immediately host inserts on the same tick; the table doesn't grow when births and deaths balance. Inserts first would force every newborn to push the table to a fresh slot before the dying creatures return their slots - a one-tick high-water mark proportional to the death rate. [§24](24_append_only_and_recycling.md) makes this explicit.
 
-## Exercise 5 — Show two ticks
+## Exercise 5 - Show two ticks
 
 ```python
 energy = np.array([-1.0, -1.0, 5.0, 8.0, -1.0], dtype=np.float32)
@@ -132,14 +132,14 @@ to_remove.clear()
 print(f"after tick 1: ids={ids.tolist()}, energy={energy.tolist()}")
 # ids=[12, 13], energy=[5.0, 8.0]
 
-# Tick 2 — only the survivors run
+# Tick 2 - only the survivors run
 apply_starve(energy, to_remove)         # nothing dies
 print(f"tick 2 input: ids={ids.tolist()} (the dead ids 10,11,14 are not in this list)")
 ```
 
-The dead creatures from tick 1 are gone *between* ticks. Tick 2's `apply_starve` sees only the survivors. The systems don't have to know about the death — the cleanup pass handled the bookkeeping at the tick boundary.
+The dead creatures from tick 1 are gone *between* ticks. Tick 2's `apply_starve` sees only the survivors. The systems don't have to know about the death - the cleanup pass handled the bookkeeping at the tick boundary.
 
-## Exercise 6 — Insertions are tick-delayed
+## Exercise 6 - Insertions are tick-delayed
 
 ```python
 ages = np.zeros(N, dtype=np.uint16)
@@ -156,11 +156,11 @@ cleanup(world, to_remove, to_insert)            # offspring now in `creatures`
 age_creatures(world.ages)                       # offspring goes 0 → 1
 ```
 
-The newborn does not appear in any system's read-set during tick 5 — it is in `to_insert`, not in `creatures`. Its first tick of life is tick 6, where it is incremented from 0 to 1 by `age_creatures`. Every creature gets a full tick of life on its first tick, regardless of when in the previous tick it was born.
+The newborn does not appear in any system's read-set during tick 5 - it is in `to_insert`, not in `creatures`. Its first tick of life is tick 6, where it is incremented from 0 to 1 by `age_creatures`. Every creature gets a full tick of life on its first tick, regardless of when in the previous tick it was born.
 
 The alternative (in-tick insertion) would mean a creature born at the start of tick 5 ages from 0 → 1 in the same tick, while one born at the end of tick 5 ages 0 → 0. That arbitrariness is what the rule prevents.
 
-## Exercise 7 — A bad design that almost works (stretch)
+## Exercise 7 - A bad design that almost works (stretch)
 
 The "fix" of processing dead creatures in reverse-index order:
 
@@ -185,7 +185,7 @@ What `inspect` sees: a mix of creatures who were alive at the start of the tick 
 
 The buffered approach prevents *all* of this by definition: nothing changes in `creatures` until `cleanup`, and `cleanup` applies removals + insertions in one consistent sweep.
 
-## Exercise 8 — Read the simlog (stretch)
+## Exercise 8 - Read the simlog (stretch)
 
 The vendored copy at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is the production-grade version of this chapter's pattern. Things to find:
 
@@ -193,4 +193,4 @@ The vendored copy at [`.archive/simlog/logger.py`](https://github.com/root-11/in
 - **The atomic swap.** When `active` fills, the logger atomically swaps the two references (`active`, `inactive` = `inactive`, `active`). The simulation's next write goes to the now-empty buffer; the previously-active buffer is now `inactive` and ready for flushing.
 - **The background flush thread.** A worker thread sleeps until `inactive` is non-empty, then writes its contents to disk (`.npz` chunks) and clears it.
 
-The simulator never holds both containers at once. The flush thread never sees a write in progress. The whole apparatus is the chapter's "writes accumulate, then commit" rule — at production scale, with a background flush, ~1 µs per logged event, and zero coordination cost on the hot path. Worth reading once you have written the toy version yourself.
+The simulator never holds both containers at once. The flush thread never sees a write in progress. The whole apparatus is the chapter's "writes accumulate, then commit" rule - at production scale, with a background flush, ~1 µs per logged event, and zero coordination cost on the hot path. Worth reading once you have written the toy version yourself.

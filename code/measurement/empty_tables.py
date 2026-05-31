@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§20 exhibit — optional fields on every entity vs presence table.
+§20 exhibit - optional fields on every entity vs presence table.
 
 A 1,000,000-creature world where some have a disease. Two layouts:
 
@@ -22,7 +22,7 @@ Three measurements per (layout, prevalence) cell:
     - count of creatures actually processed
 
 Each cell measured in a fresh subprocess so RSS readings don't bleed.
-Prevalences include 0% — where the empty-tables-free property is the
+Prevalences include 0% - where the empty-tables-free property is the
 whole point.
 
 Run:
@@ -56,7 +56,7 @@ class Creature:
     pos: float
     vel: float
     energy: float
-    disease: object  # Optional[Disease] — None for healthy
+    disease: object  # Optional[Disease] - None for healthy
 
 
 def setup_optional(prevalence: float) -> list:

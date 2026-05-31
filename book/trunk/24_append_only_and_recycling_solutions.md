@@ -1,6 +1,6 @@
-# Solutions: 24 — Append-only and recycling
+# Solutions: 24 - Append-only and recycling
 
-## Exercise 1 — Two append-only logs
+## Exercise 1 - Two append-only logs
 
 ```python
 import numpy as np
@@ -15,7 +15,7 @@ class AppendLog:
 
     def append(self, tick: int, creature_id: int, value):
         if self.n_active >= self.capacity:
-            raise MemoryError("log full — snapshot and truncate")
+            raise MemoryError("log full - snapshot and truncate")
         self.tick[self.n_active]     = tick
         self.creature[self.n_active] = creature_id
         self.value[self.n_active]    = value
@@ -25,13 +25,13 @@ eaten = AppendLog(capacity=1_000_000, dtype=np.float32)
 born  = AppendLog(capacity=1_000_000, dtype=np.uint32)
 
 # After 1000 ticks of the simulator
-print(f"eaten: {eaten.n_active} entries (monotonic — never shrinks)")
+print(f"eaten: {eaten.n_active} entries (monotonic - never shrinks)")
 print(f"born:  {born.n_active} entries (monotonic)")
 ```
 
 Both `n_active` counters only ever increment. Once entries are written, they stay. Capacity is the high-water-mark of *total events ever recorded*, not of *current population*.
 
-## Exercise 2 — A recycling pool
+## Exercise 2 - A recycling pool
 
 ```python
 class SlotPool:
@@ -66,7 +66,7 @@ for slot in first_batch[:500]:
 second_batch = [pool.allocate()[0] for _ in range(500)]
 print(f"second 500 slots: {second_batch[:5]}...{second_batch[-3:]}")
 print(f"all reused?      {set(second_batch).issubset(set(first_batch[:500]))}")
-print(f"next_slot now:   {pool.next_slot}")  # still 1000 — no growth
+print(f"next_slot now:   {pool.next_slot}")  # still 1000 - no growth
 ```
 
 ```
@@ -76,9 +76,9 @@ all reused?      True
 next_slot now:   1000
 ```
 
-The second batch reuses the freed slots in LIFO order (the most recently freed slot is allocated next). Total `next_slot` stays at 1000 — the pool did not grow.
+The second batch reuses the freed slots in LIFO order (the most recently freed slot is allocated next). Total `next_slot` stays at 1000 - the pool did not grow.
 
-## Exercise 3 — Stale reference detection
+## Exercise 3 - Stale reference detection
 
 ```python
 pool = SlotPool(capacity=100)
@@ -93,12 +93,12 @@ def deref(pool, ref):
     return None if int(pool.gens[slot]) != gen else slot
 
 print(f"new ref deref:  {deref(pool, new_ref)}")      # 0
-print(f"old ref deref:  {deref(pool, old_ref)}")      # None — stale!
+print(f"old ref deref:  {deref(pool, old_ref)}")      # None - stale!
 ```
 
 The old reference's generation is stale. Even though the *slot* is alive again, the generation check correctly identifies that the holder of `old_ref` is looking at a *different* row than they expect. The reference is rejected; the holder must re-fetch.
 
-## Exercise 4 — Switch creatures to append-only
+## Exercise 4 - Switch creatures to append-only
 
 ```python
 # After 10,000 ticks, steady-state birth/death:
@@ -111,11 +111,11 @@ The old reference's generation is stale. Even though the *slot* is alive again, 
 # Wasted:       28.8 MB sitting in dead slots
 ```
 
-The append-only `creatures` table has 90% of its memory occupied by *tombstones* — slots whose previous occupants are dead. Reading `n_active` is correct, but the table's allocated bytes grow with elapsed time. For a 1-hour simulation, the wasted memory might be 100× the live data.
+The append-only `creatures` table has 90% of its memory occupied by *tombstones* - slots whose previous occupants are dead. Reading `n_active` is correct, but the table's allocated bytes grow with elapsed time. For a 1-hour simulation, the wasted memory might be 100× the live data.
 
 For history tables this is fine (the tombstones are the history). For the live population it's a memory leak waiting to be named. Recycling is the structural fix.
 
-## Exercise 5 — Switch `eaten` to recycling
+## Exercise 5 - Switch `eaten` to recycling
 
 ```python
 # eaten is now a SlotPool-managed table with capacity 10_000
@@ -128,11 +128,11 @@ For history tables this is fine (the tombstones are the history). For the live p
 # Search after tick 250: finds nothing (the row was recycled at ~tick 250)
 ```
 
-The history is *gone* once a slot is recycled. There is no record that creature 42 ate at tick 50 — the slot now holds tick 273's eat event for creature 91. Recycling for a history table is *category error*.
+The history is *gone* once a slot is recycled. There is no record that creature 42 ate at tick 50 - the slot now holds tick 273's eat event for creature 91. Recycling for a history table is *category error*.
 
 This is exactly the failure mode that makes append-only correct for logs. Logs grow forever; you handle that with snapshot-and-truncate or tiered storage, not by recycling slots.
 
-## Exercise 6 — A capacity-aware allocator (stretch)
+## Exercise 6 - A capacity-aware allocator (stretch)
 
 ```python
 class CapacityAwarePool:

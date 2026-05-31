@@ -1,6 +1,6 @@
-# Solutions: 40 — Mechanism vs policy
+# Solutions: 40 - Mechanism vs policy
 
-## Exercise 1 — Find the mechanism
+## Exercise 1 - Find the mechanism
 
 | system            | role               | what's buried where                       |
 |-------------------|--------------------|-------------------------------------------|
@@ -15,7 +15,7 @@
 
 `motion` is the trickiest: the per-tick update is mechanism, but the *integration scheme* (Euler vs Verlet vs Runge-Kutta) is a policy. For most simulators the scheme is fixed, but in physics-focused work it's a policy variable that should be extractable.
 
-## Exercise 2 — Replace a policy
+## Exercise 2 - Replace a policy
 
 ```python
 # Before
@@ -24,7 +24,7 @@ def apply_starve(world, buffer):
     for s in starvers:
         buffer.to_remove.append(int(world.id[s]))
 
-# After — different rule, same mechanism
+# After - different rule, same mechanism
 def apply_starve_v2(world, buffer):
     starvers = np.where(
         (world.energy[: world.n_active] < -10) &
@@ -36,7 +36,7 @@ def apply_starve_v2(world, buffer):
 
 `cleanup` is unchanged. The new rule replaces the old; nothing else cares. This is the test of clean mechanism-policy separation: a policy change is a one-file diff.
 
-## Exercise 3 — Add a new policy on the same mechanism
+## Exercise 3 - Add a new policy on the same mechanism
 
 ```python
 def apply_predation(world, buffer):
@@ -53,9 +53,9 @@ def apply_predation(world, buffer):
 # cleanup applies both batches without knowing which policy contributed which ids
 ```
 
-Two policies, one mechanism. The cleanup pass deduplicates (`np.unique` inside cleanup, per [§22](22_mutations_buffer.md)) so a creature that's both starving *and* predated is correctly removed once. Two policies could disagree (one wants to remove, another wants to keep alive); resolving that disagreement is a *third* policy that runs before either — *meta-policy* — and it lives at the cleanup boundary just like the other two.
+Two policies, one mechanism. The cleanup pass deduplicates (`np.unique` inside cleanup, per [§22](22_mutations_buffer.md)) so a creature that's both starving *and* predated is correctly removed once. Two policies could disagree (one wants to remove, another wants to keep alive); resolving that disagreement is a *third* policy that runs before either - *meta-policy* - and it lives at the cleanup boundary just like the other two.
 
-## Exercise 4 — Spot the anti-pattern
+## Exercise 4 - Spot the anti-pattern
 
 Common offenders:
 
@@ -90,7 +90,7 @@ def cleanup_clean(world, buffer):
 
 The audit pattern: read each system. Ask "what decision is this making?" and "what action is this taking?" If both, split into a decider and an applier.
 
-## Exercise 5 — Audit your decorators
+## Exercise 5 - Audit your decorators
 
 ```python
 # Decorator that hides control flow
@@ -121,7 +121,7 @@ if user.has_role("admin") and not cache.has(cid, ttl=60):
 
 Policy lives at the call site, where the context is. The function does one thing.
 
-## Exercise 6 — A second mechanism (stretch)
+## Exercise 6 - A second mechanism (stretch)
 
 ```python
 def cleanup_with_archive(world, buffer):

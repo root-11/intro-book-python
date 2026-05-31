@@ -1,8 +1,8 @@
-# 36 — Persistence is table serialization
+# 36 - Persistence is table serialization
 
 > *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 36](../../concepts/glossary.md#36--persistence-is-table-serialization).*
 
-<p align="center"><img src="../illustrations/mathematics_describes.jpg" alt="Mathematics describes, models, implements — persistence captures the world that worked" style="max-height: 300px; max-width: 100%;"></p>
+<p align="center"><img src="../illustrations/mathematics_describes.jpg" alt="Mathematics describes, models, implements - persistence captures the world that worked" style="max-height: 300px; max-width: 100%;"></p>
 
 The simulator pauses. The world is in memory: eight columns of `creatures` (`pos_x`, `pos_y`, `vel_x`, `vel_y`, `energy`, `birth_t`, `id`, `gen`), a `food` table, presence tables (`hungry`, `dead`, etc.), the index map (`id_to_slot`), and the cleanup buffers. To pause durably, all of this must be written to disk; to resume, all of this must be read back.
 
@@ -36,13 +36,13 @@ From [`code/measurement/persistence_shapes.py`](https://github.com/root-11/intro
 | `np.savez`                          |     34.33 |       18.8 |      62.9 |
 | `np.savez_compressed`               |     25.52 |    1,004.7 |      98.5 |
 
-Plus an unpaid invoice: **building the `list[Creature]` for the AoS variant cost 1,314 ms** before pickle even started — the construction tax from [§6](06_a_row_is_a_tuple.md). If your in-memory representation is already AoS, you carry that cost on every snapshot.
+Plus an unpaid invoice: **building the `list[Creature]` for the AoS variant cost 1,314 ms** before pickle even started - the construction tax from [§6](06_a_row_is_a_tuple.md). If your in-memory representation is already AoS, you carry that cost on every snapshot.
 
 Three readings.
 
-**The AoS form is catastrophic.** 86 MB on disk for 34 MB of data — pickle adds ~2.5× of per-row metadata, type tags, and refcount overhead. 2.1 seconds to write, 0.9 seconds to read. **778× slower writing than pickle-of-columns** for the same logical content. This is the `pickle.dump(creatures, ...)` form most Python tutorials demonstrate. It is the single most expensive way to persist a million-row world that the language offers.
+**The AoS form is catastrophic.** 86 MB on disk for 34 MB of data - pickle adds ~2.5× of per-row metadata, type tags, and refcount overhead. 2.1 seconds to write, 0.9 seconds to read. **778× slower writing than pickle-of-columns** for the same logical content. This is the `pickle.dump(creatures, ...)` form most Python tutorials demonstrate. It is the single most expensive way to persist a million-row world that the language offers.
 
-**Pickle-of-numpy-columns is genuinely fast.** Numpy's `__reduce__` protocol means pickle writes the array bytes directly with thin wrappers around them — no per-row work. 2.7 ms write, 13.9 ms read for 34 MB of data is bandwidth-bound. The format is **smaller and faster than `np.savez`** in this measurement.
+**Pickle-of-numpy-columns is genuinely fast.** Numpy's `__reduce__` protocol means pickle writes the array bytes directly with thin wrappers around them - no per-row work. 2.7 ms write, 13.9 ms read for 34 MB of data is bandwidth-bound. The format is **smaller and faster than `np.savez`** in this measurement.
 
 **`np.savez` pays for portability.** It is 7× slower to write than pickle-of-columns (18.8 ms vs 2.7 ms) because it builds a zip archive with each array as a `.npy` member. The cost buys two things pickle cannot offer:
 
@@ -63,19 +63,19 @@ The honest recommendation:
 
 **No object marshalling.** No `__getstate__`, no `__setstate__`, no `pydantic.BaseModel`, no `Marshmallow` schemas. The numpy array is written as bytes; bytes are read as a numpy array.
 
-**No translation bugs.** ORMs, JSON-with-coercion, and pickled-class-hierarchies are famous sources of subtle correctness issues — fields renamed, types coerced, edge cases mishandled. Here the in-memory and on-disk forms are bit-identical; the load is `np.load(path)` and that is all.
+**No translation bugs.** ORMs, JSON-with-coercion, and pickled-class-hierarchies are famous sources of subtle correctness issues - fields renamed, types coerced, edge cases mishandled. Here the in-memory and on-disk forms are bit-identical; the load is `np.load(path)` and that is all.
 
 **Deterministic recovery.** A snapshot taken in a deterministic simulator round-trips exactly. The hashed world after `snapshot → load` is identical to the hashed world before. Combined with [§16](16_determinism_by_order.md)'s rules and [§35](35_boundary_is_the_queue.md)'s queue, replay is structural.
 
 ## What it does *not* save you from
 
-**Schema versioning.** A new column added between snapshots breaks the load. Three things can break a snapshot across environments: the *schema* changed (you added a column or renamed a type), the *byte order* differs (you saved on a little-endian machine and loaded on a big-endian one — rare on Linux/Mac/Windows but possible on certain ARM configurations), or the *Python version* differs (rare for `.npy`, common for pickle). All three have the same fix: write a small header with every snapshot — a `schema_version: int` column with one element — and at load time, run the matching migration if the field disagrees with current code. Most simulators target a single architecture and skip the migrations until they are needed; the mechanism is there from day one for the cost of a single integer.
+**Schema versioning.** A new column added between snapshots breaks the load. Three things can break a snapshot across environments: the *schema* changed (you added a column or renamed a type), the *byte order* differs (you saved on a little-endian machine and loaded on a big-endian one - rare on Linux/Mac/Windows but possible on certain ARM configurations), or the *Python version* differs (rare for `.npy`, common for pickle). All three have the same fix: write a small header with every snapshot - a `schema_version: int` column with one element - and at load time, run the matching migration if the field disagrees with current code. Most simulators target a single architecture and skip the migrations until they are needed; the mechanism is there from day one for the cost of a single integer.
 
 **The pickle-version trap.** Every CPython release that adds a new pickle protocol risks invalidating pickled data from older versions. `protocol=pickle.HIGHEST_PROTOCOL` keeps you on the latest, which is great for speed and dangerous for archival. If you are picking pickle-of-columns over `np.savez` for snapshot speed, set `protocol` to a stable older version (e.g. `protocol=4`, supported since CPython 3.4) so a new Python version cannot strand your archive.
 
 The pattern shows up everywhere this scale matters. Write-ahead logs in databases, save-game files in games, checkpoint files in HPC, frame snapshots in video editing. They all dodge the ORM trap by writing the columns directly.
 
-The simulator's snapshot is roughly five lines of Python per direction (the code block at the top). The OOP equivalent — define a `CreatureRecord` `pydantic` model, walk the world serialising one creature at a time — is ten times the code, **two-to-three orders of magnitude slower at runtime**, and prone to the translation bugs the column-direct version cannot have.
+The simulator's snapshot is roughly five lines of Python per direction (the code block at the top). The OOP equivalent - define a `CreatureRecord` `pydantic` model, walk the world serialising one creature at a time - is ten times the code, **two-to-three orders of magnitude slower at runtime**, and prone to the translation bugs the column-direct version cannot have.
 
 ## Exercises
 
@@ -91,4 +91,4 @@ Reference notes in [36_persistence_is_serialization_solutions.md](36_persistence
 
 ## What's next
 
-[§37 — The log is the world](37_log_is_world.md) makes the structural argument explicit: the log of events and the world's tables share a shape; one is a projection of the other.
+[§37 - The log is the world](37_log_is_world.md) makes the structural argument explicit: the log of events and the world's tables share a shape; one is a projection of the other.

@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§12 exhibit — three ways to store event timestamps, three footprints.
+§12 exhibit - three ways to store event timestamps, three footprints.
 
 N events, each carrying a microsecond-resolution timestamp, stored three ways:
 

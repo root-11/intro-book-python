@@ -3,14 +3,14 @@
 # dependencies = ["numpy"]
 # ///
 """
-§3 exhibit — same payload, five layouts, five footprints.
+§3 exhibit - same payload, five layouts, five footprints.
 
 N rows of K integers each, laid out five ways:
 
     1. list of tuples              (AoS, the canonical Python-default)
     2. list of lists               (AoS, the even-worse case)
     3. tuple of lists              (SoA, stdlib only)
-    4. tuple of array.array        (SoA, stdlib typed — middle ground)
+    4. tuple of array.array        (SoA, stdlib typed - middle ground)
     5. tuple of numpy int64 arrays (SoA, the disciplined endpoint)
 
 Each layout is built in a fresh subprocess so RSS readings do not bleed
@@ -123,7 +123,7 @@ def worker(idx, q):
 
 def main():
     print(f"N = {N:,} rows, K = {K} ints per row")
-    print(f"values in [{BASE}, {BASE + N + K}) — past CPython small-int interning")
+    print(f"values in [{BASE}, {BASE + N + K}) - past CPython small-int interning")
     print(f"each layout measured in a fresh subprocess\n")
 
     header = f"{'layout':<46}  {'build (s)':>9}  {'RSS (MB)':>9}  {'sum c0 (s)':>10}"
@@ -146,7 +146,7 @@ def main():
     print()
     checksums = [r["checksum"] for r in results]
     assert all(c == checksums[0] for c in checksums), \
-        f"checksum mismatch — layouts disagree on the data: {checksums}"
+        f"checksum mismatch - layouts disagree on the data: {checksums}"
     print(f"checksum (matches across all layouts): {checksums[0]:,}")
 
     print("\nRatios vs layout 5 (numpy SoA):")

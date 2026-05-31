@@ -1,6 +1,6 @@
-# Solutions: 32 — Partition, don't lock
+# Solutions: 32 - Partition, don't lock
 
-## Exercise 1 — Run the coordination exhibit
+## Exercise 1 - Run the coordination exhibit
 
 ```sh
 uv run code/measurement/coordination_patterns.py
@@ -30,7 +30,7 @@ Coordination events per 30 Hz tick budget (33 ms):
 
 Any of them is enough for a *batched* simulator (10-100 phase signals per tick). None of them is enough for *per-creature* signalling (1M events per tick).
 
-## Exercise 2 — The batching threshold on your machine
+## Exercise 2 - The batching threshold on your machine
 
 At 30K msgs/sec coordination and ~30M ops/sec inner-loop numpy work (one motion update on 1M creatures in ~30 ms):
 
@@ -42,11 +42,11 @@ For coordination ≤ 10% of work:
   partition_size ≥ 165 creatures
 ```
 
-So **partitions ≥ 200 creatures** keep coordination cost under 10% of work cost. Below 200, coordination dominates; above, work dominates. For the simulator's 1M creatures over 8 workers, each partition is 125,000 — three orders of magnitude past the threshold. Coordination is negligible.
+So **partitions ≥ 200 creatures** keep coordination cost under 10% of work cost. Below 200, coordination dominates; above, work dominates. For the simulator's 1M creatures over 8 workers, each partition is 125,000 - three orders of magnitude past the threshold. Coordination is negligible.
 
-The threshold matters when *partition size shrinks* — e.g., a focal sub-system that only acts on 100 creatures should not be partitioned across 8 workers (coordination would dominate); it should be run by one worker.
+The threshold matters when *partition size shrinks* - e.g., a focal sub-system that only acts on 100 creatures should not be partitioned across 8 workers (coordination would dominate); it should be run by one worker.
 
-## Exercise 3 — Pre-assigned partitions
+## Exercise 3 - Pre-assigned partitions
 
 ```python
 # At startup
@@ -71,9 +71,9 @@ Compared to a re-sending version (`pool.map(motion_worker, [(i*N//W, (i+1)*N//W)
 - Pre-assigned: one signal per phase = one small int per worker (~1 µs)
 - Re-sending: tuple of two ints per worker, pickled and unpickled (~10-30 µs)
 
-At 100 phases per tick × 8 workers, that's 800-2400 µs vs ~800 µs. Real savings, but small in absolute terms — the *architectural* benefit (workers can keep state across phases, cached) matters more than the marginal IPC.
+At 100 phases per tick × 8 workers, that's 800-2400 µs vs ~800 µs. Real savings, but small in absolute terms - the *architectural* benefit (workers can keep state across phases, cached) matters more than the marginal IPC.
 
-## Exercise 4 — The DAG-as-array
+## Exercise 4 - The DAG-as-array
 
 ```python
 # DAG_PROGRAM[phase, worker_id] = system_id_to_run (or 0 for "idle")
@@ -100,7 +100,7 @@ def worker_loop(my_id, gen_array, dag_array, shm_name):
 
 Correctness is testable: pin the DAG, run for N ticks under the shared-array implementation, then run the same with a `for system in dag: run_system_serial(system)` baseline. Compare world hashes. They must match.
 
-## Exercise 5 — Load-balanced partitioning
+## Exercise 5 - Load-balanced partitioning
 
 ```python
 # Per-worker timestamps stamped at phase end
@@ -122,11 +122,11 @@ def rebalance(boundaries, last_phase_durations, total_n):
     return new_boundaries
 ```
 
-Run for 1000 ticks. Plot per-worker phase times tick by tick. The boundaries oscillate at first, then converge to a steady state where every worker finishes its phase at roughly the same wall time. The convergence rate depends on the workload's stability — a flat-world uniform simulator converges fast; one with bursty events stays jittery.
+Run for 1000 ticks. Plot per-worker phase times tick by tick. The boundaries oscillate at first, then converge to a steady state where every worker finishes its phase at roughly the same wall time. The convergence rate depends on the workload's stability - a flat-world uniform simulator converges fast; one with bursty events stays jittery.
 
 This is *closed-loop scheduling*. Same pattern as TCP's congestion control: observe, react, repeat. Main has the timestamps; main decides.
 
-## Exercise 6 — Workload heterogeneity
+## Exercise 6 - Workload heterogeneity
 
 ```python
 # Construct: 80% of the work in 20% of the partitions
@@ -137,16 +137,16 @@ def heavy_partition(i, start, end, _arr):
         _arr[0, start:end] += _arr[1, start:end] * DT
 ```
 
-Fixed equal-sized partitioning: workers 0 and 1 take 10× longer per phase than workers 2-7. The phase wall time is dominated by workers 0 and 1 — *the slowest worker sets the phase budget*. Workers 2-7 sit idle, wasting cores.
+Fixed equal-sized partitioning: workers 0 and 1 take 10× longer per phase than workers 2-7. The phase wall time is dominated by workers 0 and 1 - *the slowest worker sets the phase budget*. Workers 2-7 sit idle, wasting cores.
 
 Load-balanced version (from exercise 5): boundaries converge to small slices for workers 0 and 1, large slices for workers 2-7. Steady state: all workers finish in roughly the same wall time. The phase budget shrinks ~3× because the slow workers got less work.
 
 This is the right shape for any simulator where workload is non-uniform across space (MMORPGs with cities, fluid simulations with turbulence, traffic with congestion). Static partitioning is a special case that works only when the work is uniform.
 
-## Exercise 7 — The boundary-builder lives in `__main__`
+## Exercise 7 - The boundary-builder lives in `__main__`
 
 ```python
-# Worker tries to compute its own slice — fragile
+# Worker tries to compute its own slice - fragile
 def bad_worker(my_id, n_workers, shm_name):
     s = SharedMemory(shm_name)
     arr = np.ndarray(SHAPE, dtype=DTYPE, buffer=s.buf)
@@ -162,7 +162,7 @@ shm = SharedMemory(create=True, size=(2 * 1_000_000 * 4 + 64))
 # tick 1 fires with N=1_000_000
 # main resizes the array somehow during tick 2 (in reality you can't easily resize shared memory, but if N is read from a counter:
 shm_n = ...                                    # shared counter
-shm_n[0] = 2_000_000                            # mid-tick — chaos
+shm_n[0] = 2_000_000                            # mid-tick - chaos
 # now workers think they own [0, 1_000_000/W) but the data layout changed
 ```
 
@@ -170,7 +170,7 @@ The disciplined form: `__main__` computes boundaries once, writes them to a shar
 
 Letting workers compute their own slice from `(my_id, n_workers, N)` is fragile because `N` and `n_workers` must agree across all workers and main. Centralising the boundaries in `__main__` eliminates the disagreement.
 
-## Exercise 8 — `Event` instead of busy-wait (stretch)
+## Exercise 8 - `Event` instead of busy-wait (stretch)
 
 ```python
 # Worker spins on shared array
@@ -182,11 +182,11 @@ event.wait()
 event.clear()
 ```
 
-`event.wait()` puts the worker to sleep at the kernel level. The wakeup involves an inter-process signal — typically 50-200 µs of overhead. Compared to the spin-loop (~0.1-1 µs latency), the Event-based pattern is 50-500× slower per round-trip.
+`event.wait()` puts the worker to sleep at the kernel level. The wakeup involves an inter-process signal - typically 50-200 µs of overhead. Compared to the spin-loop (~0.1-1 µs latency), the Event-based pattern is 50-500× slower per round-trip.
 
 But: the spinning worker pins a CPU core at 100% even when there's no work. On a laptop, this means heat and battery drain. On a shared server, it crowds out other processes. **Event-based wakeup is the right choice for low-frequency coordination** (≤ a few hundred wakeups per second, e.g. background batch jobs). Spin-loop is right for *high-frequency* coordination on dedicated cores (a real-time simulator at 1 kHz).
 
-## Exercise 9 — The 1 kHz physics-engine question (stretch)
+## Exercise 9 - The 1 kHz physics-engine question (stretch)
 
 ```
 Tick budget at 1 kHz: 1 ms = 1000 µs
@@ -194,7 +194,7 @@ Tick budget at 1 kHz: 1 ms = 1000 µs
 If coordination is 1 µs/event (shared array, no contention):
   budget allows 1000 coordination events / tick
   but a typical physics simulator wants ~50 system phases × 8 workers = 400 events / tick
-  fits — coordination uses 40% of the budget
+  fits - coordination uses 40% of the budget
 
 If coordination is 30 µs/event (queue-based):
   budget allows 33 events / tick
@@ -202,6 +202,6 @@ If coordination is 30 µs/event (queue-based):
   does not fit
 ```
 
-At 1 kHz the simulator must use shared-array coordination *and* still has 40% of its budget consumed by coordination alone. Most physics engines run at 1 kHz or higher (game physics often at 240 Hz, control systems at 1-10 kHz). The arithmetic above is why those engines are usually in C++ or Rust — the per-event coordination cost in those languages is ~10-100 ns, leaving room for the actual physics.
+At 1 kHz the simulator must use shared-array coordination *and* still has 40% of its budget consumed by coordination alone. Most physics engines run at 1 kHz or higher (game physics often at 240 Hz, control systems at 1-10 kHz). The arithmetic above is why those engines are usually in C++ or Rust - the per-event coordination cost in those languages is ~10-100 ns, leaving room for the actual physics.
 
 The escalation: at the point where Python coordination eats the budget, the work shifts to maturin (Rust + PyO3) for the inner loop. Same architecture, same partition-don't-lock pattern, but with sub-microsecond coordination via Rust's `crossbeam::channel` or `std::sync::atomic`. **The architecture is portable; the language is the tooling decision.**

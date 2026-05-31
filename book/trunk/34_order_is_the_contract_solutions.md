@@ -1,13 +1,13 @@
-# Solutions: 34 — Order is the contract
+# Solutions: 34 - Order is the contract
 
-## Exercise 1 — Build the schedule
+## Exercise 1 - Build the schedule
 
 ```python
 def tick(world, dt, scheduler):
     # Phase 1: serial (just one system)
     next_event(world)
 
-    # Phase 2: parallel — three appliers, disjoint write-sets
+    # Phase 2: parallel - three appliers, disjoint write-sets
     scheduler.run_phase([
         (apply_eat, world),
         (apply_reproduce, world),
@@ -23,7 +23,7 @@ def tick(world, dt, scheduler):
 
 The barrier is `scheduler.run_phase(...)`: it does not return until every system in the phase has completed. `cleanup` therefore cannot start before the three appliers all finish. The schedule is the document; `run_phase` is the enforcement.
 
-## Exercise 2 — Test for determinism
+## Exercise 2 - Test for determinism
 
 ```python
 def hash_world(world) -> str:
@@ -41,9 +41,9 @@ assert hash_world(a) == hash_world(b)
 
 The parallel ticks must produce a bit-identical world. If the assertion holds, the schedule is correct; the parallelism inside each phase is order-independent (disjoint write-sets), and the barriers between phases enforce the order across phases.
 
-If the assertion fails, the next step is exercise 5's bisection — find which phase first introduces nondeterminism.
+If the assertion fails, the next step is exercise 5's bisection - find which phase first introduces nondeterminism.
 
-## Exercise 3 — Break the contract
+## Exercise 3 - Break the contract
 
 ```python
 # anti-pattern: bad! cleanup races with apply_starve
@@ -65,9 +65,9 @@ run 1: hash = abc123...
 run 2: hash = def456...
 ```
 
-Sometimes the runs agree (if the appliers happen to finish before `cleanup` reads), sometimes they don't. The non-determinism is a *race*, and races present worst at the wrong time — they pass in CI, fail in production, then pass again when you go to debug. The fix is to keep the barrier. The intermittency is the cost of skipping it.
+Sometimes the runs agree (if the appliers happen to finish before `cleanup` reads), sometimes they don't. The non-determinism is a *race*, and races present worst at the wrong time - they pass in CI, fail in production, then pass again when you go to debug. The fix is to keep the barrier. The intermittency is the cost of skipping it.
 
-## Exercise 4 — Find your phase boundaries
+## Exercise 4 - Find your phase boundaries
 
 For the §0 simulator's eight systems:
 
@@ -87,11 +87,11 @@ Phases (level-grouped):
   phase 5: {inspect}                             # 1 task
 ```
 
-Each phase boundary is a barrier. The simulator's parallelism opportunity is phase 3 — three workers can run the three appliers. The other phases are serial (one task each).
+Each phase boundary is a barrier. The simulator's parallelism opportunity is phase 3 - three workers can run the three appliers. The other phases are serial (one task each).
 
 For a wider simulator with more independent systems, more phases would have multiple tasks. The scheduler (exercise 7) is the algorithm that finds these.
 
-## Exercise 5 — The asyncio trap, hands-on
+## Exercise 5 - The asyncio trap, hands-on
 
 ```python
 import asyncio
@@ -109,13 +109,13 @@ async def tick_async(world, dt):
 asyncio.run(tick_async(world, 1/30))
 ```
 
-What happens: `asyncio.gather` schedules all six coroutines. Each runs until it hits an `await` (sleep, I/O, etc.). Since these are pure-Python CPU functions, none of them yield — whichever was scheduled first runs to completion, then the next, etc. The *order* is whatever `gather` happens to emit them in, which is *not* the DAG order.
+What happens: `asyncio.gather` schedules all six coroutines. Each runs until it hits an `await` (sleep, I/O, etc.). Since these are pure-Python CPU functions, none of them yield - whichever was scheduled first runs to completion, then the next, etc. The *order* is whatever `gather` happens to emit them in, which is *not* the DAG order.
 
 Two runs of the simulator: `motion` happens to run first in run A and `apply_eat` happens to run first in run B (because the asyncio scheduler is allowed to choose). The world hashes diverge.
 
 `gather` is the wrong shape for CPU work with dependencies. It is correct for *I/O* concurrency (request multiple URLs in parallel) where the order doesn't matter and waits are real. For CPU systems with a DAG, a *scheduler* (the ventilator) is the right tool.
 
-## Exercise 6 — Cross-machine determinism
+## Exercise 6 - Cross-machine determinism
 
 Set up two machines (e.g. your laptop and a server, or two cores in a CI matrix). Run the same simulator with the same seed. Hash the world after N ticks. Compare hashes.
 
@@ -129,11 +129,11 @@ If they diverge, candidates to investigate:
 
 A simulator that is bit-identical across two machines is genuinely deterministic. Most simulators take some work to reach this; the work pays back in every test, every replay, every reproducible bug report.
 
-## Exercise 7 — A minimal scheduler (stretch)
+## Exercise 7 - A minimal scheduler (stretch)
 
 ```python
 def topo_phases(systems: list[tuple[str, set[str], set[str]]]) -> list[list[str]]:
-    """Return systems grouped by DAG level — each list is a parallel phase."""
+    """Return systems grouped by DAG level - each list is a parallel phase."""
     writers: dict[str, set[str]] = {}
     for name, _, ws in systems:
         for t in ws:
@@ -187,6 +187,6 @@ phase 3: ['apply_eat', 'apply_reproduce', 'apply_starve']
 phase 4: ['cleanup']
 ```
 
-The phases drop out of Kahn's algorithm with a small tweak — instead of pulling one node per iteration, pull *all* nodes with `in_deg == 0` as a single phase. Each phase is the set of systems that can run in parallel without violating any dependency.
+The phases drop out of Kahn's algorithm with a small tweak - instead of pulling one node per iteration, pull *all* nodes with `in_deg == 0` as a single phase. Each phase is the set of systems that can run in parallel without violating any dependency.
 
 This is the scheduler. It is ~30 lines. Every ECS engine has a version of it; the structure is identical across languages.

@@ -1,6 +1,6 @@
-# Solutions: 31 — Disjoint write-sets parallelize freely
+# Solutions: 31 - Disjoint write-sets parallelize freely
 
-## Exercise 1 — Run the rig
+## Exercise 1 - Run the rig
 
 ```sh
 uv run code/measurement/parallel_motion.py
@@ -30,9 +30,9 @@ uv run code/measurement/parallel_motion.py
 
 On this machine, the memory-bound case plateaus around 4-8 workers (~7-8.5× speedup); compute-bound climbs more steadily to 7.3× at 16 workers. The memory-bound ceiling is *aggregate bandwidth*; compute-bound is *physical core count plus partial SMT overlap*.
 
-Find your curve's flat spot — that's your machine's parallel ceiling for each regime.
+Find your curve's flat spot - that's your machine's parallel ceiling for each regime.
 
-## Exercise 2 — Threading falls short
+## Exercise 2 - Threading falls short
 
 ```python
 from threading import Thread
@@ -53,7 +53,7 @@ for th in threads: th.join()
 print(f"threading × 8: {(time.perf_counter()-t)*1000:.1f} ms")
 ```
 
-Typical: ~1.5-2× speedup over serial — much less than the multiprocessing ~5×. Why?
+Typical: ~1.5-2× speedup over serial - much less than the multiprocessing ~5×. Why?
 
 - Numpy releases the GIL during bulk ops (`*= dt`), so threads can overlap during that C call.
 - *Around* the bulk op, Python orchestration (slicing, attribute lookups, etc.) holds the GIL, serialising the threads.
@@ -61,7 +61,7 @@ Typical: ~1.5-2× speedup over serial — much less than the multiprocessing ~5�
 
 For workloads that are pure numpy bulk ops on disjoint slices, threading gets a useful speedup but caps below multiprocessing. For workloads with any Python orchestration around the ops, threading caps near 1×.
 
-## Exercise 3 — A failing case
+## Exercise 3 - A failing case
 
 ```python
 # anti-pattern: bad! two workers writing the same column without coordination
@@ -83,7 +83,7 @@ def apply_eat_worker(shm_name, start, end):
     s = SharedMemory(shm_name)
     e = np.ndarray((10_000_000,), dtype=np.float32, buffer=s.buf)
     for _ in range(100):
-        e[start:end] -= 1.0            # writer 2: starvation — SAME COLUMN
+        e[start:end] -= 1.0            # writer 2: starvation - SAME COLUMN
 
 # Run them in parallel with overlapping slices
 p1 = Process(target=motion_worker, args=(shm.name, 0, 5_000_000))
@@ -96,9 +96,9 @@ print(energy[:10])
 
 No `ValueError`, no warning. The two writes interleave at the cache-line level; some are lost. The wrong-result is silent.
 
-The single-writer rule and disjoint write-sets are the *structural* prevention. There is no way to make this code correct without a lock, an atomic, or — the chapter's preferred answer — a different architecture where the two writers don't share a column.
+The single-writer rule and disjoint write-sets are the *structural* prevention. There is no way to make this code correct without a lock, an atomic, or - the chapter's preferred answer - a different architecture where the two writers don't share a column.
 
-## Exercise 4 — Per-process segments
+## Exercise 4 - Per-process segments
 
 ```python
 # Each worker writes to its own to_remove segment (per-process)
@@ -119,11 +119,11 @@ def starve_worker(shm_name, segment_shm_name, start, end):
 to_remove = np.concatenate([seg[:n] for seg, n in segments])
 ```
 
-Each worker writes to its own segment — no contention. The `np.concatenate` at the end runs serially in `__main__`, but its cost is proportional to *total* removes, not to N. For 10,000 removes from a 1M table, the concat is microseconds.
+Each worker writes to its own segment - no contention. The `np.concatenate` at the end runs serially in `__main__`, but its cost is proportional to *total* removes, not to N. For 10,000 removes from a 1M table, the concat is microseconds.
 
 This is the canonical pattern: *parallel filter, serial merge.* Same shape as MapReduce's shuffle step.
 
-## Exercise 5 — Find the bandwidth ceiling
+## Exercise 5 - Find the bandwidth ceiling
 
 ```
 N           bandwidth-bound ceiling
@@ -137,19 +137,19 @@ Small N has *per-core bandwidth* (private L1/L2 plus shared L3 portion); workers
 
 Your machine's bus-bandwidth ceiling is the *maximum* parallel speedup at large N for memory-bound work. For a typical dual-channel desktop, that's 4-6×; quad-channel server class, 8-12×; single-channel laptop or Pi, 2-3×.
 
-## Exercise 6 — Per-tick dispatch costs IPC
+## Exercise 6 - Per-tick dispatch costs IPC
 
 ```python
-# Per-tick dispatch — one pool.map per tick
+# Per-tick dispatch - one pool.map per tick
 for _ in range(100):
     pool.map(worker_one_tick, boundaries)
 ```
 
-vs. the rig's *per-run* dispatch (one `pool.map` total, each worker runs all 100 ticks). The per-tick version pays one IPC round-trip per tick — typically 100-500 µs depending on platform. At 100 ticks × 8 workers, that's 80-400 ms of pure IPC. For a tick budget of 33 ms, you have spent the entire budget on dispatch.
+vs. the rig's *per-run* dispatch (one `pool.map` total, each worker runs all 100 ticks). The per-tick version pays one IPC round-trip per tick - typically 100-500 µs depending on platform. At 100 ticks × 8 workers, that's 80-400 ms of pure IPC. For a tick budget of 33 ms, you have spent the entire budget on dispatch.
 
 The speedup curve sags lower for the per-tick version. The lesson: *batch when the access pattern allows*. If a worker can do 100 ticks worth of work on its partition before reporting back, IPC is amortised. If every tick needs a sync (e.g., the simulator's `cleanup` must see all workers' segments), then the IPC is unavoidable and the work-per-IPC must dominate it.
 
-## Exercise 7 — Find your physical core count
+## Exercise 7 - Find your physical core count
 
 ```sh
 lscpu | grep 'Core(s) per socket'                   # physical cores per socket
@@ -159,7 +159,7 @@ python -c "import os; print(os.cpu_count())"        # logical (SMT-doubled)
 
 Most desktops/laptops are single-socket; `Core(s) per socket × Socket(s)` is the physical count. `os.cpu_count()` returns logical (typically 2× physical on Intel/AMD SMT). For compute-bound work, target `n_workers = physical_count`; for memory-bound work, target around half-to-full physical (more workers compete for bandwidth without doing more work).
 
-## Exercise 8 — `concurrent.futures` comparison
+## Exercise 8 - `concurrent.futures` comparison
 
 ```python
 from concurrent.futures import ProcessPoolExecutor
@@ -172,7 +172,7 @@ Performance is essentially the same as `multiprocessing.Pool` because they share
 
 Pick one and standardise. The choice is style, not performance.
 
-## Exercise 9 — A pure-Python anti-comparison
+## Exercise 9 - A pure-Python anti-comparison
 
 ```python
 import time
@@ -209,7 +209,7 @@ Typical:
 
 ```
 pure-Python serial:     150 ms
-pure-Python × 8 threads: 155 ms     (no speedup — GIL serialises the loop)
+pure-Python × 8 threads: 155 ms     (no speedup - GIL serialises the loop)
 numpy bulk-op serial:    0.3 ms     (500× faster than any pure-Python form)
 ```
 

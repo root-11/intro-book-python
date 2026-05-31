@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§21 exhibit — four ways to remove 100,000 rows from a 1,000,000-row table.
+§21 exhibit - four ways to remove 100,000 rows from a 1,000,000-row table.
 
 Layouts:
 

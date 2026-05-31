@@ -6,9 +6,9 @@ Quick reference for symbols, notation, and abbreviations the book uses. Concept 
 
 | Symbol | Meaning |
 |---|---|
-| §N | Section number — e.g., §5 refers to section 5. |
+| §N | Section number - e.g., §5 refers to section 5. |
 | → | Leads to / becomes / transitions to. Appears in section titles (e.g., §29 "10K → 1M") and prose. |
-| `[!NOTE]` / `[!TIP]` / `[!WARNING]` | Callout box — content the reader should pay particular attention to. |
+| `[!NOTE]` / `[!TIP]` / `[!WARNING]` | Callout box - content the reader should pay particular attention to. |
 
 ## Text formatting
 
@@ -24,7 +24,7 @@ Quick reference for symbols, notation, and abbreviations the book uses. Concept 
 | Variable | Meaning |
 |---|---|
 | `i`, `j` | Index into a column. `i` is the index of the row currently under discussion. |
-| `t` or `tick` | Tick number — the simulator's step counter. |
+| `t` or `tick` | Tick number - the simulator's step counter. |
 | `id` | Stable entity identifier (a small unsigned integer; usually `np.uint32`). |
 | `gen` | Generation counter, paired with a slot index to detect stale references (§10). |
 | `pos_x`, `pos_y` | Position columns of a creature (`np.float32`). |
@@ -38,15 +38,15 @@ This book uses numpy's typed dtypes for hot data. The mapping the reader will se
 
 | Python | numpy | size | range |
 |---|---|---|---|
-| `int` (CPython, ≤ 2³⁰) | — | 28 bytes | unbounded |
-| — | `np.int8`  | 1 byte | -128 to 127 |
-| — | `np.uint8` | 1 byte | 0 to 255 |
-| — | `np.int32` | 4 bytes | ±2³¹ |
-| — | `np.uint32` | 4 bytes | 0 to 2³² |
-| — | `np.int64` | 8 bytes | ±2⁶³ |
+| `int` (CPython, ≤ 2³⁰) | - | 28 bytes | unbounded |
+| - | `np.int8`  | 1 byte | -128 to 127 |
+| - | `np.uint8` | 1 byte | 0 to 255 |
+| - | `np.int32` | 4 bytes | ±2³¹ |
+| - | `np.uint32` | 4 bytes | 0 to 2³² |
+| - | `np.int64` | 8 bytes | ±2⁶³ |
 | `float` (CPython) | `np.float64` | 8 bytes (CPython has 24-byte object overhead) | ~15 decimal digits |
-| — | `np.float32` | 4 bytes | ~7 decimal digits |
-| — | `np.bool_` | 1 byte (in arrays) | True / False |
+| - | `np.float32` | 4 bytes | ~7 decimal digits |
+| - | `np.bool_` | 1 byte (in arrays) | True / False |
 
 ## Conventions for code blocks
 

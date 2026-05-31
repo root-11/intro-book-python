@@ -1,6 +1,6 @@
-# Solutions: 22 — Mutations buffer; cleanup is batched
+# Solutions: 22 - Mutations buffer; cleanup is batched
 
-## Exercise 1 — Implement the side buffers
+## Exercise 1 - Implement the side buffers
 
 ```python
 from dataclasses import dataclass, field
@@ -19,11 +19,11 @@ class CleanupBuffer:
 buffer = CleanupBuffer()
 ```
 
-The insert side is *parallel column lists*, not a list of objects. The whole point of the simulator's SoA discipline is that "a row to insert" is six values across six lists with the same index — exactly like the live tables, just on the side.
+The insert side is *parallel column lists*, not a list of objects. The whole point of the simulator's SoA discipline is that "a row to insert" is six values across six lists with the same index - exactly like the live tables, just on the side.
 
 For tighter packing, the insert lists could be pre-allocated numpy arrays with their own `n_pending` counter; for typical mutation rates (hundreds to thousands per tick), Python lists are plenty fast.
 
-## Exercise 2 — Push from `apply_starve`
+## Exercise 2 - Push from `apply_starve`
 
 ```python
 def apply_starve(world: World, buffer: CleanupBuffer) -> None:
@@ -34,9 +34,9 @@ def apply_starve(world: World, buffer: CleanupBuffer) -> None:
     buffer.to_remove.extend(starver_ids.tolist())
 ```
 
-The system does not call `world.delete_creature()`. It does not modify `world.energy` or `world.n_active`. It writes only to `buffer.to_remove` — the live world is untouched until cleanup. A diff between this version and the previous shows: every line that mutated a live column is gone; one `extend` line replaces all of them.
+The system does not call `world.delete_creature()`. It does not modify `world.energy` or `world.n_active`. It writes only to `buffer.to_remove` - the live world is untouched until cleanup. A diff between this version and the previous shows: every line that mutated a live column is gone; one `extend` line replaces all of them.
 
-## Exercise 3 — Push from `apply_reproduce`
+## Exercise 3 - Push from `apply_reproduce`
 
 ```python
 THRESHOLD = 100.0
@@ -65,7 +65,7 @@ def apply_reproduce(world: World, buffer: CleanupBuffer, rng) -> None:
 
 Reproduction has no direct effect on the world during the tick. The offspring exist as parallel entries in the buffer lists. Cleanup will materialise them.
 
-## Exercise 4 — Implement bulk cleanup
+## Exercise 4 - Implement bulk cleanup
 
 ```python
 def cleanup(world: World, buffer: CleanupBuffer) -> None:
@@ -81,7 +81,7 @@ def cleanup(world: World, buffer: CleanupBuffer) -> None:
             col[:n_keep] = col[: world.n_active][keep_mask]
         world.n_active = n_keep
         buffer.to_remove.clear()
-        # update id_to_slot — see §23
+        # update id_to_slot - see §23
 
     # 2. Insertions (one slice-write per column)
     n_inserts = len(buffer.to_insert_id)
@@ -94,7 +94,7 @@ def cleanup(world: World, buffer: CleanupBuffer) -> None:
         world.energy[world.n_active : new_n] = buffer.to_insert_energy
         world.id[world.n_active : new_n]     = buffer.to_insert_id
         world.n_active = new_n
-        # update id_to_slot for new ids — see §23
+        # update id_to_slot for new ids - see §23
         for lst in (buffer.to_insert_pos_x, buffer.to_insert_pos_y,
                     buffer.to_insert_vel_x, buffer.to_insert_vel_y,
                     buffer.to_insert_energy, buffer.to_insert_id):
@@ -107,7 +107,7 @@ Two bulk ops. The world is consistent at the end. Spot-check after a tick:
 assert len(set(world.id[: world.n_active].tolist())) == world.n_active     # no duplicates
 ```
 
-## Exercise 5 — Compare cleanup forms
+## Exercise 5 - Compare cleanup forms
 
 ```python
 import time, numpy as np
@@ -143,9 +143,9 @@ print(f"per-element: {(time.perf_counter()-t)*10:.2f} ms / call")
 
 Typical ratio at K=1000: bulk ~3-5× faster. At K=100,000: bulk ~5-10× faster (the boundary-crossing cost grows linearly with K for the per-element version, while the bulk form pays it once).
 
-The bulk form is the right default for the Python edition. If you find yourself writing a per-element swap_remove loop inside cleanup, consider whether you have a buffer of indices in hand — if you do, use the mask.
+The bulk form is the right default for the Python edition. If you find yourself writing a per-element swap_remove loop inside cleanup, consider whether you have a buffer of indices in hand - if you do, use the mask.
 
-## Exercise 6 — The dedup question
+## Exercise 6 - The dedup question
 
 ```python
 # anti-pattern: bad! no dedup
@@ -154,16 +154,16 @@ buffer.to_remove.append(42)                      # apply_disease appends it too
 # both systems independently noticed creature 42 should die
 
 # cleanup without np.unique:
-slots = world.id_to_slot[buffer.to_remove]      # [slot_of_42, slot_of_42] — same slot twice
+slots = world.id_to_slot[buffer.to_remove]      # [slot_of_42, slot_of_42] - same slot twice
 keep_mask = np.ones(world.n_active, dtype=bool)
-keep_mask[slots] = False                         # idempotent — same slot zeroed twice is fine
+keep_mask[slots] = False                         # idempotent - same slot zeroed twice is fine
 ```
 
-For *removals via mask*, dedup happens to be implicit — assigning `False` to the same index twice is the same as once. So the boolean-mask form is robust to duplicate `to_remove` entries.
+For *removals via mask*, dedup happens to be implicit - assigning `False` to the same index twice is the same as once. So the boolean-mask form is robust to duplicate `to_remove` entries.
 
 The risk is for **per-element swap_remove**: removing slot 42 once moves the last row into 42; removing it again moves the *new* last row into 42, deleting an *unintended* row. The cleanup function above protects via `np.unique` regardless of which deletion form is used.
 
-## Exercise 7 — Tick-delayed visibility
+## Exercise 7 - Tick-delayed visibility
 
 ```python
 @dataclass
@@ -189,7 +189,7 @@ The offspring did *not* live a partial tick of tick 5. It became part of the wor
 
 Whether the increment happens before or after cleanup is a policy decision. The convention here: increment after cleanup, so newborns start at 0 and reach 1 at the end of their first tick. The choice should be written down once (in the simulator's contract) and applied consistently.
 
-## Exercise 8 — A graphics pipeline analogy (stretch)
+## Exercise 8 - A graphics pipeline analogy (stretch)
 
 A double-buffered renderer:
 
@@ -201,8 +201,8 @@ Map to the simulator:
 
 | renderer concept             | simulator concept                          |
 |------------------------------|--------------------------------------------|
-| front buffer                 | live columns (`pos_x`, `pos_y`, ...) — what systems read |
-| back buffer                  | `to_remove`, `to_insert_*` — where mutations queue |
+| front buffer                 | live columns (`pos_x`, `pos_y`, ...) - what systems read |
+| back buffer                  | `to_remove`, `to_insert_*` - where mutations queue |
 | vsync (frame boundary)       | tick boundary                              |
 | swap (front ↔ back)          | cleanup (apply queued changes to live columns) |
 

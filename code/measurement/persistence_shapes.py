@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-§36 exhibit — four ways to persist a 1M-row world.
+§36 exhibit - four ways to persist a 1M-row world.
 
 Same data, four serialisation layouts:
 
@@ -15,7 +15,7 @@ Same data, four serialisation layouts:
     2. pickle of dict-of-numpy-columns
        SoA in memory, but going through pickle's protocol. Pickle
        knows about numpy and uses numpy's reduce method, so this is
-       roughly "raw bytes plus pickle wrappers" — much faster than (1)
+       roughly "raw bytes plus pickle wrappers" - much faster than (1)
        but still not the fastest.
 
     3. np.savez

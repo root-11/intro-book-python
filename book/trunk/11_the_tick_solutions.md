@@ -1,6 +1,6 @@
-# Solutions: 11 — The tick
+# Solutions: 11 - The tick
 
-## Exercise 1 — A 30 Hz time-driven loop
+## Exercise 1 - A 30 Hz time-driven loop
 
 ```python
 import time
@@ -22,7 +22,7 @@ print(f"{ticks} ticks in {time.perf_counter()-start:.2f}s")
 
 Expected: 300 ticks ± 1 in 10 seconds. The loop sleeps for `TICK_S - work_done`, so each iteration ends *exactly* `TICK_S` after it began (modulo OS scheduling). `time.perf_counter()` is monotonic; `time.time()` can step backwards on NTP corrections and is the wrong tool here.
 
-## Exercise 2 — The naive sleep mistake
+## Exercise 2 - The naive sleep mistake
 
 ```python
 while True:
@@ -30,11 +30,11 @@ while True:
     time.sleep(1/30)            # always 33 ms, regardless of work time
 ```
 
-Each iteration takes `work_ms + 33 ms`, not `33 ms` total. If the work consistently takes 5 ms, the loop ticks at `1 / (0.005 + 0.033)` ≈ **26.3 Hz**, not 30. Over a minute that is 1,580 ticks instead of 1,800 — a 12% deficit, and the program reports "running at 30 Hz" because that's what it asked for.
+Each iteration takes `work_ms + 33 ms`, not `33 ms` total. If the work consistently takes 5 ms, the loop ticks at `1 / (0.005 + 0.033)` ≈ **26.3 Hz**, not 30. Over a minute that is 1,580 ticks instead of 1,800 - a 12% deficit, and the program reports "running at 30 Hz" because that's what it asked for.
 
 The drift is silent: nothing in the program complains. Only an external observer (the wall clock, an event log, an animation that runs slow) notices. The fix is to *measure work time and subtract*, as in exercise 1.
 
-## Exercise 3 — Dropped frames
+## Exercise 3 - Dropped frames
 
 ```python
 while running:
@@ -51,7 +51,7 @@ If `do_some_work()` sleeps 50 ms (longer than the 33 ms budget), the loop runs a
 
 A simulator that has missed its tick budget is a simulator running on the wrong hardware or with the wrong N. Naming the deadline-miss is how you know.
 
-## Exercise 4 — A turn-based loop
+## Exercise 4 - A turn-based loop
 
 ```python
 while running:
@@ -60,9 +60,9 @@ while running:
     print(f"you said: {line}")
 ```
 
-Each `input()` blocks until a line arrives. The loop has no fixed rate — its pace is whatever the typist provides. The same shape carries a chess engine (one tick per move), a card game (one tick per play), a discrete-event simulator (one tick per event timestamp). The trigger is *"a thing happened"*, not *"33 ms passed"*.
+Each `input()` blocks until a line arrives. The loop has no fixed rate - its pace is whatever the typist provides. The same shape carries a chess engine (one tick per move), a card game (one tick per play), a discrete-event simulator (one tick per event timestamp). The trigger is *"a thing happened"*, not *"33 ms passed"*.
 
-## Exercise 5 — Run the tick-budget exhibit
+## Exercise 5 - Run the tick-budget exhibit
 
 ```sh
 uv run code/measurement/tick_budget.py
@@ -85,7 +85,7 @@ Source: [`code/measurement/tick_budget.py`](https://github.com/root-11/intro-boo
 
 The 60 Hz line on `1M dataclass`: 165% over budget. The 30 Hz line on `1M dataclass`: 82.6% used by **one motion system**, leaving 5.7 ms for everything else the simulator needs to do per tick. The book is asking you to keep the numpy line because that is the population at which Python becomes feasible. Below 100K entities the layout choice doesn't matter much; above 100K it determines whether the simulator runs at all.
 
-## Exercise 6 — The asyncio comparison
+## Exercise 6 - The asyncio comparison
 
 ```python
 import asyncio, time
@@ -111,7 +111,7 @@ What you got for the cost: nothing. The work is CPU-bound; there are no other aw
 
 The lesson is the chapter's: *reach for the simplest tool that gives you the property you actually need.* Asyncio is correct for many programs. This is not one of them.
 
-## Exercise 7 — A discrete-event tick loop (stretch)
+## Exercise 7 - A discrete-event tick loop (stretch)
 
 ```python
 import heapq
@@ -139,6 +139,6 @@ t=2.50  event: starvation_check
 Two properties to notice:
 
 - **The clock advances *with* the events**, not in fixed steps. There is no "tick" between t=0.5 and t=1.0; the simulation simply jumps. Long quiet periods cost nothing.
-- **No external time reference is needed.** Everything is internal — events have timestamps, the clock follows them. This is the discrete-event-simulation (DES) shape that production tools (SimPy, NS-3, OMNeT++, MATLAB Simulink) build on.
+- **No external time reference is needed.** Everything is internal - events have timestamps, the clock follows them. This is the discrete-event-simulation (DES) shape that production tools (SimPy, NS-3, OMNeT++, MATLAB Simulink) build on.
 
-[§12 — Event time vs tick time](12_event_time_vs_tick_time.md) names this distinction: the clock the *simulation* uses doesn't have to be the clock the *loop* uses. A 30 Hz time-driven loop with a discrete-event subsystem inside it is a common shape — the outer loop advances the world by 33 ms; the inner DES processes all events with timestamps in the next 33 ms.
+[§12 - Event time vs tick time](12_event_time_vs_tick_time.md) names this distinction: the clock the *simulation* uses doesn't have to be the clock the *loop* uses. A 30 Hz time-driven loop with a discrete-event subsystem inside it is a common shape - the outer loop advances the world by 33 ms; the inner DES processes all events with timestamps in the next 33 ms.

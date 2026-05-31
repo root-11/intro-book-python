@@ -3,9 +3,9 @@
 # dependencies = ["numpy"]
 # ///
 """
-§18 exhibit — scan cost vs alive-fraction across three layouts.
+§18 exhibit - scan cost vs alive-fraction across three layouts.
 
-A motion update — pos += vel * dt — applied only to alive creatures, at
+A motion update - pos += vel * dt - applied only to alive creatures, at
 N = 1,000,000 creatures, varying the alive fraction from 1% to 100%.
 
 Three layouts:

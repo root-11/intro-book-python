@@ -1,6 +1,6 @@
-# Solutions: 23 — Index maps
+# Solutions: 23 - Index maps
 
-## Exercise 1 — Build the map
+## Exercise 1 - Build the map
 
 ```python
 import numpy as np
@@ -25,7 +25,7 @@ class World:
 
 Adding the map is one extra column and one extra line in `append`. Removal updates happen in cleanup (next exercise).
 
-## Exercise 2 — O(1) presence query
+## Exercise 2 - O(1) presence query
 
 ```python
 class World:
@@ -44,11 +44,11 @@ def is_hungry(world, creature_id: int) -> bool:
     return bool(world.hungry_member[creature_id])
 ```
 
-Two parallel structures: `hungry` (the iteration list — O(K) walk) and `hungry_member` (the membership map — O(1) check). The list is for iterating; the bool array is for asking "is this id in the table?". Both updated together; one read for each access pattern.
+Two parallel structures: `hungry` (the iteration list - O(K) walk) and `hungry_member` (the membership map - O(1) check). The list is for iterating; the bool array is for asking "is this id in the table?". Both updated together; one read for each access pattern.
 
 The cost is one byte per id ever issued (~1 MB at 1M ids), which is the memory price of constant-time membership.
 
-## Exercise 3 — Maintain on bulk-filter cleanup
+## Exercise 3 - Maintain on bulk-filter cleanup
 
 ```python
 def cleanup(world, buffer):
@@ -67,16 +67,16 @@ def cleanup(world, buffer):
             col = getattr(world, col_name)
             col[:n_keep] = col[: world.n_active][keep_mask]
         world.n_active = n_keep
-        # rewrite id_to_slot for survivors — one bulk numpy assignment
+        # rewrite id_to_slot for survivors - one bulk numpy assignment
         world.id_to_slot[world.id[:n_keep]] = np.arange(n_keep, dtype=np.uint32)
         buffer.to_remove.clear()
 
     # ... insertions: append new ids and write id_to_slot[new_id] = slot ...
 ```
 
-The `id_to_slot[ids[:n_keep]] = np.arange(n_keep)` line is the keystone. It rewrites every surviving id's slot in one bulk numpy assignment — exactly the same shape as the column compress, applied to the index map.
+The `id_to_slot[ids[:n_keep]] = np.arange(n_keep)` line is the keystone. It rewrites every surviving id's slot in one bulk numpy assignment - exactly the same shape as the column compress, applied to the index map.
 
-## Exercise 4 — Time the difference
+## Exercise 4 - Time the difference
 
 ```python
 import time, numpy as np
@@ -104,7 +104,7 @@ Typical: linear scan ~5-10 minutes (10⁵ × 10⁵ = 10¹⁰ ops). Indexed: ~30 
 
 For a real simulator that does many membership queries per tick, the index map is the difference between *workable* and *unsalvageable*. Without it, presence-replaces-flags would only be defensible for whole-table operations, not individual queries.
 
-## Exercise 5 — Run the exhibit (honestly)
+## Exercise 5 - Run the exhibit (honestly)
 
 ```sh
 uv run "code/measurement/csr_matrix or python dict.py"
@@ -129,14 +129,14 @@ from scipy.sparse import csr_matrix
 mat = csr_matrix((1000, 1000))
 # ... populate ...
 v = np.zeros(1000)
-result = mat @ v               # SpMV — what CSR is actually for
+result = mat @ v               # SpMV - what CSR is actually for
 ```
 
-For SpMV at 1000×1000 with 1% density, CSR is dramatically faster than naive dense or dict-based approaches — nine thousand multiplications instead of a million. That's the operation it's optimised for.
+For SpMV at 1000×1000 with 1% density, CSR is dramatically faster than naive dense or dict-based approaches - nine thousand multiplications instead of a million. That's the operation it's optimised for.
 
 The lesson: **pick the structure that matches your access pattern.** A dict is a sparse *point-lookup* map. CSR is a sparse *matrix*. They share the word "sparse" and almost nothing else.
 
-## Exercise 6 — The bandwidth cost
+## Exercise 6 - The bandwidth cost
 
 ```
 1M id_to_slot entries × 4 bytes = 4 MB total
@@ -145,9 +145,9 @@ At ~10 GB/s memory bandwidth: ~0.6 µs to write 6 KB
 30 Hz tick budget: 33 ms
 ```
 
-The cleanup map-update cost is **0.002% of the tick budget** at typical mutation rates. The id_to_slot maintenance is invisible against the rest of the work. The 4 MB total memory cost is the dominant concern at scale, not the bandwidth — which mitigates to 400 KB once recycling caps the high-water id count.
+The cleanup map-update cost is **0.002% of the tick budget** at typical mutation rates. The id_to_slot maintenance is invisible against the rest of the work. The 4 MB total memory cost is the dominant concern at scale, not the bandwidth - which mitigates to 400 KB once recycling caps the high-water id count.
 
-## Exercise 7 — Sort-for-locality compatibility
+## Exercise 7 - Sort-for-locality compatibility
 
 ```python
 def sort_for_locality(world, key_col_name: str):
@@ -160,16 +160,16 @@ def sort_for_locality(world, key_col_name: str):
         col = getattr(world, col_name)
         col[: world.n_active] = col[: world.n_active][order]
 
-    # the keystone again — one bulk update
+    # the keystone again - one bulk update
     world.id_to_slot[world.id[: world.n_active]] = np.arange(world.n_active,
                                                               dtype=np.uint32)
 ```
 
 After the sort, `world.id[k]` is some new id, and `id_to_slot[world.id[k]] == k`. External code holding a reference to id `42` looks up `id_to_slot[42]`, gets the new slot, reads the (now-relocated) row.
 
-The sort changed every slot. The map update changed every entry of `id_to_slot`. Both are O(N) bulk numpy operations — fast enough to do every tick if needed.
+The sort changed every slot. The map update changed every entry of `id_to_slot`. Both are O(N) bulk numpy operations - fast enough to do every tick if needed.
 
-## Exercise 8 — A from-scratch generational arena (stretch)
+## Exercise 8 - A from-scratch generational arena (stretch)
 
 ```python
 import numpy as np
@@ -232,6 +232,6 @@ class SlotMap:
         return slot
 ```
 
-Compare with [`slotmap::SlotMap`](https://docs.rs/slotmap/) (Rust): same machinery, different organisation. Rust packs `(index, generation)` into one `Key` (a `u64`); we use a `NamedTuple`. Rust uses `Vec<Slot>` with an internal free list; we use an active counter and bump generations on remove. The structural pieces — id allocator, generation array, id_to_slot map, swap_remove on delete — are identical.
+Compare with [`slotmap::SlotMap`](https://docs.rs/slotmap/) (Rust): same machinery, different organisation. Rust packs `(index, generation)` into one `Key` (a `u64`); we use a `NamedTuple`. Rust uses `Vec<Slot>` with an internal free list; we use an active counter and bump generations on remove. The structural pieces - id allocator, generation array, id_to_slot map, swap_remove on delete - are identical.
 
-Combined with [§22](22_mutations_buffer.md)'s deferred cleanup, this `SlotMap` is the simulator's table primitive. Once you have it, every variable-quantity table in the book reuses the shape — creatures, food, pending events, transition log entries — each one a `SlotMap` with different columns.
+Combined with [§22](22_mutations_buffer.md)'s deferred cleanup, this `SlotMap` is the simulator's table primitive. Once you have it, every variable-quantity table in the book reuses the shape - creatures, food, pending events, transition log entries - each one a `SlotMap` with different columns.
