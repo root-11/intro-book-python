@@ -47,7 +47,7 @@ The hot/cold split ([§26](26_hot_cold_splits.md)) shrinks the working set. Moti
 - Decide the target N before the schema. The schema must fit the cache that fits N.
 - Audit the inner loops. Sum the bytes per row touched. Compare to your cache sizes.
 - When you cross a transition, *measure* — do not assume. The prefetcher and the OS will sometimes save you, sometimes not. Numpy's bulk-op threshold also shifts with version; benchmark on the exact stack you ship.
-- The narrowest dtype that holds the value ([§2](02_numbers_and_how_they_fit.md)) is not aesthetic; it is the cliff's distance. `np.float32` over `np.float64` doubles the headroom; `np.uint8` for indices in `[0, 256)` packs 64 to a cache line.
+- The narrowest dtype that holds the value ([§2](02_numbers_and_how_they_fit.md)) is not aesthetic; it is the cliff's distance. `np.float32` over `np.float64` doubles the headroom; `np.uint8` for indices from 0 to 255 packs 64 to a cache line.
 
 This is not premature optimisation. It is *layout-aware design* — making the schema fit the machine that will run it. A schema that ignores the cache works for small N and breaks at the scales the simulator was meant for.
 

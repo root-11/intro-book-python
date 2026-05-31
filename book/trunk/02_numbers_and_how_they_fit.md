@@ -4,7 +4,7 @@
 
 <p align="center"><img src="../illustrations/multimeter.jpg" alt="A mouse with a multimeter — numbers measured to the precision the budget allows" style="max-height: 300px; max-width: 100%;"></p>
 
-A cache line is 64 bytes. That is the unit of memory the CPU loads at a time. Everything you do with data is, in part, a question of how many things fit in 64 bytes.
+A cache line is 64 bytes on x86 and most ARM chips — the unit of memory the CPU loads at a time. (A few designs differ: some Apple Silicon cache levels use 128; §33 has the details.) This book assumes 64 throughout. Everything you do with data is, in part, a question of how many things fit in one cache line.
 
 ## What an `int` actually costs
 

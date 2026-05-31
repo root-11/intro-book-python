@@ -225,7 +225,7 @@ The cache sizes you wrote down in exercise 1 and the cliffs you found in exercis
 
 <p align="center"><img src="book/illustrations/multimeter.jpg" alt="A mouse with a multimeter — numbers measured to the precision the budget allows" style="max-height: 300px; max-width: 100%;"></p>
 
-A cache line is 64 bytes. That is the unit of memory the CPU loads at a time. Everything you do with data is, in part, a question of how many things fit in 64 bytes.
+A cache line is 64 bytes on x86 and most ARM chips — the unit of memory the CPU loads at a time. (A few designs differ: some Apple Silicon cache levels use 128; §33 has the details.) This book assumes 64 throughout. Everything you do with data is, in part, a question of how many things fit in one cache line.
 
 ## What an `int` actually costs
 
@@ -1804,7 +1804,7 @@ The *constant vs variable* distinction is what determines whether a programmer r
 1. **Compare timings, simple case.** Build a `list` of length 1,000,000. Time 1,000 calls to `lst.pop(0)` (front delete, the worst case). Time the same with the swap_remove pattern (`lst[0] = lst[-1]; lst.pop()`). The ratio is roughly N.
 2. **Mid-table delete.** Build a numpy `int64` array of length 1,000,000. Time 1,000 calls to `np.delete(arr, 500_000)` (rebinding `arr` each time). Time 1,000 calls to the swap_remove pattern (`arr[500_000] = arr[n_active - 1]; n_active -= 1`). The ratio is enormous — `np.delete` allocates a fresh array each call.
 3. **Run the §21 exhibit.** `uv run code/measurement/swap_remove.py`. Note the order of the four rows. Confirm `np.delete` is the slowest, not the fastest, despite being the "numpy way." Note the gap between sequential swap_remove and bulk filter — both are O(K) algorithmically, but the bulk version pays the Python-loop overhead once instead of K times.
-4. **The iteration hazard.** Build a numpy `int64` array of length 100 with values `0..100` and an `n_active = 100`. In a forward loop, iterate `i in range(n_active)` and apply swap_remove whenever `arr[i] % 2 == 0`. Compare with the expected output (only odd values remaining). What did you actually get? (Spoiler: you missed half the evens.)
+4. **The iteration hazard.** Build a numpy `int64` array of length 100 with values 0 through 99 (`np.arange(100)`) and an `n_active = 100`. In a forward loop, iterate `i in range(n_active)` and apply swap_remove whenever `arr[i] % 2 == 0`. Compare with the expected output (only odd values remaining). What did you actually get? (Spoiler: you missed half the evens.)
 5. **The fix in one shape: iterate backwards.** Repeat exercise 4, but iterate `range(n_active - 1, -1, -1)`. Does it work now? Why does it work?
 6. **The fix in another shape: deferred cleanup.** Repeat exercise 4, but instead of calling swap_remove inside the loop, append the index to `to_remove`. After the loop, sort `to_remove` in reverse order and apply swap_remove. This is the [§22](#22--mutations-buffer-cleanup-is-batched) pattern in miniature.
 7. **Aligned per-element swap_remove.** Build the simulator's six creature columns (`pos_x, pos_y, vel_x, vel_y, energy, id`). Write `def delete_creature(world, slot)` that calls swap_remove on every column in lockstep. Verify all columns remain aligned after a sequence of deletes.
@@ -2331,7 +2331,7 @@ The hot/cold split ([§26](#26--hotcold-splits)) shrinks the working set. Motion
 - Decide the target N before the schema. The schema must fit the cache that fits N.
 - Audit the inner loops. Sum the bytes per row touched. Compare to your cache sizes.
 - When you cross a transition, *measure* — do not assume. The prefetcher and the OS will sometimes save you, sometimes not. Numpy's bulk-op threshold also shifts with version; benchmark on the exact stack you ship.
-- The narrowest dtype that holds the value ([§2](#2--numbers-and-how-they-fit)) is not aesthetic; it is the cliff's distance. `np.float32` over `np.float64` doubles the headroom; `np.uint8` for indices in `[0, 256)` packs 64 to a cache line.
+- The narrowest dtype that holds the value ([§2](#2--numbers-and-how-they-fit)) is not aesthetic; it is the cliff's distance. `np.float32` over `np.float64` doubles the headroom; `np.uint8` for indices from 0 to 255 packs 64 to a cache line.
 
 This is not premature optimisation. It is *layout-aware design* — making the schema fit the machine that will run it. A schema that ignores the cache works for small N and breaks at the scales the simulator was meant for.
 
