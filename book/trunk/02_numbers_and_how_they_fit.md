@@ -8,7 +8,7 @@ A cache line is 64 bytes on x86 and most ARM chips — the unit of memory the CP
 
 ## What an `int` actually costs
 
-You wrote `x = 1` last week and that was the end of the question. What sat in memory was a `PyLong` object: a header, a refcount, a length, and one or more 32-bit "digit" limbs holding the value. The minimum size, even for `0`, is **28 bytes**. As the value grows past one digit, the object grows by four bytes per additional digit. From [`code/measurement/number_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/number_footprint.py) on this machine:
+You wrote `x = 1` last week and that was the end of the question. What sat in memory was a `PyLong` object: a header, a refcount, a length, and one or more 32-bit "digit" limbs holding the value. The minimum size, even for `0`, is **28 bytes** — and that covers every value below 2³⁰ (about a billion). Past that it grows four bytes per limb, one limb per 30 bits (≈ nine decimal digits), not four bytes per digit. From [`code/measurement/number_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/number_footprint.py) on this machine:
 
 ```
 int 0                          28 bytes
