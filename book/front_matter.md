@@ -5,7 +5,7 @@ _updated: 2026-05-09_
 
 > **Read online:** [Codeberg](https://root-11.codeberg.page/intro-book-python/) · [GitHub Pages](https://root-11.github.io/intro-book-python/)
 >
-> **Clone source:** `git clone https://codeberg.org/root-11/intro-book-python.git` · `git clone https://github.com/root-11/intro-book-python.git`
+> **Clone source** (the public default branch is the rendered book; the runnable code lives on `main`): `git clone --branch main https://codeberg.org/root-11/intro-book-python.git` · `git clone --branch main https://github.com/root-11/intro-book-python.git`
 >
 > **Issues:** [Codeberg](https://codeberg.org/root-11/intro-book-python/issues) · [GitHub](https://github.com/root-11/intro-book-python/issues)
 
