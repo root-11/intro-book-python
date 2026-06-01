@@ -10,7 +10,7 @@ The §18 alive-fraction exhibit is the EBP-vs-filtered comparison:
 | numpy bool mask          | filtered iteration in numpy |
 | numpy presence (ids)     | EBP dispatch in numpy |
 
-At 1% sparsity (typical for transient state): EBP is **10×** faster than the filtered numpy version, **150×** faster than the AoS version. As sparsity rises, the EBP advantage shrinks; at 100% live the bool mask wins because the "filter" is a no-op.
+At 1% sparsity (typical for transient state): EBP is **~6.5×** faster than the filtered numpy version, **~84×** faster than the AoS version. The numpy advantage is steady (~6.5×) across the 1-10% range rather than growing with sparsity - numpy's mask scan is vectorised, so it does not pay per-element for the dead rows the way a scalar predicate would. As the live fraction rises past ~50% the EBP advantage shrinks; at 100% live the bool mask wins because the "filter" is a no-op.
 
 The takeaway: EBP is the right default for sparse states; bool masks are the right default for near-universal states. Both happen to be correct on a wide range of hardware; AoS is wrong at every fraction.
 

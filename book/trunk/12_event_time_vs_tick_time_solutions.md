@@ -117,18 +117,13 @@ uv run code/measurement/event_time_storage.py
 Source: [`code/measurement/event_time_storage.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/event_time_storage.py).
 
 ```
-layout                                          data (MB)   build (ms)   sort (ms)   count <T (ms)
----------------------------------------------------------------------------------------------------
-list of datetime objects                          53.62       387.6        5.71       19.980
-numpy datetime64[us]                               7.63        92.3        6.12        1.198
-numpy float64 (seconds-from-base)                  7.63        44.6       42.53        0.894
+vs 'list of datetime objects', 3-run medians. The **memory** column is stable; **sort** and **count** are timing-noisy, so round figures:
 
-vs 'list of datetime objects':
-  numpy datetime64[us]                       7.0× smaller    0.9× faster sort    16.7× faster count
-  numpy float64 (seconds-from-base)          7.0× smaller    0.1× faster sort    22.3× faster count
+  numpy datetime64[us]                7.0× smaller    ~1× sort       ~26× faster count
+  numpy float64 (seconds-from-base)   7.0× smaller    ~0.2× sort     ~26× faster count
 ```
 
-The per-tick query is `count <T`: 22× faster on `float64` vs the `datetime` list. That is the column the simulator hits every tick to decide what events fire. Sort cost is one-off (ingestion); count cost compounds across millions of ticks. *The tick is the binding budget, so the count column is the one to optimise.*
+The per-tick query is `count <T`: ~26× faster on `float64` vs the `datetime` list. That is the column the simulator hits every tick to decide what events fire. Sort cost is one-off (ingestion); count cost compounds across millions of ticks. *The tick is the binding budget, so the count column is the one to optimise.*
 
 ## Exercise 7 - A budget-aware loop (stretch)
 
