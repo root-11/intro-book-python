@@ -24,13 +24,13 @@ This is the missing piece of the machine model in Python. The hierarchy is still
 
 | N           | Python list | numpy seq | numpy gather | gather/seq |
 |------------:|------------:|----------:|-------------:|-----------:|
-|      10,000 |    4.85 ns  |  0.54 ns  |   1.47 ns    |    2.7×    |
-|     100,000 |    4.60 ns  |  0.18 ns  |   2.88 ns    |   16.4×    |
-|   1,000,000 |    4.60 ns  |  0.21 ns  |   3.51 ns    |   17.0×    |
-|  10,000,000 |    4.62 ns  |  0.19 ns  |  10.33 ns    |   53.7×    |
-| 100,000,000 |    4.60 ns  |  0.16 ns  |  11.80 ns    |   72.2×    |
+|      10,000 |    4.85 ns  |  0.65 ns  |   3.07 ns    |    4.7×    |
+|     100,000 |    4.60 ns  |  0.37 ns  |   2.01 ns    |    5.4×    |
+|   1,000,000 |    4.60 ns  |  0.21 ns  |   3.53 ns    |   17.0×    |
+|  10,000,000 |    4.62 ns  |  0.15 ns  |  10.06 ns    |   66.0×    |
+| 100,000,000 |    4.60 ns  |  0.15 ns  |  11.72 ns    |   80.0×    |
 
-Read the columns. The Python list is **flat at ~4.6 ns/element across five orders of magnitude**. From inside the interpreter the cache hierarchy does not exist. The numpy sequential column is 25-30× faster and reveals the bandwidth - the inner loop is C, the bytes are typed, the prefetcher works. The numpy gather column is the same data accessed in a shuffled order; once the working set leaves L1 (between 10K and 100K), the per-element cost climbs, and by 100M the gap to sequential is **72×**. That ratio is the L1-to-RAM cost gap on this machine, measured.
+Read the columns (3-run medians; the sub-nanosecond seq column is noisy run-to-run, the gather column and the RAM ratios are the stable claims). The Python list is **flat at ~4.6 ns/element across five orders of magnitude**. From inside the interpreter the cache hierarchy does not exist. The numpy sequential column is 25-30× faster and reveals the bandwidth - the inner loop is C, the bytes are typed, the prefetcher works. The numpy gather column is the same data accessed in a shuffled order; while it fits in cache the gather penalty is small (~5-17×), and once the working set spills L3 (between 1M and 10M) the per-element cost climbs sharply, reaching **80×** the sequential cost at 100M. That ratio is the L1-to-RAM cost gap on this machine, measured.
 
 **2. Take an exception once vs a million times.** [`code/measurement/try_except.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/try_except.py) compares `try/except ZeroDivisionError` against an explicit `if value != 0` check, across hit rates from 0.0001% to 99.9999%. At 50/50 the `try/except` form is 4× slower; at 99.9999% (almost no exceptions raised) the `try/except` form is *faster* than the `if`. The difference is the CPU's branch predictor: a taken branch with high frequency is essentially free; a mispredicted one costs ~10-20 cycles. The lesson is not "use try/except" or "use if" - it is that constant factors are rate-dependent, and even Python inherits this.
 
