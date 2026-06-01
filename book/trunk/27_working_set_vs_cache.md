@@ -6,19 +6,17 @@
 
 The *working set* of a loop is the data it touches per pass. The *cache hierarchy* (§1) is what holds that data. The two together decide the loop's speed - *once you are in numpy*. In pure Python, the interpreter-dispatch tax dominates and the cliff is invisible. The moment your inner loop drops into a bulk numpy op, the cliff is real and exactly where the hardware says it is.
 
-If the working set fits in L1 - typically 32 KB per core - the loop runs near memory-bandwidth speed: ~0.1-0.5 ns per element. If it fits in L2 - typically 1-2 MB per core - it is ~0.5-2 ns. If it fits in L3 - typically 16-32 MB shared - it is ~1-5 ns. If it spills to RAM, sequential access drops to ~3-10 ns (prefetcher helping); random access drops to 50-200 ns (no prefetcher help).
-
-These ranges are not theoretical. They are what your machine actually does, measured in [§1's `cache_cliffs.py` exhibit](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py). The numbers from that exhibit, on this machine:
+Sequential numpy access stays bandwidth-bound and cheap at every size - the prefetcher reaches forward and amortises the cost. The cliff is in *random* (gather) access, where each element is an unpredictable jump the prefetcher cannot hide. The exact ns depend on the chip; the numbers below are what this machine does, measured in [§1's `cache_cliffs.py` exhibit](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py) (3-run medians):
 
 | N           | numpy seq | numpy gather | gather/seq |
 |------------:|----------:|-------------:|-----------:|
-|     10,000  |  0.54 ns  |   1.47 ns    |    2.7 ×   |
-|    100,000  |  0.18 ns  |   2.88 ns    |   16.4 ×   |
-|  1,000,000  |  0.21 ns  |   3.51 ns    |   17.0 ×   |
-| 10,000,000  |  0.19 ns  |  10.33 ns    |   53.7 ×   |
-|100,000,000  |  0.16 ns  |  11.80 ns    |   72.2 ×   |
+|     10,000  |  0.65 ns  |   3.07 ns    |    4.7 ×   |
+|    100,000  |  0.37 ns  |   2.01 ns    |    5.4 ×   |
+|  1,000,000  |  0.21 ns  |   3.53 ns    |   17.0 ×   |
+| 10,000,000  |  0.15 ns  |  10.06 ns    |   66.0 ×   |
+|100,000,000  |  0.15 ns  |  11.72 ns    |   80.0 ×   |
 
-The cliff is in the gather column. The 10K and 100K rows fit in L1 / L2 (gather ratio ~2-16×); the 10M and 100M rows spill to RAM (ratio 54-72×). The numpy *sequential* row stays roughly flat because the prefetcher reaches forward and amortises the cost - that is what bandwidth-bound looks like on this machine.
+The cliff is in the gather column. The 10K and 100K rows fit in L1 / L2 (gather ratio ~5×); 1M sits in L3 (~17×); the 10M and 100M rows spill to RAM (ratio 66-80×). The numpy *sequential* row stays flat under ~0.7 ns/element throughout - that is what bandwidth-bound looks like on this machine. (The sub-nanosecond seq column is noisy run-to-run; the gather column and the RAM ratios are the stable claims.)
 
 ## Computing your working set
 
@@ -57,7 +55,7 @@ This is not premature optimisation. It is *layout-aware design* - making the sch
 2. **Find your cliff.** `uv run code/measurement/cache_cliffs.py` (the §1 exhibit) gives you ns/element across sizes for sequential and gather access. Plot the gather column. The transitions should match your cache sizes.
 3. **Reduce the working set.** Apply the hot/cold split organisationally ([§26](26_hot_cold_splits.md)) so motion reads only the hot columns. Time motion at the cliff size you found in exercise 2. Did the cliff move? In pure SoA-in-numpy, the answer is "no, because the columns were already separated" - see §26's framing.
 4. **A wider dtype.** Change `energy: float32` to `energy: float64`. Recompute the working set. Time motion. The cliff should move inward (closer to smaller N).
-5. **Random vs sequential, your machine.** Re-read the gather/seq ratio in the cache_cliffs table for *your* output. The factor 2.7× → 72× growth across sizes is your machine's cache-vs-RAM cost gap. Memorise this number; it is the answer to "how much does a random access cost compared to a sequential one on this hardware?".
+5. **Random vs sequential, your machine.** Re-read the gather/seq ratio in the cache_cliffs table for *your* output. The factor ~5× → 80× growth across sizes is your machine's cache-vs-RAM cost gap. Memorise this number; it is the answer to "how much does a random access cost compared to a sequential one on this hardware?".
 6. *(stretch)* **The L1 sweet spot.** Find the N at which motion's working set fills L1 to roughly 75%. Run the motion loop in tight repetition (call it 1,000 times in a row, no other work between calls). The L1-resident loop should run at a stable ~0.2 ns/element for the entire run. The closest L2-only neighbour should be 3-5× slower.
 
 Reference notes in [27_working_set_vs_cache_solutions.md](27_working_set_vs_cache_solutions.md).

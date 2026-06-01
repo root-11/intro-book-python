@@ -27,7 +27,7 @@ if __name__ == "__main__":
     shm.close(); shm.unlink()
 ```
 
-Expected: ~3-5 seconds for 4 workers × 5M increments. A *single-process* loop doing the same total work (20M increments) typically finishes in 2-3 seconds. **The parallel version is slower than serial** - true negative scaling. Every increment by any worker invalidates the cache line in the other workers' caches; the cache-coherence protocol serialises what looked like four independent loops.
+Expected on this machine (`false_sharing.py`, 8 processes × 2M increments): the packed run reaches ~2.8× over a single process, where the padded version (exercise 2) reaches ~5×. **False sharing roughly halves the speedup** - but it does *not* go negative in pure Python. The interpreter spends ~175 ns on each `counters[my_id] += 1`, so the ~130 ns coherence penalty degrades the speedup without erasing it. In a compiled language, where the increment is ~1 ns, the same pattern scales negatively (the Rust edition measures exactly that, 0.3-0.4×). Every increment by any worker still invalidates the cache line in the other workers' caches; in Python the interpreter cost is just large enough to hide how expensive that invalidation is - the same masking §27 named for the cache cliffs.
 
 This is the canonical pathological case. The fix is structural: separate or pad.
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     print(f"4 workers, padded to cache lines: {time.perf_counter()-t:.2f} s")
 ```
 
-Expected: ~0.8-1.2 seconds - *near-linear speedup* from the serial baseline. Each worker now writes to its own cache line; no coherence traffic between cores. The wall time is roughly 1/N of the single-process equivalent.
+Expected: ~5× over the single-process baseline on this machine - each worker writes to its own cache line, so there is no coherence traffic. Not the full 8× (process-spawn and shared memory-bandwidth cap it), but cleanly better than the packed ~2.8×. The whole point of the exercise is that gap: same algorithm, same worker count, the only difference is whether the counters share a cache line.
 
 The structural change: each counter sits on its own 64-byte boundary. The data the workers actually touch is non-adjacent in memory; the cache lines do not overlap.
 
@@ -80,9 +80,9 @@ def worker_separate(shm_my_name, _):
 # separate: two workers, each with its own private shared block
 ```
 
-The adjacent version: both workers write to the same 64-byte cache line. The coherence protocol bounces the line between cores. Wall time: 2-3× a single-worker baseline.
+The adjacent version: both workers write to the same 64-byte cache line. The coherence protocol bounces the line between cores, so each write pays the ~130 ns penalty on top of the interpreter cost. The adjacent run is noticeably slower than the separate one - roughly the same ~1.8× per-write penalty the packed counters show in exercise 1.
 
-The separate version: each worker writes to its own block at a different address. No coherence traffic. Wall time: 1× the single-worker baseline (parallel speedup is full).
+The separate version: each worker writes to its own block at a different address. No coherence traffic, so the two workers run at full parallel speed - the wall time is close to a single worker doing half the total work.
 
 The lesson: *physical separation in memory* is what matters, not *logical separation by index*. The Python interpreter sees no difference between the two cases; the cache hardware sees a different cache line, which is the difference.
 

@@ -4,13 +4,13 @@
 
 <p align="center"><img src="../illustrations/multimeter.jpg" alt="A mouse with a multimeter - false sharing is a precision-of-cost-measurement problem" style="max-height: 300px; max-width: 100%;"></p>
 
-You partitioned the table. Each process writes its own disjoint slice. The work is balanced. The speedup is... 1.2× on 8 cores. Where did the parallelism go?
+You gave each process its own counter in a shared array. The work is balanced, the slices are disjoint. The speedup is... 2.8× on 8 cores - well short of the ~5× the same code reaches the moment you space those counters out. Where did the parallelism go?
 
 Probably to *false sharing*.
 
 The CPU cache works on 64-byte *cache lines*. When a process writes to address X, the cache coherence protocol invalidates that line in every other core's cache - they must throw away their copy and reload. If two processes are writing to *different* addresses but in the *same* cache line, every write triggers an invalidation on the other process's cache. The processes slow each other down without ever logically conflicting.
 
-A pathological case: eight processes each incrementing one entry in an `int64` array of length 8 in `multiprocessing.shared_memory`. The array is exactly 64 bytes - one cache line. All eight processes write to that line. Every write invalidates the other seven caches. The processes run *slower* together than one process alone - true negative scaling.
+A pathological case: eight processes each incrementing one entry in an `int64` array of length 8 in `multiprocessing.shared_memory`. The array is exactly 64 bytes - one cache line. All eight processes write to that line. Every write invalidates the other seven caches. Measured on this machine (`false_sharing.py`): packed counters reach only 2.8× over a single process, where padding each counter onto its own line reaches ~5×. In a *compiled* language this pattern goes fully negative - the parallel run slower than one thread - because the ~130 ns coherence cost dwarfs a 1 ns increment. In pure Python the interpreter spends ~175 ns on each `arr[i] += 1` regardless, so false sharing roughly doubles the per-write cost rather than multiplying it a hundredfold: the speedup survives, badly degraded. The masking is the same one §27 named for the cache cliffs.
 
 ## Why this matters in Python+multiprocessing
 
@@ -20,7 +20,7 @@ The good news: the partition pattern from [§31](31_disjoint_writes_parallelize.
 
 False sharing shows up when the per-process state is small. Three cases worth naming:
 
-**Per-process counters in shared memory.** If each worker writes to `counters[my_id]` in a shared array, and the array is `int64`, then 8 workers occupy 64 bytes - exactly one cache line. Every increment by any worker invalidates every other worker's cache copy. *True negative scaling.*
+**Per-process counters in shared memory.** If each worker writes to `counters[my_id]` in a shared array, and the array is `int64`, then 8 workers occupy 64 bytes - exactly one cache line. Every increment by any worker invalidates every other worker's cache copy. *Measured: 2.8× packed vs ~5× padded - false sharing roughly halves the speedup here, and turns it negative in compiled code.*
 
 ```python
 # anti-pattern: bad!
@@ -88,7 +88,7 @@ If you have one of the unmeasured machines and run the suite, send the numbers a
 
 ## Exercises
 
-1. **The pathological counter.** Build the 8-process case with `multiprocessing.shared_memory`: an `int64` array of length 8, each worker incrementing its own slot in a tight loop. Time the parallel version against a single-process loop doing the same total work. The parallel version should be *slower* - true negative scaling. (Hint: at small enough work-per-tick, even spawning the processes is slower; pick a tight inner loop with millions of increments to see the cache effect dominate.)
+1. **The pathological counter.** Build the 8-process case with `multiprocessing.shared_memory`: an `int64` array of length 8, each worker incrementing its own slot in a tight loop. Time it against the padded version (exercise 2) and a single-process loop doing the same total work. The packed version should be markedly slower than padded - roughly half the speedup (`false_sharing.py` measures ~2.8× vs ~5× on the author's box). In pure Python the interpreter cost keeps it from going fully negative; the same pattern in a compiled language scales negatively. (Hint: pick a tight inner loop with millions of increments so the cache effect is not lost in process-spawn time.)
 2. **The padded version.** Pad each counter to its own cache line: use an `int64` array of length `8 * 8 = 64` and have each worker write to index `my_id * 8`. Re-run. The parallel version should now scale near-linearly with worker count.
 3. **A real example.** In your simulator's per-process `to_remove` segments ([§31](31_disjoint_writes_parallelize.md) exercise 4), check whether two workers' segment-appending might land in the same cache line. They normally do not - separate per-process numpy arrays live in different shared-memory blocks - but if performance is unexpectedly poor, this is one place to look.
 4. **Adjacent in shared memory.** Build a shared array of two `int64`s. Spawn two workers, one writing index 0, one writing index 1, in tight loops. Time vs. two workers each writing to its own separate `multiprocessing.shared_memory` block.
