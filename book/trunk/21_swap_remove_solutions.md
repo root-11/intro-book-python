@@ -77,7 +77,7 @@ numpy bulk filter, arr[keep_mask]                  0.004 s       25.4M ops/s
 
 Surprises that calibrate intuition:
 
-- **`np.delete` is the slowest** - 6500× slower than the bulk filter. The "numpy way" sounds right but is algorithmically wrong: it reallocates on every call.
+- **`np.delete` is the slowest** - ~5,700× slower than the bulk filter. The "numpy way" sounds right but is algorithmically wrong: it reallocates on every call.
 - **Python list pop(i) beats `np.delete`** at this scale, because pointer-shifts in a Python list are ~8 bytes each whereas reallocation copies the whole int64 array.
 - **Bulk filter is 3× faster than sequential swap_remove**, even though both are O(K). The Python loop crossing the C boundary 100K times has measurable overhead; the bulk version pays the boundary cost once.
 

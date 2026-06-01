@@ -50,13 +50,13 @@ From [`code/measurement/swap_remove.py`](https://github.com/root-11/intro-book-p
 
 Four readings.
 
-**`np.delete` is the worst.** This will surprise readers who reach for it because it sounds like the "numpy way" to remove a row. It is not - `np.delete` returns a *new* array with the element removed, allocating fresh memory and copying the surviving elements every call. At 100,000 sequential deletes from a 1M-row array, you allocate 100,000 progressively-shrinking arrays. The bytes are typed, the operation is C-level, and it is still **7,151× slower than the bulk filter** because the algorithmic shape is wrong.
+**`np.delete` is the worst.** This will surprise readers who reach for it because it sounds like the "numpy way" to remove a row. It is not - `np.delete` returns a *new* array with the element removed, allocating fresh memory and copying the surviving elements every call. At 100,000 sequential deletes from a 1M-row array, you allocate 100,000 progressively-shrinking arrays. The bytes are typed, the operation is C-level, and it is still **~5,700× slower than the bulk filter** because the algorithmic shape is wrong.
 
-**`list.pop(i)` is the AoS middle ground**, but only because Python lists are pointer arrays - shifting an N-element list is N pointer copies, which is faster than shifting and reallocating an N-element typed numpy array. Either way: O(N) per remove, **1,129× slower than the bulk filter**.
+**`list.pop(i)` is the AoS middle ground**, but only because Python lists are pointer arrays - shifting an N-element list is N pointer copies, which is faster than shifting and reallocating an N-element typed numpy array. Either way: O(N) per remove, **~950× slower than the bulk filter**.
 
-**Sequential swap_remove processes 5.5 million removes per second.** Each remove is O(1), but the loop that drives it crosses the Python-numpy boundary 100,000 times - one bounds check, one assignment, one `n_active -= 1` per iteration. That overhead is the only thing keeping it from being the fastest line in the table.
+**Sequential swap_remove processes ~7.8 million removes per second.** Each remove is O(1), but the loop that drives it crosses the Python-numpy boundary 100,000 times - one bounds check, one assignment, one `n_active -= 1` per iteration. That overhead is the only thing keeping it from being the fastest line in the table.
 
-**Bulk filter processes 29.5 million removes per second** - **5× faster than sequential swap_remove**. The boolean-mask pass and the compress are both single C-level operations over the whole array. The Python interpreter is touched once, not 100,000 times. This is the version the simulator's cleanup pass should use whenever it has a buffer of indices to remove.
+**Bulk filter processes ~25.6 million removes per second** - **~3× faster than sequential swap_remove**. The boolean-mask pass and the compress are both single C-level operations over the whole array. The Python interpreter is touched once, not 100,000 times. This is the version the simulator's cleanup pass should use whenever it has a buffer of indices to remove.
 
 Reading the table together: **per-element swap_remove is the right tool when you genuinely have one row to remove (rare). Bulk filter is the right tool when you have a buffer of K indices (the typical case once buffering is in place - §22).** Both forms beat the AoS reflexes by orders of magnitude. The choice between them is set by whether the buffering pattern from §22 has happened upstream.
 

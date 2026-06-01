@@ -6,29 +6,19 @@
 uv run code/measurement/parallel_motion.py
 ```
 
-```
-=== memory-bound: pos += vel * dt ===
- workers    wall (s)   speedup
---------------------------------------------------
-  serial       3.199      1.00
-       1       2.888      1.11
-       2       0.588      5.44
-       4       0.458      6.98
-       8       0.463      6.92
-      16       0.373      8.58
+Speedup over the serial baseline (raw wall times dropped - they are timing-noisy; the speedup curve is the claim):
 
-=== compute-bound: out += sin(x)**2 + cos(x)**2 ===
- workers    wall (s)   speedup
---------------------------------------------------
-  serial      13.379      1.00
-       1      12.978      1.03
-       2       4.635      2.89
-       4       2.784      4.81
-       8       2.159      6.20
-       16       1.830      7.31
+```
+  workers    memory-bound    compute-bound
+  ----------------------------------------
+  serial         1.00            1.00
+  2              3.8             3.2
+  4              3.7             5.1
+  8              3.6             5.9
+  16             4.0             5.8
 ```
 
-On this machine, the memory-bound case plateaus around 4-8 workers (~7-8.5× speedup); compute-bound climbs more steadily to 7.3× at 16 workers. The memory-bound ceiling is *aggregate bandwidth*; compute-bound is *physical core count plus partial SMT overlap*.
+On this machine (8 cores / 16 threads), the memory-bound case saturates by ~2 workers and plateaus around 4× - aggregate memory bandwidth is the ceiling, and two streams reach it. The compute-bound case climbs to ~6× at 8 workers, then flattens: physical core count plus partial SMT overlap. A box with more memory channels would push the memory-bound ceiling higher; that is the number that varies most between machines.
 
 Find your curve's flat spot - that's your machine's parallel ceiling for each regime.
 
@@ -53,7 +43,7 @@ for th in threads: th.join()
 print(f"threading × 8: {(time.perf_counter()-t)*1000:.1f} ms")
 ```
 
-Typical: ~1.5-2× speedup over serial - much less than the multiprocessing ~5×. Why?
+Typical: ~1.5-2× speedup over serial - much less than the multiprocessing ~4-6×. Why?
 
 - Numpy releases the GIL during bulk ops (`*= dt`), so threads can overlap during that C call.
 - *Around* the bulk op, Python orchestration (slicing, attribute lookups, etc.) holds the GIL, serialising the threads.
