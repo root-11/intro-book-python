@@ -179,13 +179,13 @@ This is the missing piece of the machine model in Python. The hierarchy is still
 
 | N           | Python list | numpy seq | numpy gather | gather/seq |
 |------------:|------------:|----------:|-------------:|-----------:|
-|      10,000 |    4.85 ns  |  0.54 ns  |   1.47 ns    |    2.7×    |
-|     100,000 |    4.60 ns  |  0.18 ns  |   2.88 ns    |   16.4×    |
-|   1,000,000 |    4.60 ns  |  0.21 ns  |   3.51 ns    |   17.0×    |
-|  10,000,000 |    4.62 ns  |  0.19 ns  |  10.33 ns    |   53.7×    |
-| 100,000,000 |    4.60 ns  |  0.16 ns  |  11.80 ns    |   72.2×    |
+|      10,000 |    4.85 ns  |  0.65 ns  |   3.07 ns    |    4.7×    |
+|     100,000 |    4.60 ns  |  0.37 ns  |   2.01 ns    |    5.4×    |
+|   1,000,000 |    4.60 ns  |  0.21 ns  |   3.53 ns    |   17.0×    |
+|  10,000,000 |    4.62 ns  |  0.15 ns  |  10.06 ns    |   66.0×    |
+| 100,000,000 |    4.60 ns  |  0.15 ns  |  11.72 ns    |   80.0×    |
 
-Read the columns. The Python list is **flat at ~4.6 ns/element across five orders of magnitude**. From inside the interpreter the cache hierarchy does not exist. The numpy sequential column is 25-30× faster and reveals the bandwidth - the inner loop is C, the bytes are typed, the prefetcher works. The numpy gather column is the same data accessed in a shuffled order; once the working set leaves L1 (between 10K and 100K), the per-element cost climbs, and by 100M the gap to sequential is **72×**. That ratio is the L1-to-RAM cost gap on this machine, measured.
+Read the columns (3-run medians; the sub-nanosecond seq column is noisy run-to-run, the gather column and the RAM ratios are the stable claims). The Python list is **flat at ~4.6 ns/element across five orders of magnitude**. From inside the interpreter the cache hierarchy does not exist. The numpy sequential column is 25-30× faster and reveals the bandwidth - the inner loop is C, the bytes are typed, the prefetcher works. The numpy gather column is the same data accessed in a shuffled order; while it fits in cache the gather penalty is small (~5-17×), and once the working set spills L3 (between 1M and 10M) the per-element cost climbs sharply, reaching **80×** the sequential cost at 100M. That ratio is the L1-to-RAM cost gap on this machine, measured.
 
 **2. Take an exception once vs a million times.** [`code/measurement/try_except.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/try_except.py) compares `try/except ZeroDivisionError` against an explicit `if value != 0` check, across hit rates from 0.0001% to 99.9999%. At 50/50 the `try/except` form is 4× slower; at 99.9999% (almost no exceptions raised) the `try/except` form is *faster* than the `if`. The difference is the CPU's branch predictor: a taken branch with high frequency is essentially free; a mispredicted one costs ~10-20 cycles. The lesson is not "use try/except" or "use if" - it is that constant factors are rate-dependent, and even Python inherits this.
 
@@ -1017,7 +1017,7 @@ From [`code/measurement/event_time_storage.py`](https://github.com/root-11/intro
 The headline numbers, both ways:
 
 - **7× smaller** footprint moving from `datetime` list to either typed numpy column. Each `datetime` instance is ~56 bytes (header, refcount, eight integer fields, pointer); each numpy element is 8 bytes (an `int64` micro-since-epoch under `datetime64[us]`, or a `float64` second-from-base for the `f8` representation).
-- **17× faster** count of "how many events happened before time T?" - the per-tick query that decides what gets processed this tick. The numpy versions evaluate the comparison as one bandwidth-bound bulk op; the datetime version pays per-element interpreter dispatch and a `<` method call.
+- **~26× faster** count of "how many events happened before time T?" - the per-tick query that decides what gets processed this tick. The numpy versions evaluate the comparison as one bandwidth-bound bulk op; the datetime version pays per-element interpreter dispatch and a `<` method call.
 - Sort time is mixed and dtype-sensitive - measure your specific case. On this run numpy's float64 sort was slower than its datetime64 sort, which was slightly faster than Python's Timsort on the already-sorted datetime list. Sort cost matters for ingestion; count cost matters per tick. The tick is the binding budget.
 
 The simlog reference implementation (vendored at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py)) stores time as `f8` - float64 seconds. That is the disciplined choice for an event log: small, sortable, amenable to bulk numpy ops, and the same width as everything else in the column store. `datetime64[us]` is a reasonable alternative when you need to read the timestamps as wall-clock dates without conversion. Use `datetime` objects only at the boundary - formatting a string for a log line, comparing against a user-supplied timestamp from a request - never as your in-memory storage at simulation scale.
@@ -1576,7 +1576,7 @@ energy[hungry] -= HUNGER_BURN_RATE * dt
 
 The two produce the same result. The two have very different costs.
 
-The filtered version evaluates `is_hungry` for every creature - a 1,000,000-byte scan to find the 100,000 hungry ones. The EBP version reads the 100,000 entries of `hungry` and indexes directly. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py) (the §18 exhibit), at 10% sparsity the presence version was **5× faster** than the bool mask version, and at 1% it was **10× faster**. Most simulator states are sparse - a small fraction of creatures are eating at any given tick, a small fraction are reproducing, a small fraction are dying - so EBP's compounding advantage shows up everywhere.
+The filtered version evaluates `is_hungry` for every creature - a 1,000,000-byte scan to find the 100,000 hungry ones. The EBP version reads the 100,000 entries of `hungry` and indexes directly. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py) (the §18 exhibit), at both 1% and 10% sparsity the presence version was **~6.5× faster** than the bool mask version. Note what does *not* happen: the advantage does not grow as the state gets sparser. In a scalar language it would (work proportional to the live fraction), but numpy's mask scan is itself vectorised and bandwidth-cheap, so presence wins by a steady ~6.5× across the low-sparsity range rather than 10×, 100×, 1000×. Most simulator states are sparse - a small fraction of creatures are eating, reproducing, or dying at any given tick - so that steady advantage shows up on every consumer of the state.
 
 A useful intuition: it is the difference between a wandering shopper trying to remember what they need and a shopper with a list. The list version is shorter, faster, and correct by construction. You do not consult the list to ask "is this aisle on my list?" - you walk down the list and visit each aisle once.
 
@@ -1774,13 +1774,13 @@ From [`code/measurement/swap_remove.py`](https://github.com/root-11/intro-book-p
 
 Four readings.
 
-**`np.delete` is the worst.** This will surprise readers who reach for it because it sounds like the "numpy way" to remove a row. It is not - `np.delete` returns a *new* array with the element removed, allocating fresh memory and copying the surviving elements every call. At 100,000 sequential deletes from a 1M-row array, you allocate 100,000 progressively-shrinking arrays. The bytes are typed, the operation is C-level, and it is still **7,151× slower than the bulk filter** because the algorithmic shape is wrong.
+**`np.delete` is the worst.** This will surprise readers who reach for it because it sounds like the "numpy way" to remove a row. It is not - `np.delete` returns a *new* array with the element removed, allocating fresh memory and copying the surviving elements every call. At 100,000 sequential deletes from a 1M-row array, you allocate 100,000 progressively-shrinking arrays. The bytes are typed, the operation is C-level, and it is still **~5,700× slower than the bulk filter** because the algorithmic shape is wrong.
 
-**`list.pop(i)` is the AoS middle ground**, but only because Python lists are pointer arrays - shifting an N-element list is N pointer copies, which is faster than shifting and reallocating an N-element typed numpy array. Either way: O(N) per remove, **1,129× slower than the bulk filter**.
+**`list.pop(i)` is the AoS middle ground**, but only because Python lists are pointer arrays - shifting an N-element list is N pointer copies, which is faster than shifting and reallocating an N-element typed numpy array. Either way: O(N) per remove, **~950× slower than the bulk filter**.
 
-**Sequential swap_remove processes 5.5 million removes per second.** Each remove is O(1), but the loop that drives it crosses the Python-numpy boundary 100,000 times - one bounds check, one assignment, one `n_active -= 1` per iteration. That overhead is the only thing keeping it from being the fastest line in the table.
+**Sequential swap_remove processes ~7.8 million removes per second.** Each remove is O(1), but the loop that drives it crosses the Python-numpy boundary 100,000 times - one bounds check, one assignment, one `n_active -= 1` per iteration. That overhead is the only thing keeping it from being the fastest line in the table.
 
-**Bulk filter processes 29.5 million removes per second** - **5× faster than sequential swap_remove**. The boolean-mask pass and the compress are both single C-level operations over the whole array. The Python interpreter is touched once, not 100,000 times. This is the version the simulator's cleanup pass should use whenever it has a buffer of indices to remove.
+**Bulk filter processes ~25.6 million removes per second** - **~3× faster than sequential swap_remove**. The boolean-mask pass and the compress are both single C-level operations over the whole array. The Python interpreter is touched once, not 100,000 times. This is the version the simulator's cleanup pass should use whenever it has a buffer of indices to remove.
 
 Reading the table together: **per-element swap_remove is the right tool when you genuinely have one row to remove (rare). Bulk filter is the right tool when you have a buffer of K indices (the typical case once buffering is in place - §22).** Both forms beat the AoS reflexes by orders of magnitude. The choice between them is set by whether the buffering pattern from §22 has happened upstream.
 
@@ -2290,19 +2290,17 @@ These extend the simulator's `creature` table.
 
 The *working set* of a loop is the data it touches per pass. The *cache hierarchy* (§1) is what holds that data. The two together decide the loop's speed - *once you are in numpy*. In pure Python, the interpreter-dispatch tax dominates and the cliff is invisible. The moment your inner loop drops into a bulk numpy op, the cliff is real and exactly where the hardware says it is.
 
-If the working set fits in L1 - typically 32 KB per core - the loop runs near memory-bandwidth speed: ~0.1-0.5 ns per element. If it fits in L2 - typically 1-2 MB per core - it is ~0.5-2 ns. If it fits in L3 - typically 16-32 MB shared - it is ~1-5 ns. If it spills to RAM, sequential access drops to ~3-10 ns (prefetcher helping); random access drops to 50-200 ns (no prefetcher help).
-
-These ranges are not theoretical. They are what your machine actually does, measured in [§1's `cache_cliffs.py` exhibit](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py). The numbers from that exhibit, on this machine:
+Sequential numpy access stays bandwidth-bound and cheap at every size - the prefetcher reaches forward and amortises the cost. The cliff is in *random* (gather) access, where each element is an unpredictable jump the prefetcher cannot hide. The exact ns depend on the chip; the numbers below are what this machine does, measured in [§1's `cache_cliffs.py` exhibit](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py) (3-run medians):
 
 | N           | numpy seq | numpy gather | gather/seq |
 |------------:|----------:|-------------:|-----------:|
-|     10,000  |  0.54 ns  |   1.47 ns    |    2.7 ×   |
-|    100,000  |  0.18 ns  |   2.88 ns    |   16.4 ×   |
-|  1,000,000  |  0.21 ns  |   3.51 ns    |   17.0 ×   |
-| 10,000,000  |  0.19 ns  |  10.33 ns    |   53.7 ×   |
-|100,000,000  |  0.16 ns  |  11.80 ns    |   72.2 ×   |
+|     10,000  |  0.65 ns  |   3.07 ns    |    4.7 ×   |
+|    100,000  |  0.37 ns  |   2.01 ns    |    5.4 ×   |
+|  1,000,000  |  0.21 ns  |   3.53 ns    |   17.0 ×   |
+| 10,000,000  |  0.15 ns  |  10.06 ns    |   66.0 ×   |
+|100,000,000  |  0.15 ns  |  11.72 ns    |   80.0 ×   |
 
-The cliff is in the gather column. The 10K and 100K rows fit in L1 / L2 (gather ratio ~2-16×); the 10M and 100M rows spill to RAM (ratio 54-72×). The numpy *sequential* row stays roughly flat because the prefetcher reaches forward and amortises the cost - that is what bandwidth-bound looks like on this machine.
+The cliff is in the gather column. The 10K and 100K rows fit in L1 / L2 (gather ratio ~5×); 1M sits in L3 (~17×); the 10M and 100M rows spill to RAM (ratio 66-80×). The numpy *sequential* row stays flat under ~0.7 ns/element throughout - that is what bandwidth-bound looks like on this machine. (The sub-nanosecond seq column is noisy run-to-run; the gather column and the RAM ratios are the stable claims.)
 
 ## Computing your working set
 
@@ -2341,7 +2339,7 @@ This is not premature optimisation. It is *layout-aware design* - making the sch
 2. **Find your cliff.** `uv run code/measurement/cache_cliffs.py` (the §1 exhibit) gives you ns/element across sizes for sequential and gather access. Plot the gather column. The transitions should match your cache sizes.
 3. **Reduce the working set.** Apply the hot/cold split organisationally ([§26](#26---hotcold-splits)) so motion reads only the hot columns. Time motion at the cliff size you found in exercise 2. Did the cliff move? In pure SoA-in-numpy, the answer is "no, because the columns were already separated" - see §26's framing.
 4. **A wider dtype.** Change `energy: float32` to `energy: float64`. Recompute the working set. Time motion. The cliff should move inward (closer to smaller N).
-5. **Random vs sequential, your machine.** Re-read the gather/seq ratio in the cache_cliffs table for *your* output. The factor 2.7× → 72× growth across sizes is your machine's cache-vs-RAM cost gap. Memorise this number; it is the answer to "how much does a random access cost compared to a sequential one on this hardware?".
+5. **Random vs sequential, your machine.** Re-read the gather/seq ratio in the cache_cliffs table for *your* output. The factor ~5× → 80× growth across sizes is your machine's cache-vs-RAM cost gap. Memorise this number; it is the answer to "how much does a random access cost compared to a sequential one on this hardware?".
 6. *(stretch)* **The L1 sweet spot.** Find the N at which motion's working set fills L1 to roughly 75%. Run the motion loop in tight repetition (call it 1,000 times in a row, no other work between calls). The L1-resident loop should run at a stable ~0.2 ns/element for the entire run. The closest L2-only neighbour should be 3-5× slower.
 
 ## What's next
@@ -2807,13 +2805,13 @@ This chapter has covered a lot of ground at the architectural level. Three hones
 
 <p align="center"><img src="book/illustrations/multimeter.jpg" alt="A mouse with a multimeter - false sharing is a precision-of-cost-measurement problem" style="max-height: 300px; max-width: 100%;"></p>
 
-You partitioned the table. Each process writes its own disjoint slice. The work is balanced. The speedup is... 1.2× on 8 cores. Where did the parallelism go?
+You gave each process its own counter in a shared array. The work is balanced, the slices are disjoint. The speedup is... 2.8× on 8 cores - well short of the ~5× the same code reaches the moment you space those counters out. Where did the parallelism go?
 
 Probably to *false sharing*.
 
 The CPU cache works on 64-byte *cache lines*. When a process writes to address X, the cache coherence protocol invalidates that line in every other core's cache - they must throw away their copy and reload. If two processes are writing to *different* addresses but in the *same* cache line, every write triggers an invalidation on the other process's cache. The processes slow each other down without ever logically conflicting.
 
-A pathological case: eight processes each incrementing one entry in an `int64` array of length 8 in `multiprocessing.shared_memory`. The array is exactly 64 bytes - one cache line. All eight processes write to that line. Every write invalidates the other seven caches. The processes run *slower* together than one process alone - true negative scaling.
+A pathological case: eight processes each incrementing one entry in an `int64` array of length 8 in `multiprocessing.shared_memory`. The array is exactly 64 bytes - one cache line. All eight processes write to that line. Every write invalidates the other seven caches. Measured on this machine (`false_sharing.py`): packed counters reach only 2.8× over a single process, where padding each counter onto its own line reaches ~5×. In a *compiled* language this pattern goes fully negative - the parallel run slower than one thread - because the ~130 ns coherence cost dwarfs a 1 ns increment. In pure Python the interpreter spends ~175 ns on each `arr[i] += 1` regardless, so false sharing roughly doubles the per-write cost rather than multiplying it a hundredfold: the speedup survives, badly degraded. The masking is the same one §27 named for the cache cliffs.
 
 ## Why this matters in Python+multiprocessing
 
@@ -2823,7 +2821,7 @@ The good news: the partition pattern from [§31](#31---disjoint-write-sets-paral
 
 False sharing shows up when the per-process state is small. Three cases worth naming:
 
-**Per-process counters in shared memory.** If each worker writes to `counters[my_id]` in a shared array, and the array is `int64`, then 8 workers occupy 64 bytes - exactly one cache line. Every increment by any worker invalidates every other worker's cache copy. *True negative scaling.*
+**Per-process counters in shared memory.** If each worker writes to `counters[my_id]` in a shared array, and the array is `int64`, then 8 workers occupy 64 bytes - exactly one cache line. Every increment by any worker invalidates every other worker's cache copy. *Measured: 2.8× packed vs ~5× padded - false sharing roughly halves the speedup here, and turns it negative in compiled code.*
 
 ```python
 # anti-pattern: bad!
@@ -2891,7 +2889,7 @@ If you have one of the unmeasured machines and run the suite, send the numbers a
 
 ## Exercises
 
-1. **The pathological counter.** Build the 8-process case with `multiprocessing.shared_memory`: an `int64` array of length 8, each worker incrementing its own slot in a tight loop. Time the parallel version against a single-process loop doing the same total work. The parallel version should be *slower* - true negative scaling. (Hint: at small enough work-per-tick, even spawning the processes is slower; pick a tight inner loop with millions of increments to see the cache effect dominate.)
+1. **The pathological counter.** Build the 8-process case with `multiprocessing.shared_memory`: an `int64` array of length 8, each worker incrementing its own slot in a tight loop. Time it against the padded version (exercise 2) and a single-process loop doing the same total work. The packed version should be markedly slower than padded - roughly half the speedup (`false_sharing.py` measures ~2.8× vs ~5× on the author's box). In pure Python the interpreter cost keeps it from going fully negative; the same pattern in a compiled language scales negatively. (Hint: pick a tight inner loop with millions of increments so the cache effect is not lost in process-spawn time.)
 2. **The padded version.** Pad each counter to its own cache line: use an `int64` array of length `8 * 8 = 64` and have each worker write to index `my_id * 8`. Re-run. The parallel version should now scale near-linearly with worker count.
 3. **A real example.** In your simulator's per-process `to_remove` segments ([§31](#31---disjoint-write-sets-parallelize-freely) exercise 4), check whether two workers' segment-appending might land in the same cache line. They normally do not - separate per-process numpy arrays live in different shared-memory blocks - but if performance is unexpectedly poor, this is one place to look.
 4. **Adjacent in shared memory.** Build a shared array of two `int64`s. Spawn two workers, one writing index 0, one writing index 1, in tight loops. Time vs. two workers each writing to its own separate `multiprocessing.shared_memory` block.
