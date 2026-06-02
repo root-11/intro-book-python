@@ -256,7 +256,7 @@ This is the first part of the chapter's question. *Picking the narrowest type th
 
 `numpy` makes the width budget exist again. `np.int8` is one byte, range -128 to 127. `np.int16` is two bytes, `np.int32` is four, `np.int64` is eight. `np.float32` is four bytes (~7 decimal digits of precision); `np.float64` is eight (~15 digits). The signed/unsigned and integer/float variants compose freely.
 
-A `np.zeros(N, dtype=np.uint8)` is N bytes - flat, contiguous, no per-element header. A cache line packs **64** of them. A `np.zeros(N, dtype=np.int64)` is 8N bytes; one cache line packs **8**. If your loop touches one element per cache line, the int64 version makes 8× as many memory loads as the uint8 version. The width budget is back.
+A `np.zeros(N, dtype=np.uint8)` is N bytes - flat, contiguous, no per-element header. A cache line packs **64** of them. A `np.zeros(N, dtype=np.int64)` is 8N bytes; one cache line packs **8**. Walk the whole array and the int64 version pulls in 8× as many cache lines as the uint8 version: the same element count, eight times the bytes. The width budget is back.
 
 Same exhibit, the data column tells the story at N=1,000,000:
 
