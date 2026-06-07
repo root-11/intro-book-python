@@ -23,3 +23,6 @@ __pycache__/
 
 # Local environment overrides
 .env
+
+# Local agent-context notes, not part of the published source
+CLAUDE.md
