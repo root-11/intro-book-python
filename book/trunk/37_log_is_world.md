@@ -24,12 +24,14 @@ A presence table `hungry: np.ndarray` holds *slots* in memory, but the log that 
 In the most explicit form - the *triple-store* shape - the log is three parallel numpy columns:
 
 ```python
-rids: np.ndarray  # uint32 - which entity (the row id)
-keys: np.ndarray  # uint8  - which column (a numeric code)
-vals: np.ndarray  # float64 - the value to write
+rids: np.ndarray  # uint32  - which entity: the stable id (§10), not the slot
+keys: np.ndarray  # uint8   - which cell: a code for `table.column`, e.g. creatures.energy
+vals: np.ndarray  # float64 - the value written there
 ```
 
-The triples form the log; transposed, they form the columns. **Transposition is the only translation. There is no impedance mismatch because there is no model gap.**
+Read one triple as a sentence: *entity `rids[i]`, cell `table.column`, becomes `vals[i]`*. The key is best read as `table.column` - it names the table *and* the column, so `(rid, table.column)` is a fully-qualified address of one cell anywhere in the world. That `table.column` form is what makes the log uniform: every state change, in every table, is the same three fields, and replay is the mechanical `world[table][column][id_to_slot[rid]] = val` applied over the log in order. The codebook (below) stores each distinct `table.column` string once and the per-event key as a small integer code, so the log never carries the string. (This is a write-ahead log: `table.column`, row-by-id, value - rebuilt out of three numpy arrays.)
+
+Three stable handles, one moving thing left out. The entity id is *identity* - it survives relocation and the save ([§26](26_subscription_tables.md)). The `table.column` is the *schema address* - stable as long as the schema is. The value is the write. The *slot* - the entity's momentary position in the columns - is never logged, because it is the one part that moves; replay re-derives it through `id_to_slot` ([§23](23_index_maps.md)). The triples form the log; transposed, they form the columns. **Transposition is the only translation. There is no impedance mismatch because there is no model gap.**
 
 ## Not the `logging` module
 

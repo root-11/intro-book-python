@@ -41,7 +41,7 @@ def cleanup_with_log(world, buffer, log):
     # ... apply mutations as before ...
 ```
 
-Each triple is `(rid, key, val)` - entity id, column code, value. The log is three parallel numpy columns. After 100 ticks of a 1000-creature simulation with moderate churn: ~100K-1M triples, depending on event rate.
+Each triple is `(rid, key, val)` - entity id, `table.column` code (which table and column the value writes to), value. The log is three parallel numpy columns. After 100 ticks of a 1000-creature simulation with moderate churn: ~100K-1M triples, depending on event rate.
 
 ## Exercise 2 - Reconstruct from the log
 
