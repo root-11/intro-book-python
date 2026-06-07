@@ -6,7 +6,7 @@
 
 If a presence table is empty, the system that iterates it does nothing. No rows, no work. This is the consequence of [§19](19_ebp_dispatch.md) at the limit, and it is the property that lets the simulator scale gracefully under shifting state.
 
-Concretely: a 1,000,000-creature simulation with zero hungry creatures right now spends *zero* cycles in `drive_hunger`. The system is wired into the DAG, runs every tick, takes a numpy array of `hungry` ids of length 0, executes one bulk op that operates on zero elements, returns. The overhead is one function call and one fancy-index of length zero - measured in microseconds, not milliseconds.
+Concretely: a 1,000,000-creature simulation with zero hungry creatures right now spends *zero* cycles in `drive_hunger`. The system is wired into the DAG, runs every tick, takes a numpy array of `hungry` slots of length 0, executes one bulk op that operates on zero elements, returns. The overhead is one function call and one fancy-index of length zero - measured in microseconds, not milliseconds.
 
 This is not "fast in the empty case as an optimisation". It is *free in the empty case as a structural consequence*. The flag-based version runs through the entire creature table even when no flags are set, paying full memory bandwidth to discover that no work is needed. The EBP version is told there is no work by the simple fact of an empty table.
 

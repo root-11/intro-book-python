@@ -43,16 +43,14 @@ N           gather (ns/elem)
 
 Transitions visible: 10K → 100K (L1 → L2, ~1.4×), 100K → 1M (L2 → L3, ~1.6×), 1M → 10M (L3 → RAM, ~2.1×). The cliff is shallowest at the L1/L2 boundary and steepest at L3/RAM on this machine.
 
-## Exercise 3 - Reduce the working set
+## Exercise 3 - The unused column costs nothing
 
-Splitting the motion's row from `(pos_x, pos_y, vel_x, vel_y, energy, birth_t, id, gen)` = 36 bytes to `(pos_x, pos_y, vel_x, vel_y, energy)` = 20 bytes:
+Add `birth_t: float64` and `species: uint8` - two columns motion never reads. Motion's working set is *unchanged*: 20 bytes per creature (`pos_x, pos_y, vel_x, vel_y, energy` = 5 × float32). The new columns are separate `np.ndarray`s; `pos += vel * dt` and `energy[...] -= ...` never load their bytes.
 
-- Motion's working set at 1M creatures: 36 MB → 20 MB. Still fits L3.
-- At 2M: 72 MB → 40 MB. The 72-MB version spilled to RAM; the 40-MB version fits L3.
+- Motion's working set at 1M: 20 MB, with or without the extra columns. The cliff does not move.
+- This is the SoA dividend [§26](26_subscription_tables.md) names: a system's footprint *is* its read-set, already. There is no hot/cold split to apply, because the cold columns were never in motion's working set to begin with.
 
-So the cliff moves outward by ~1.8× - exactly the bytes-ratio. **But in pure SoA-in-numpy, motion *already* reads only the hot columns** because each column is its own buffer; reading `pos_x` does not touch `birth_t`'s memory. The split is organisational, not a working-set reduction. The chapter's framing applies: timing does not change.
-
-The split *does* reduce working set in *structured array* layout, where reading `arr['pos_x']` strides past `birth_t`'s bytes. Confirmed by exercise 4 of §26: structured array is 8× slower than SoA columns at the same N.
+The one layout where unused fields *do* cost you is a numpy structured array (one combined dtype for the whole row): there `arr['pos_x']` strides past every other field's bytes on every read. The fix is not a split; it is SoA, which this book has used since [§7](07_structure_of_arrays.md). Keep the columns separate and the question never arises.
 
 ## Exercise 4 - A wider dtype
 

@@ -8,7 +8,7 @@ The §18 alive-fraction exhibit is the EBP-vs-filtered comparison:
 |-------------------|--------------------------|
 | AoS (`for c if c.alive`) | filtered iteration in pure Python |
 | numpy bool mask          | filtered iteration in numpy |
-| numpy presence (ids)     | EBP dispatch in numpy |
+| numpy presence (slots)   | EBP dispatch in numpy |
 
 At 1% sparsity (typical for transient state): EBP is **~6.5×** faster than the filtered numpy version, **~84×** faster than the AoS version. The numpy advantage is steady (~6.5×) across the 1-10% range rather than growing with sparsity - numpy's mask scan is vectorised, so it does not pay per-element for the dead rows the way a scalar predicate would. As the live fraction rises past ~50% the EBP advantage shrinks; at 100% live the bool mask wins because the "filter" is a no-op.
 
@@ -22,8 +22,7 @@ import numpy as np, timeit
 n = 1_000_000
 rng = np.random.default_rng(0)
 energy = rng.uniform(0, 100, n).astype(np.float32)
-ids = np.arange(n, dtype=np.uint32)
-hungry = ids[energy < 10]                            # 10% sparsity
+hungry = np.flatnonzero(energy < 10)                # 10% sparsity, as slots
 is_hungry = energy < 10
 HUNGER = 0.5
 dt = 1/30
@@ -129,9 +128,9 @@ For a simulator with multiple consumers of "the hungry creatures" per tick, this
 ## Exercise 6 - A multi-state system
 
 ```python
-hungry = ids[energy < 10]
-sleepy = ids[energy > 80]
-dead   = ids[energy < 0]
+hungry = np.flatnonzero(energy < 10)
+sleepy = np.flatnonzero(energy > 80)
+dead   = np.flatnonzero(energy < 0)
 
 def drive_hunger(hungry, energy, dt):
     energy[hungry] -= HUNGER * dt

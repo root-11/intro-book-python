@@ -78,4 +78,4 @@ Reference notes in [02_numbers_and_how_they_fit_solutions.md](02_numbers_and_how
 
 ## What's next
 
-[§3 - The `Vec` is a table](03_the_vec_is_a_table.md) takes the next step: now that you know how big the elements are, what does an `np.array` *do* with them, and what shape does the rest of the book expect them to be in?
+[§3 - The `np.ndarray` is a table](03_the_vec_is_a_table.md) takes the next step: now that you know how big the elements are, what does an `np.array` *do* with them, and what shape does the rest of the book expect them to be in?

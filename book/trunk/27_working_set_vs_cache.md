@@ -38,7 +38,7 @@ This is what [§4](04_cost_and_budget.md)'s "cliff" was about, made concrete for
 
 Most numpy code never thinks about cache size because the inner loops are bandwidth-bound and "fast enough." That intuition holds until the working set leaves L3 - at which point per-element cost rises 5-10× *with no change to the source code*. A simulator written for 1M creatures and tested at 100K never notices the cliff; it shows up the day the simulator is sized to 10M and the deadline is missed.
 
-The hot/cold split ([§26](26_hot_cold_splits.md)) shrinks the working set. Motion's working set goes from 40 bytes per creature (full row) to 20 bytes (hot columns only). This pushes the cliff outward by a factor of 2: a 2M-creature simulator now runs at L3-resident speeds instead of RAM-resident. **In pure SoA-in-numpy, this is the chief tangible benefit of the split** - and the §26 caveat applies: only when the inner loop is genuinely hitting the bandwidth ceiling does the split move the cliff.
+What sets the working set is which columns a system reads, and SoA already decides that for you ([§26](26_subscription_tables.md)). Motion reads `px, py, vx, vy, energy` - five columns, 20 bytes per creature - and never touches `birth_t` or `species`, because those are different arrays entirely. There is no full row to trim and no hot/cold split to apply: in numpy SoA a system's footprint is its read-set, already. The levers that move the cliff are reading *fewer* columns and storing them in *narrower* dtypes ([§2](02_numbers_and_how_they_fit.md)), not regrouping fields.
 
 ## Design discipline
 
@@ -53,7 +53,7 @@ This is not premature optimisation. It is *layout-aware design* - making the sch
 
 1. **Compute your working sets.** For each system in your simulator, compute `bytes per row × N` for N = 1K, 10K, 100K, 1M, 10M. Note which cache level each falls into on your machine (use `lscpu | grep -i cache` from §1 exercise 1).
 2. **Find your cliff.** `uv run code/measurement/cache_cliffs.py` (the §1 exhibit) gives you ns/element across sizes for sequential and gather access. Plot the gather column. The transitions should match your cache sizes.
-3. **Reduce the working set.** Apply the hot/cold split organisationally ([§26](26_hot_cold_splits.md)) so motion reads only the hot columns. Time motion at the cliff size you found in exercise 2. Did the cliff move? In pure SoA-in-numpy, the answer is "no, because the columns were already separated" - see §26's framing.
+3. **The unused column costs nothing.** Add two columns motion never reads (`birth_t: float64`, `species: uint8`). Recompute motion's working set and re-time motion at the cliff size from exercise 2. It should not move: in SoA the extra columns are separate arrays motion never loads. This is why there is no hot/cold split to apply in numpy ([§26](26_subscription_tables.md)) - a system's footprint is already just the columns it reads.
 4. **A wider dtype.** Change `energy: float32` to `energy: float64`. Recompute the working set. Time motion. The cliff should move inward (closer to smaller N).
 5. **Random vs sequential, your machine.** Re-read the gather/seq ratio in the cache_cliffs table for *your* output. The factor ~5× → 80× growth across sizes is your machine's cache-vs-RAM cost gap. Memorise this number; it is the answer to "how much does a random access cost compared to a sequential one on this hardware?".
 6. *(stretch)* **The L1 sweet spot.** Find the N at which motion's working set fills L1 to roughly 75%. Run the motion loop in tight repetition (call it 1,000 times in a row, no other work between calls). The L1-resident loop should run at a stable ~0.2 ns/element for the entire run. The closest L2-only neighbour should be 3-5× slower.
@@ -62,4 +62,4 @@ Reference notes in [27_working_set_vs_cache_solutions.md](27_working_set_vs_cach
 
 ## What's next
 
-[§28 - Sort for locality](28_sort_for_locality.md) puts the cache to work explicitly: rearrange your rows so accesses become more sequential.
+[§28 - Proximity is a property of position](28_proximity.md) computes neighbour structure from the position stream, and its cell-ordered compaction (with §26) makes the spatial gather sequential.

@@ -7,15 +7,14 @@ import numpy as np
 
 THRESHOLD = 10.0
 
-def classify_transitions(prev_hungry, energy, ids):
-    """Return (to_add, to_remove) for the hungry presence table."""
+def classify_transitions(prev_hungry, energy):
+    """Return (to_add, to_remove) for the hungry presence table, as slots."""
     is_hungry_now  = energy < THRESHOLD
     was_hungry     = np.zeros(len(energy), dtype=bool)
     if prev_hungry.size:
-        # mark slots that were in prev_hungry - assumes ids[i] == i (dense table)
-        was_hungry[prev_hungry] = True
-    just_became   = ids[ is_hungry_now & ~was_hungry]
-    just_recovered = ids[~is_hungry_now &  was_hungry]
+        was_hungry[prev_hungry] = True       # prev_hungry holds slots
+    just_became    = np.flatnonzero( is_hungry_now & ~was_hungry)
+    just_recovered = np.flatnonzero(~is_hungry_now &  was_hungry)
     return just_became, just_recovered
 
 def apply_hunger_changes(hungry: np.ndarray,
@@ -28,12 +27,12 @@ def apply_hunger_changes(hungry: np.ndarray,
     return hungry
 
 # Per-tick
-to_add, to_remove = classify_transitions(world.hungry, world.energy, world.ids)
+to_add, to_remove = classify_transitions(world.hungry, world.energy)
 # (events are batched; apply at tick boundary, §22)
 world.hungry = apply_hunger_changes(world.hungry, to_add, to_remove)
 
 # Invariant after the tick:
-assert set(world.hungry.tolist()) == set(world.ids[world.energy < THRESHOLD].tolist())
+assert set(world.hungry.tolist()) == set(np.flatnonzero(world.energy < THRESHOLD).tolist())
 ```
 
 The invariant check verifies the table's contents match the predicate at the end of every tick. A simulator that respects this invariant has correctly implemented the structural transition.
@@ -90,13 +89,13 @@ The vocabulary shrinks. `creature.set_hungry(True)` is replaced by *whatever sys
 SLEEP_THRESHOLD = 80.0   # high energy → sleepy (won't need to eat)
 HUNGER_THRESHOLD = 10.0
 
-def classify_states(energy, ids):
-    hungry = ids[energy < HUNGER_THRESHOLD]
-    sleepy = ids[energy >= SLEEP_THRESHOLD]
+def classify_states(energy):
+    hungry = np.flatnonzero(energy < HUNGER_THRESHOLD)
+    sleepy = np.flatnonzero(energy >= SLEEP_THRESHOLD)
     return hungry, sleepy
 
 # Invariant: a creature cannot be in both
-hungry, sleepy = classify_states(energy, ids)
+hungry, sleepy = classify_states(energy)
 assert np.intersect1d(hungry, sleepy).size == 0
 ```
 
@@ -105,17 +104,17 @@ The mutual exclusion is structural (the predicate ranges don't overlap) - `energ
 ## Exercise 5 - Death
 
 ```python
-def transition_to_dead(dying_ids: np.ndarray,
+def transition_to_dead(dying_slots: np.ndarray,
                       hungry: np.ndarray,
                       sleepy: np.ndarray,
                       dead:   np.ndarray):
     """A multi-table transition. Removes from all 'live state' tables, adds to dead."""
-    new_hungry = hungry[~np.isin(hungry, dying_ids)]
-    new_sleepy = sleepy[~np.isin(sleepy, dying_ids)]
-    new_dead   = np.concatenate([dead, dying_ids])
+    new_hungry = hungry[~np.isin(hungry, dying_slots)]
+    new_sleepy = sleepy[~np.isin(sleepy, dying_slots)]
+    new_dead   = np.concatenate([dead, dying_slots])
     return new_hungry, new_sleepy, new_dead
 
-dying = world.ids[world.energy < 0]
+dying = np.flatnonzero(world.energy < 0)
 world.hungry, world.sleepy, world.dead = transition_to_dead(
     dying, world.hungry, world.sleepy, world.dead
 )
@@ -128,11 +127,14 @@ A multi-table transition is *one* helper, not three independent updates. The hel
 ```python
 events: list[tuple[int, int, str]] = []          # (tick, creature_id, event_name)
 
-def log_transitions(events, tick, to_add_hungry, to_remove_hungry):
-    for cid in to_add_hungry.tolist():
-        events.append((tick, cid, "became_hungry"))
-    for cid in to_remove_hungry.tolist():
-        events.append((tick, cid, "stopped_being_hungry"))
+def log_transitions(events, tick, ids, became_slots, recovered_slots):
+    # The membership buffers hold SLOTS; the log records IDENTITY. ids[slot] == slot
+    # today, but §21's swap_remove relocates slots and breaks that - which is exactly
+    # why the log stores the id, the one handle that survives a move.
+    for slot in became_slots.tolist():
+        events.append((tick, int(ids[slot]), "became_hungry"))
+    for slot in recovered_slots.tolist():
+        events.append((tick, int(ids[slot]), "stopped_being_hungry"))
 
 # After 100 ticks, the events list is the canonical history of state transitions.
 print(f"events captured: {len(events)}")
@@ -160,11 +162,14 @@ def replay(events: list[tuple[int, int, str]]) -> dict[str, set[int]]:
             tables["dead"].add(cid)
     return tables
 
-# Compare with the live simulator
+# Compare with the live simulator. replay() yields sets of entity IDS; the live
+# tables hold SLOTS, so map slots -> ids to compare. (ids[slot] == slot until §21
+# relocates anyone, but the mapping is the honest comparison: the log speaks
+# identity, the tables speak position.)
 live_tables = {
-    "hungry": set(world.hungry.tolist()),
-    "sleepy": set(world.sleepy.tolist()),
-    "dead":   set(world.dead.tolist()),
+    "hungry": set(world.ids[world.hungry].tolist()),
+    "sleepy": set(world.ids[world.sleepy].tolist()),
+    "dead":   set(world.ids[world.dead].tolist()),
 }
 assert replay(events) == live_tables
 ```

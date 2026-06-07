@@ -1,63 +1,82 @@
-# 26 - Hot/cold splits
+# 26 - Subscription tables, keyed by slot
 
 <p align="center"><img src="../covers/phase_scale.jpg" alt="Scale phase" style="max-height: 380px; max-width: 100%;"></p>
 
-> *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 26](../../concepts/glossary.md#26--hot-cold-splits).*
+> *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 26](../../concepts/glossary.md#26--subscription-tables-keyed-by-slot).*
 
-The simulator's `creature` table has six columns: `pos`, `vel`, `energy`, `birth_t`, `id`, `gen`. The motion system reads three of the six (`pos`, `vel`, `energy`). The starvation system reads only `energy`. The cleanup system reads `id` and `gen`. The births log reads `birth_t`. *No system reads all six.*
+A system rarely touches every entity. Motion moves all of them, but starvation only reads the hungry, reproduction only the well-fed, a sleep timer only the sleeping. [§17](17_presence_replaces_flags.md) gave the tool for "which entities are in this set": a membership table. [§19](19_ebp_dispatch.md) measured the payoff: walk the 100,000 hungry instead of scanning 1,000,000 and masking, and the work is proportional to the subset, not the population.
 
-If the columns are stored together - same memory region, same prefetcher pulls - every load brings in fields the inner loop ignores. At cache-spilling sizes, the ignored fields cost real bandwidth.
+Call that membership table a *subscription table*, and the loop that walks it a system's *hot loop*. A creature *subscribes* to `hungry` when its energy drops; it *unsubscribes* when it eats. The subscription is the system's input; the hot loop is the system. This section settles a question [§17](17_presence_replaces_flags.md) left open: what does a subscription table store, and how fast is the hot loop that reads it?
 
-The fix is a split: fields touched on the hot path go in one table; fields read rarely go in another. Two tables, same length, same id alignment.
+## A wrong turn first: splitting fields
 
-## Why this lesson is gentler in Python+numpy
+The instinct many readers arrive with - and the one this chapter used to teach - is to split the *fields* of a creature into hot and cold: put the columns an inner loop touches in one group, the rarely-read ones in another, so a load does not drag in bytes the loop ignores. In a row-oriented (array-of-objects) world this is a real technique: reading `c.pos_x` pulls the whole `Creature` object into cache, `c.birth_t` and `c.id` and all.
 
-In a Rust struct-of-fields-per-creature layout, `pos`, `vel`, `energy`, `birth_t`, `id`, `gen` all sit adjacent in memory. When the motion system reads `pos`, the cache line it pulls *also contains* `birth_t` and `id` and `gen` - the prefetcher loads them whether you want them or not. The hot/cold split breaks this adjacency by moving the cold fields to a different memory region.
+But this book has been structure-of-arrays since [§7](07_structure_of_arrays.md), and in numpy SoA the split is already done for you, more completely than a hot/cold grouping would manage. Every column is its own `np.ndarray`, its own allocation. Reading `pos_x` touches `pos_x`'s memory and nothing else; `birth_t` is a different array entirely. There is no row to drag a cold field along with, so there is nothing to split. The bandwidth win that motivates a field split in array-of-objects is the same win SoA already banked back in [§7](07_structure_of_arrays.md); it is not a separate technique to apply here.
 
-In Python with numpy SoA, the situation is already different. Each column is its own contiguous numpy array, allocated by its own `np.empty(...)` call. When the motion system reads `pos_x`, the cache line it pulls *contains only `pos_x` values*. It does not touch `birth_t`'s memory at all. **The columns are already physically separated.** The hot/cold split is, for SoA-in-numpy, largely *organisational* - a way of naming and grouping columns that share an access pattern - not a memory-layout optimisation.
+So the attribute columns are never split. They stay whole: every column, every slot, reachable by index `i`. What a system changes is not the columns but how it *reaches into* them. Rather than scan the whole column and mask, a system keeps a subscription table - the slots `i` it cares about - and indexes straight in: `energy[hungry]`, no scan, no field split. The rest of this section is about making that direct access fast.
 
-The split *does* matter when the layout is something other than SoA-in-numpy:
+## What a subscription stores: slots or ids
 
-- **AoS dataclass lists** (`list[Creature]` with attributes). Reading `c.pos_x` from each instance pulls the full `Creature` object into cache, including `c.birth_t` and `c.id`. Splitting into two parallel lists of dataclasses (a hot Creature and a cold Creature) saves cache bandwidth - but you have already paid the bigger cost of being AoS in the first place. From [§11](11_the_tick.md)'s `tick_budget.py`, the AoS form costs 28 ms per tick at 1M creatures vs 0.6 ms for SoA. The hot/cold split inside the AoS form might recover some of that gap; switching to numpy SoA recovers all of it.
-- **Numpy structured arrays** - `np.dtype([('pos', np.float32, 2), ('vel', np.float32, 2), ('birth_t', np.float64), ...])`. This is AoS in numpy clothing - the bytes for one creature are adjacent. Reading `arr['pos']` strides through the buffer, skipping past `birth_t`'s bytes one row at a time. The strided access is faster than a Python loop but slower than a contiguous numpy column. Splitting helps; using non-structured columns helps more.
+A creature has a stable [id](10_stable_ids_and_generations.md) and a current [slot](23_index_maps.md), its position in the columns. `id_to_slot` maps one to the other. A subscription table could hold either, and in numpy the choice is a measurable cost, not a style preference.
 
-The SoA-in-numpy discipline this book has built since [§7](07_structure_of_arrays.md) means **most of the bandwidth win the hot/cold split offers in Rust, Python+numpy already gives you for free.** The chapter exists for two reasons that are still load-bearing.
+- Hold *slots*. The hot loop is one fancy-index gather: `energy[hungry]`. No redirection. But when [cleanup](24_append_only_and_recycling.md) moves entities, every slot in every subscription is stale and must be rewritten.
+- Hold *ids*. The hot loop is two gathers: `energy[id_to_slot[hungry]]` - resolve each id to its slot, then gather the columns. The table survives relocation untouched; only `id_to_slot` changes.
 
-## What the split still buys you
+The redirection is paid every tick. The rewrite is paid once per cleanup interval. Which loses?
 
-**1. Code-organisational clarity.** A reader of `motion(pos_x, pos_y, vel_x, vel_y, energy, dt)` should not also have to know where `birth_t` lives. Putting the hot columns under one `CreatureHot` namespace and the cold columns under `CreatureCold` makes the read-set/write-set declarations from [§13](13_system_as_function.md) shorter and the dependency graph from [§14](14_systems_compose_into_a_dag.md) sparser. The compiler does not enforce it; the discipline does.
+**Measured.** At 1,000,000 creatures with a tenth subscribed, the id-keyed hot loop runs about twice as slow as the slot-keyed one on a modern desktop<sup>1</sup>. The extra cost is the inner gather: `id_to_slot` is a four-megabyte array and the subscribed ids are scattered through it, so `id_to_slot[hungry]` is a hundred-thousand-element random read before the column gather has even started. The slot key skips that gather entirely - `energy[hungry]` indexes the columns once. (In a compiled language the same gap is a scattered cache miss per element; numpy turns it into a second fancy-index pass, but the verdict is the same.)
 
-**2. Cleanup amortisation.** Cleanup ([§22](22_mutations_buffer.md)) writes every column when slots move. Six columns means six bulk-filter operations per cleanup. Splitting into hot (4 columns) and cold (2 columns) does not reduce the *total* work, but it lets you skip the cold-table cleanup *between* creatures-affecting and creatures-not-affecting cleanup phases. If a tick has only food deaths (no creature deaths), the creature_cold cleanup runs at zero cost ([§20](20_empty_tables_are_free.md)) - the empty-tables-free property compounds with the split.
+The rewrite the slot key pays in return is small and bounded: when cleanup compacts, remap each subscription's `dense` array through the old→new slot map ([§23](23_index_maps.md)), once per cleanup interval, not once per tick. Across the realistic range - a handful of subscriptions, cleanup every few dozen ticks - the per-tick saving buries the per-interval rewrite. The benchmark is [`ebp_partition.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/ebp_partition.py); numbers below.
 
-**3. Persistence and inspection.** A snapshot for replay [§37](37_log_is_world.md) needs every column. A live debug inspector might want only the cold metadata. Splitting lets the inspector read only what it needs and avoid loading the hot columns for an interactive query.
+So **subscription tables hold slots.** This is also *why* the lifecycle keeps [stable slots](24_append_only_and_recycling.md) and lets cleanup own the reindex: slot keys are only safe when one system is responsible for rewriting them when entities move. The cleanup can do that for any reference it owns - a subscription, or a cross-entity link stored in a column - remapping them all in one pass.
 
-The cost of the split is the cost of an extra table: one more name, one more bookkeeping point in cleanup, one more place where alignment must be maintained. Two tables of the same length share an id allocator; updates that affect both must be applied in lockstep.
+## So what is the id for?
 
-## When the split is wrong
+For every reference cleanup *cannot* reach to rewrite. A save file ([§36](36_persistence_is_serialization.md)), a replay log ([§37](37_log_is_world.md)) whose events are `(tick, id, name)` - exactly the [§18](18_add_remove_insert_delete.md) boundary - a packet on the wire, an entity the UI has selected, a snapshot a slow background system is still reading ([§39](39_system_of_systems.md)): a slot is meaningless to all of them, because the next compaction moves it. They hold the id and resolve it through `id_to_slot` once, at the boundary ([§35](35_boundary_is_the_queue.md)), never per element. Slots are an internal, momentary fact; the id (with its generation, [§10](10_stable_ids_and_generations.md)) is the identity that survives a relocation, a save, and a network hop.
 
-- **Pure SoA-in-numpy with sub-millisecond inner loops.** If the existing layout already has every column as its own numpy array and the inner loops are bandwidth-bound at numpy speed, splitting will not measurably help. The bandwidth wasn't being wasted to begin with.
-- **All-fields workloads.** A debug-inspect system that reads every field reads everything; the split adds organisational overhead without reducing access cost.
-- **Tiny rows.** If the full row is already 16-24 bytes, the split's overhead exceeds its benefit.
-- **Frequently rebalancing.** If which fields are "hot" changes from tick to tick, a fixed split becomes unhelpful. Hot/cold is a static decision, made once for a given target workload.
+## Locality: a slot-keyed gather is fast only when its slots are dense
 
-The decision rests on measurement. Profile the simulator at the target size; identify the inner loop's actual touched columns; split when the split changes a measurable number. The split is earned by data, not by aesthetics.
+A slot-keyed hot loop gathers columns at the slots the subscription lists. If those slots are scattered through the column - which is what churn produces as deaths and births leave holes - `energy[hungry]` is a random-access gather. If they are contiguous, it streams. Compacting the live, subscribed entities to the front of the columns turns the scattered gather into a sequential one.
 
-A useful test: name the split *before* writing it. *"I am moving `birth_t` into a cold table because no inner loop reads it"* is a sound design choice. *"I am moving `birth_t` into a cold table because that's how ECS engines do it"* is not.
+How much that buys depends on the machine, and the spread is wide. In numpy the gather's per-element machinery - bounds-check, dereference, copy into the output - is large, and on a fast desktop it dominates the cache-miss difference, so compaction buys only about 1.3x on the hot loop<sup>2</sup>. On hardware where memory latency dominates that machinery instead - the Pi 4 - the win is several-fold (4.9x; see Measurements). The reorder pass is about a millisecond at a million rows on the desktop, so on hot-loop locality *alone* it pays back in tens of ticks, on the order of a second at 30 Hz<sup>3</sup>; on the memory-bound machines the per-tick saving is larger and the payback shorter.
+
+That payback sounds slow until you notice you were going to pay it anyway. The same pass reclaims dead slots ([§24](24_append_only_and_recycling.md)), which the simulator must do regardless as births and deaths leave holes, and the locality gain rides along on a move you already owed. So the rule for Python is: **compact on the GC cadence; the locality it also delivers ranges from a modest desktop bonus to a real win on memory-bound hardware.** [§28 - Proximity is a property of position](28_proximity.md) is that pass.
+
+## The one case a split would help, in full view
+
+There is a single scenario where grouping columns would still pay. A hot loop that gathers several columns at *scattered* slots issues one fancy-index per column, each its own random walk; interleaving those columns into one structured array would gather once. That case is real, and worth stating plainly rather than hiding behind the principle.
+
+We keep the columns separate anyway. The book's answer to scatter is to remove it: compaction ([§28](28_proximity.md)) makes the subscribed slots dense, a dense gather streams each column, and the per-column cost the structured array would have saved is gone. A structured array would also forfeit what SoA bought in [§7](07_structure_of_arrays.md) - whole-column vectorised ops, and the per-column single-writer parallelism of [§31](31_disjoint_writes_parallelize.md) - on every loop that is *not* scattered, to win the one that is. So the rule stands with its exception in the open: keep the columns separate, and compact when the gather scatters.
+
+## Name the subscription before you build it
+
+A subscription is earned by a system that genuinely processes a subset. "Most creatures are not hungry on most ticks, so `hungry` is far smaller than the population" is a sound reason to build one. "Every creature is always in `alive`, but other engines keep an alive-set" is not. A subscription that holds the whole population is a scan-all with extra bookkeeping, and the measurement says so: at full participation the gather is *slower* than a plain vectorised pass over the column - it is the same crossover [§19](19_ebp_dispatch.md) measured, where presence loses to the bool mask once nearly everyone is a member. The subscription wins in proportion to how much it excludes, and not otherwise.
+
+## Measurements
+
+The prose quotes the modern-desktop figure; the spread across the reference machines is below. The keying verdict (row 1, slot beats id) holds on every machine. The locality win (row 2) varies widely - modest on the desktop, several-fold on the Pi - because it depends on how much memory latency dominates numpy's fixed gather overhead. Reproduce any column by running `ebp_partition.py` on that machine.
+
+| # | measurement | Ryzen 9 (modern) | i7-3610QM (2012) | i3-5010U (2015) | Pi 4 |
+|---|---|---|---|---|---|
+| 1 | id-keyed ÷ slot-keyed hot loop, 1M @ 10% | 2.08x | 3.45x | 2.11x | 1.97x |
+| 2 | scattered ÷ compacted gather, 1M @ 10% | 1.31x | 1.62x | 2.79x | 4.86x |
+| 3 | compaction payback, hot-loop locality alone | ~30 ticks | ~20 ticks | ~12 ticks | ~7 ticks |
 
 ## Exercises
 
-These extend the simulator's `creature` table.
+These extend the simulator's `creature` columns and the `id_to_slot` map from [§23](23_index_maps.md).
 
-1. **Audit access patterns.** For each system in your simulator, list which columns it reads and which it writes. Columns read every tick are hot; the rest are cold.
-2. **Build the split, organisationally.** Refactor `creature` into `creature_hot` (a class holding `pos_x, pos_y, vel_x, vel_y, energy`) and `creature_cold` (a class holding `birth_t, id, gen`). Both share the id allocator. Verify each row's fields stay aligned across the two classes.
-3. **Time motion at 1M creatures.** Pre-split: time motion. Post-split: time motion. The two should be *near identical* if you started from numpy SoA. The split was organisational, not bandwidth-saving.
-4. **Time motion in numpy structured-array form.** Build the same world using `arr = np.zeros(N, dtype=np.dtype([('pos_x', 'f4'), ('pos_y', 'f4'), ('vel_x', 'f4'), ('vel_y', 'f4'), ('energy', 'f4'), ('birth_t', 'f8'), ('id', 'u4'), ('gen', 'u4')]))`. Run motion as `arr['pos_x'] += arr['vel_x'] * dt`. Time it. Compare to the unsplit SoA version. The structured-array version is slower because it strides past every cold field on every read - *this* is the layout where the hot/cold split would actually help.
-5. **Cleanup must touch both.** Modify cleanup to apply the keep_mask ([§22](22_mutations_buffer.md)) to both `creature_hot` and `creature_cold` columns when a creature dies. Verify alignment after.
-6. **A bad split.** Construct a split where the wrong fields go cold (e.g. `energy` in cold). Time motion. The cost of the cache-trip on `energy` per tick should bury any savings elsewhere.
-7. *(stretch)* **The all-fields case.** Write a system that reads every field (e.g. a serialiser). Time the split version. Discuss why the split's overhead is real here, and why this is a fine tradeoff: most ticks do not run this system.
+1. **Build a slot-keyed subscription.** Add `hungry = np.empty(0, dtype=np.uint32)` holding the *slots* of hungry creatures. Build it each tick with `np.flatnonzero(energy < HUNGER_THRESHOLD)`. Write the hot loop: `energy[hungry] -= burn * dt`. Verify it touches only the subscribed creatures.
+2. **Key it by id instead, and time both.** Build a second version where `hungry` holds entity ids and the hot loop resolves each through `id_to_slot[hungry]` before the gather. At 1M creatures with 10% subscribed, time both hot loops with `timeit`. Reproduce the ~2x gap. Where does the id version's time go? Compare `id_to_slot`'s size with one cache line.
+3. **Unsubscribe in O(1).** When a creature stops being hungry, remove its slot from `hungry`. What do you need alongside `hungry` to find the slot's *position in the table* without scanning it? (It is the [§23](23_index_maps.md) sparse set, one level up.)
+4. **Reindex on compaction.** Relocate the live creatures to the front of the columns (a stand-in for the [§24](24_append_only_and_recycling.md)/[§28](28_proximity.md) cleanup), producing an `old_to_new` slot map. Rewrite the slot-keyed `hungry` with `hungry = old_to_new[hungry]`; confirm the hot loop still processes the same creatures. Now do the same for the id-keyed version: what has to change? Time both reindex passes.
+5. **Dense vs scattered.** Time the slot-keyed hot loop with the subscription's slots scattered through the column, then again after sorting them to the front. Reproduce the ~1.3x speedup. How many ticks of hot-loop saving pay back one compaction pass? (Answer near 30 - and note this is *not* the reason to compact; reclaiming dead slots is.)
+6. **The subscription that holds everyone.** Subscribe every creature and time the hot loop against a plain `energy -= burn * dt * mask` scan. The subscription should be no faster, and at full participation slower. Explain why, and state the rule for when a subscription is worth building.
+7. *(stretch)* **Two subscriptions, one entity.** Put creatures in both `hungry` and `sleepy`. On compaction, both `dense` arrays need remapping through `old_to_new`. Measure how the reindex cost grows with the number of subscriptions an entity sits in, and argue why it stays cheaper than the id key's per-tick redirection for any realistic cleanup interval.
 
-Reference notes in [26_hot_cold_splits_solutions.md](26_hot_cold_splits_solutions.md).
+Reference notes in [26_subscription_tables_solutions.md](26_subscription_tables_solutions.md).
 
 ## What's next
 
-[§27 - Working set vs cache](27_working_set_vs_cache.md) puts numbers on the question this section was implicitly asking: how big *is* the inner loop's footprint, and what cache level does it fit in?
+[§27 - Working set vs cache](27_working_set_vs_cache.md) puts numbers on the question this section kept leaning on: how big *is* the hot loop's footprint, and what cache level does it fit in?

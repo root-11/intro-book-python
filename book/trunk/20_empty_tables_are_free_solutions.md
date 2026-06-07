@@ -91,11 +91,11 @@ The line *starts at near-zero* because EBP's cost depends on K, not N. A flag-ba
 ## Exercise 5 - Add four more states
 
 ```python
-hungry  = ids[energy < 10]
-sleepy  = ids[energy > 80]
+hungry  = np.flatnonzero(energy < 10)
+sleepy  = np.flatnonzero(energy > 80)
 mating  = np.empty(0, dtype=np.uint32)
 fighting = np.empty(0, dtype=np.uint32)
-idle    = ids[(energy >= 10) & (energy <= 80)]    # the bulk
+idle    = np.flatnonzero((energy >= 10) & (energy <= 80))    # the bulk
 
 def tick(world, dt):
     drive_hunger(world.hungry, world.energy, dt)

@@ -13,14 +13,14 @@ Three layouts:
     1. AoS list of dataclass instances with an `alive: bool` field
        (the Python tutorial default for "soft delete")
     2. Numpy SoA + boolean mask column      (`pos[alive_mask] += ...`)
-    3. Numpy SoA + presence id array         (`pos[alive_ids] += ...`)
+    3. Numpy SoA + presence slot array       (`pos[alive_slots] += ...`)
 
 The lesson:
 - Layout 1 scales with N regardless of alive-fraction (interpreter dispatch
   on every iteration plus per-attribute getattr).
 - Layout 2 has to scan all N to evaluate the mask, then operate on K alive
   rows. Cost is dominated by the N-sized scan at low alive-fraction.
-- Layout 3 reads K alive ids and operates on K rows. Cost scales with K.
+- Layout 3 reads K alive slots and operates on K rows. Cost scales with K.
 
 At alive = 100% all three numpy paths are similar. At alive = 1% the
 presence layout does roughly 1% of the work the mask layout does. The
@@ -104,13 +104,13 @@ def setup_presence(alive_frac):
     pos = rng.random(N, dtype=np.float32)
     vel = rng.random(N, dtype=np.float32) * np.float32(0.1)
     alive_mask = rng.random(N) < alive_frac
-    alive_ids = np.where(alive_mask)[0].astype(np.uint32)
-    return pos, vel, alive_ids
+    alive_slots = np.where(alive_mask)[0].astype(np.uint32)
+    return pos, vel, alive_slots
 
 
 def tick_presence(state, dt):
-    pos, vel, alive_ids = state
-    pos[alive_ids] += vel[alive_ids] * dt
+    pos, vel, alive_slots = state
+    pos[alive_slots] += vel[alive_slots] * dt
 
 
 def main():

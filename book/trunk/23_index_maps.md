@@ -4,13 +4,19 @@
 
 <p align="center"><img src="../illustrations/linear_algebra.jpg" alt="Linear algebra: Ax = b - a lookup is a matrix-vector product" style="max-height: 300px; max-width: 100%;"></p>
 
-The presence-replaces-flags substitution from [§17](17_presence_replaces_flags.md) had a sting in its tail. A presence query - "is creature 42 hungry?" - costs O(K) when implemented naively as `np.any(hungry == 42)`. At a 1,000,000-creature simulator with thousands of such queries per tick, that is too slow.
+The slot-keyed tables from [§17](17_presence_replaces_flags.md) and [§19](19_ebp_dispatch.md) left two questions open, and [§21](21_swap_remove.md) added a third.
 
-The fix is a parallel data structure: an *index map* that maps every id to its current slot in the table. Lookup is now O(1).
+1. **Point membership.** "Is slot `i` in `hungry`?" costs O(K) when answered by scanning the table (`np.any(hungry == i)`).
+2. **Unsubscribe.** To swap_remove slot `i` out of `hungry` you first need its *position in the table* - the same O(K) scan.
+3. **The moved slot.** When swap_remove relocates a row ([§21](21_swap_remove.md)), every slot-keyed table that listed the old position now points at the wrong creature.
 
-Python gives you two reasonable shapes for the map, and one trap.
+All three are solved by one idea: an *index map* - a parallel array from a key to a position, with a sentinel for "absent". It appears twice in the simulator, the same shape pointing at two different things: `id_to_slot` re-finds a creature after a move, and a *sparse set* makes membership and unsubscribe O(1).
 
-## Two shapes that work
+## Instance one: `id_to_slot`
+
+Maps a stable [entity](10_stable_ids_and_generations.md) to its current column slot. This is what re-finds a creature after a move, and what anything outside the columns - a save, the network, the UI ([§26](26_subscription_tables.md)) - uses to turn an id back into a slot. Python gives you two reasonable shapes for it, and one trap.
+
+### Two shapes that work
 
 **A numpy array, when ids are dense.** If your ids are integers in `[0, N_max)` and most are in use, a single typed column does the job:
 
@@ -38,7 +44,7 @@ Dict lookup is O(1) amortised, ~30-40 million ops/sec for integer keys (per [`co
 
 The choice is set by id density, not by taste. The simulator's surrogate ids from [§10](10_stable_ids_and_generations.md) are dense - a fresh integer per creature, recycled when slots are reused. The numpy array is the right pick. An audit log indexed by 64-bit hash would be sparse - the dict is the right pick.
 
-## One shape that is wrong
+### One shape that is wrong
 
 ```python
 # anti-pattern: bad!
@@ -51,15 +57,40 @@ The `scipy.sparse` family - CSR, CSC, COO - are not index maps. They are sparse-
 
 The exhibit's headline reads "CSR matrix is 108× slower than Python dict." That is true *for the access pattern in the file* - and it is the wrong reading. The right reading is: **scipy gave you a sparse *matrix*, not a sparse *map*. Pick the structure that matches your access pattern.** CSR is excellent at SpMV (sparse-matrix-vector-product, the common dense-vector-multiplied-by-sparse-matrix operation in scientific computing). It is poor at point-and-shoot lookups because its internal layout - three `indices`, `indptr`, `data` arrays - is optimised for stride-skipping, not for O(1) random access. The lesson is not "CSR is slow"; it is "wrong tool for this job, every time, by design."
 
+## Instance two: the sparse set
+
+The two questions the chapter opened with - "is slot `i` in `hungry`?" and "remove slot `i` from `hungry` in O(1)" - are not `id_to_slot`'s job. They are answered by a second index map, keyed by *slot*, pointing into the membership table.
+
+The reflex is a boolean column: `hungry_membership = np.zeros(N_max, dtype=bool)`, `True` where present. Resist it. That boolean is exactly the flag [§17](17_presence_replaces_flags.md) abolished - one byte per creature whether set or not - and it answers "present?" but not "*where* in `hungry`, so I can swap_remove it?". The structure that answers both is the *sparse set*: a `dense` array of the present slots (what the hot loop walks) and a `sparse` array, indexed by slot, holding each present slot's *position in `dense`*, or `INVALID`.
+
+```python
+INVALID = np.iinfo(np.uint32).max
+dense  = np.empty(N_max, dtype=np.uint32)         # present slots; the hot loop walks dense[:n]
+sparse = np.full(N_max, INVALID, dtype=np.uint32)  # slot -> its position in dense, or INVALID
+n = 0
+
+# is slot i present?   sparse[i] != INVALID
+# subscribe(i):        sparse[i] = n; dense[n] = i; n += 1
+# unsubscribe(i):      p = sparse[i]; last = dense[n - 1]
+#                      dense[p] = last; sparse[last] = p   # backfill the hole, O(1)
+#                      sparse[i] = INVALID; n -= 1
+```
+
+`sparse` stores positions and a sentinel, not booleans - it is the index-map pattern again, pointing into the membership table instead of into the columns. It answers "present?" *and* "where, so I can remove it in O(1)?", which a boolean could not. This pair - a dense list plus a sparse index - is the *sparse set*, the membership structure every ECS ships.
+
+The per-element form shown is the *definition*. In Python a scalar subscribe/unsubscribe in a loop pays the interpreter cost on every call; when many entries change in one tick, rebuild the dense list with a mask (the [§21](21_swap_remove.md) bulk filter) rather than K scalar swap-removes, and maintain incrementally only when a few change per tick. Same rebuild-versus-maintain judgment as everywhere else in the book.
+
 ## Maintenance
 
 The map must be updated whenever a row moves. The events that move rows in this book are exactly three:
 
 - **Bulk filter cleanup** ([§22](22_mutations_buffer.md)). Every removed slot's id is set to `INVALID`. Every surviving id whose slot changed has its entry rewritten - exactly the rows that moved during the keep-mask compress.
 - **Append.** When a new row lands at slot `n`, set `id_to_slot[new_row.id] = n`. The cleanup pass writes this in lockstep with the insert tail.
-- **Sort or reshuffle** (for locality, [§28](28_sort_for_locality.md)). When the table is reordered, every slot moves. The full map is rewritten in lockstep with the sort. In numpy this is one assignment: `id_to_slot[ids[order]] = np.arange(n_active)`.
+- **Sort or reshuffle** (for locality, [§28](28_proximity.md)). When the table is reordered, every slot moves. The full map is rewritten in lockstep with the sort. In numpy this is one assignment: `id_to_slot[ids[order]] = np.arange(n_active)`.
 
 The cleanup system from [§22](22_mutations_buffer.md) is the natural home for these updates. Every removal and every insertion goes through cleanup; cleanup keeps the map in step.
+
+The same pass reindexes every slot-keyed membership table. When the keep-mask compress renumbers surviving slots, build the `old_to_new` slot map once and remap each table's `dense` array through it (`dense = old_to_new[dense]`), rebuilding its `sparse` index - in lockstep with the `id_to_slot` rewrite. A slot-keyed table is one more set of references into the columns; every reference the cleanup owns gets remapped together. [§24](24_append_only_and_recycling.md) is the chapter that asks whether to avoid the move - and the reindex - altogether.
 
 ## Cost
 
@@ -79,12 +110,12 @@ Combined with [§10](10_stable_ids_and_generations.md)'s stable ids and [§24](2
 ## Exercises
 
 1. **Build the map.** Add `id_to_slot = np.full(N_max, INVALID, dtype=np.uint32)` to your simulator. When a creature is appended at slot N, set `id_to_slot[id] = N`. When a creature's slot changes during cleanup, update accordingly.
-2. **O(1) presence query.** Add a parallel `hungry_membership = np.zeros(N_max, dtype=bool)` set to `True` when an id is in `hungry`. Now `is_hungry(id)` is two array lookups, both O(1).
-3. **Maintain on bulk-filter cleanup.** Modify your [§22](22_mutations_buffer.md) cleanup to update `id_to_slot` after the keep_mask compress. The fastest form: after `id[: new_n] = id[: n_active][keep_mask]`, run `id_to_slot[id[:new_n]] = np.arange(new_n, dtype=np.uint32)` - one bulk write, every surviving id's slot rewritten in one pass.
-4. **Time the difference.** Rerun the simulator at 1M creatures, calling `is_hungry(random_id)` 100,000 times per tick. Compare the linear-scan version (§17 exercise 6) and the indexed version. The ratio is roughly N - about a million.
+2. **Build the sparse set.** Give `hungry` a `sparse = np.full(N_max, INVALID, dtype=np.uint32)` alongside its `dense` list. Implement `subscribe(i)`, `unsubscribe(i)`, and `is_member(i)` - each O(1), no boolean. Confirm `is_member(i)` always agrees with `i in set(hungry[:n].tolist())` across a run of subscribes and unsubscribes. (A boolean column would answer `is_member` but not give you the O(1) unsubscribe - and it is the flag §17 abolished.)
+3. **Maintain on bulk-filter cleanup.** Modify your [§22](22_mutations_buffer.md) cleanup to update `id_to_slot` after the keep_mask compress. The fastest form: after `id[: new_n] = id[: n_active][keep_mask]`, run `id_to_slot[id[:new_n]] = np.arange(new_n, dtype=np.uint32)` - one bulk write, every surviving id's slot rewritten in one pass. Then reindex every slot-keyed membership `dense` array through the same old→new slot map, so `hungry` still lists the right rows after the compress.
+4. **Time the difference.** Rerun the simulator at 1M creatures, calling `is_member(random_slot)` 100,000 times per tick. Compare the linear scan of the dense list (§17 exercise 6) with the sparse-set lookup. The ratio is roughly N - about a million.
 5. **Run the exhibit (honestly).** `uv run "code/measurement/csr_matrix or python dict.py"`. Read the file's headline ("CSR matrix is 108× slower"). Then read the chapter's reframing. Confirm with one small experiment of your own that scipy's CSR is fast at *its* job - `csr.dot(some_dense_vector)` for a 1000×1000 matrix - and slow at the job the file gave it.
 6. **The bandwidth cost.** At 1M ids, `id_to_slot` is 4 MB. Cleanup's bulk update on a tick with 1,000 swap_removes and 500 inserts writes ~1,500 entries - 6 KB. Compute the cleanup cost in microseconds for those writes against a 30 Hz budget.
-7. **Sort-for-locality compatibility.** When `creatures` is sorted (a preview of [§28](28_sort_for_locality.md)), every slot moves. Rewrite `id_to_slot` in lockstep with one bulk numpy assignment: `id_to_slot[ids[order]] = np.arange(n_active)`. Verify external references (held as ids) are still correct after the sort.
+7. **Compaction compatibility.** When `creatures` is reordered by cell (a preview of [§28](28_proximity.md)'s compaction), every slot moves. Rewrite `id_to_slot` in lockstep with one bulk numpy assignment: `id_to_slot[ids[order]] = np.arange(n_active)`. Verify external references (held as ids) are still correct after the sort.
 8. *(stretch)* **A from-scratch generational arena.** Combine [§10](10_stable_ids_and_generations.md)'s `gens: np.ndarray`, [§22](22_mutations_buffer.md)'s deferred cleanup, and §23's `id_to_slot` map into a `SlotMap` class. Provide `insert(row) -> CreatureRef`, `remove(ref)`, `get(ref) -> int | None`. Compare the shape with [`slotmap::SlotMap`](https://docs.rs/slotmap/) (Rust) - same machinery, organised differently.
 
 Reference notes in [23_index_maps_solutions.md](23_index_maps_solutions.md).

@@ -138,6 +138,52 @@ def claim_reindex(frac=0.10, S=2, G=30):
     return slot_cost_per_tick, id_cost_per_tick, id_cost_per_tick / slot_cost_per_tick
 
 
+# --------------------------------------------------------------------------
+# C5 - lifecycle: per-tick bulk-filter compaction (A) vs mark-dead + GC-every-G (B)
+#
+# Both keep the table bounded and run the same hot loops and the same dense
+# motion pass over N; those cancel. What differs is the lifecycle overhead:
+#   A pays a full compaction + reindex EVERY tick (keeps the table hole-free).
+#   B marks D dead per tick (unsubscribe, cheap) and compacts only once per G;
+#     between GC passes dead slots sit in the columns, so a scan-all system
+#     (motion) wastes work on the holes - with recycling the holes stay ~D
+#     (refilled next tick), without it they accumulate to ~D*G/2.
+# We measure the three numpy primitives and compute the per-tick overhead.
+# --------------------------------------------------------------------------
+def claim_lifecycle(deaths=1000, S=2, C=5, frac=0.10):
+    INVALID = np.iinfo(np.uint32).max
+    cols = [RNG.random(N).astype(np.float32) for _ in range(C)]
+    ids = np.arange(N, dtype=np.uint32)
+    id_to_slot = np.arange(N, dtype=np.uint32)
+    subs = [scattered_slots(int(N * frac)) for _ in range(S)]
+    dead = scattered_slots(deaths)
+    keep = np.ones(N, dtype=bool); keep[dead] = False
+    new_n = int(keep.sum())
+
+    def compact_reindex():               # one full GC pass: compress C cols + reindex map + subs
+        old_to_new = np.empty(N, dtype=np.uint32)
+        old_to_new[np.flatnonzero(keep)] = np.arange(new_n, dtype=np.uint32)
+        for c in cols:
+            c[:new_n] = c[keep]
+        id_to_slot[ids[keep]] = np.arange(new_n, dtype=np.uint32)
+        for sub in subs:
+            ns = old_to_new[sub]
+            _ = ns[ns != INVALID]
+
+    def mark_dead():                     # B's per-tick op: unsubscribe D from each subscription
+        for sub in subs:
+            _ = sub[~np.isin(sub, dead)]
+
+    def motion_full():                   # scan-all system over N (common to both)
+        cols[0][:] += cols[2] * np.float32(0.033)
+
+    t_compact = bench(compact_reindex)
+    t_mark = bench(mark_dead)
+    t_motion_elem = bench(motion_full) / N
+
+    return t_compact, t_mark, t_motion_elem, deaths
+
+
 def main():
     print(f"N = {N:,}   trials = {TRIALS}   numpy {np.__version__}")
     energy = make_world()
@@ -167,6 +213,19 @@ def main():
     print(f"    slot cost/tick    : {slot_pt*1e6:8.2f} us  (reindex once per {30} ticks)")
     print(f"    id   cost/tick    : {id_pt*1e6:8.2f} us  (redirection every tick)")
     print(f"    id / slot         : {ratio:6.2f}x  ({'slots win' if ratio>1.05 else 'comparable/ids win'})")
+
+    print("\nC5  lifecycle: per-tick compaction (A) vs mark-dead + GC-every-G (B)")
+    t_compact, t_mark, t_motion_elem, deaths = claim_lifecycle()
+    print(f"    primitives: compact+reindex {t_compact*1e6:.0f}us  mark-dead {t_mark*1e6:.1f}us  motion {t_motion_elem*1e9:.3f}ns/elem  (deaths={deaths}/tick)")
+    print(f"    per-tick lifecycle overhead (lower is better):")
+    print(f"      {'G':>5} {'A':>11} {'B recycle':>12} {'B no-recyc':>12}  winner")
+    a = t_compact
+    for G in (1, 10, 30, 100, 300):
+        b_rec = t_mark + t_compact / G + deaths * t_motion_elem
+        b_nor = t_mark + t_compact / G + (deaths * G / 2) * t_motion_elem
+        best_b = min(b_rec, b_nor)
+        winner = "B (mark-dead)" if best_b < a else "A (per-tick)"
+        print(f"      {G:>5} {a*1e6:>9.0f}us {b_rec*1e6:>10.0f}us {b_nor*1e6:>10.0f}us  {winner}")
 
 
 if __name__ == "__main__":

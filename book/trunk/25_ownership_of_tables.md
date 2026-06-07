@@ -1,10 +1,10 @@
-# 25 - Ownership of tables
+# 25 - One writer, many readers
 
-> *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 25](../../concepts/glossary.md#25--ownership-of-tables).*
+> *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 25](../../concepts/glossary.md#25--one-writer-many-readers).*
 
 <p align="center"><img src="../illustrations/dag_planning_checklist.jpg" alt="One plan, one writer - PLAN, ANALYZE, DESIGN, BUILD, TEST, IMPROVE" style="max-height: 300px; max-width: 100%;"></p>
 
-Every table has exactly one writer.
+Every table has exactly one writer, and any number of readers.
 
 The rule is small. Its consequences are everything.
 
@@ -108,4 +108,4 @@ Reference notes in [25_ownership_of_tables_solutions.md](25_ownership_of_tables_
 
 ## What's next
 
-You have closed Memory & lifecycle. The simulator's machinery is now complete: it can grow, shrink, recycle, parallelise, and replay. The next phase is *Scale*, starting with [§26 - Hot/cold splits](26_hot_cold_splits.md). The simulator's per-tick cost goes under the microscope.
+You have closed Memory & lifecycle. The simulator's machinery is now complete: it can grow, shrink, recycle, parallelise, and replay. The next phase is *Scale*, starting with [§26 - Subscription tables](26_subscription_tables.md). The simulator's per-tick cost goes under the microscope.

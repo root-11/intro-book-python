@@ -1,4 +1,4 @@
-# Solutions: 3 - The `Vec` is a table
+# Solutions: 3 - The `np.ndarray` is a table
 
 ## Exercise 1 - Pointer-chase or value-read
 

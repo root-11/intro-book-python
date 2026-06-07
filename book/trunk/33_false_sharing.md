@@ -30,7 +30,7 @@ def worker(my_id: int) -> None:
         counters[my_id] += 1   # all 8 counters fit in one cache line
 ```
 
-**Per-process accumulators near a boundary.** A worker that updates one row at the boundary of its partition (e.g. when applying boundary effects in a spatial sort, [§28](28_sort_for_locality.md)) can land in the same cache line as the neighbouring worker's first row. This is why halo regions in domain-decomposition codes are typically padded to cache-line size.
+**Per-process accumulators near a boundary.** A worker that updates one row at the boundary of its partition (e.g. when applying boundary effects in a spatial partition, [§28](28_proximity.md)) can land in the same cache line as the neighbouring worker's first row. This is why halo regions in domain-decomposition codes are typically padded to cache-line size.
 
 **Many small per-process buffers in one shared region.** If you put N small per-process scratch arrays adjacent in one shared-memory block, false sharing is likely at the boundaries. The fix is one shared-memory block per process, or padding between regions.
 

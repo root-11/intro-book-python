@@ -1,4 +1,4 @@
-# Solutions: 41 - Compression-oriented programming
+# Solutions: 41 - Deferred abstraction
 
 These exercises are reflective; the work is *audit and rewrite*, not measurement. The answers reflect typical patterns rather than any specific run.
 
@@ -59,7 +59,7 @@ Compare:
 - The three concrete functions read directly. Each name describes what it does.
 - The lambda-based abstraction reads worse. The call site has to inline what was previously a named function; the closures obscure the intent.
 
-The abstraction is *not* a compression - it does not save code (the call sites are now longer than the function bodies); it does not improve clarity (named functions beat anonymous lambdas); it does not enable composition (the lambdas don't have natural names to reuse).
+The abstraction is *not* a generalization - it does not save code (the call sites are now longer than the function bodies); it does not improve clarity (named functions beat anonymous lambdas); it does not enable composition (the lambdas don't have natural names to reuse).
 
 Resist. Keep the three concrete functions. The "DRY" instinct here is wrong; the named functions are easier to read, test, and maintain than the generic helper.
 
@@ -111,14 +111,14 @@ Without these conditions, a protocol is over-engineering. Delete it; replace wit
 
 Pick a well-regarded library: `requests`, `httpx`, `polars`, `attrs`.
 
-**`requests`**: The `Session` abstraction is a real compression - every HTTP-heavy project rewrote "keep a connection alive, attach default headers, handle cookies" before `requests` existed. The library captured the pattern. `requests.get`, `requests.post`, etc. fit the dominant case (one-shot request) and the cumulative case (a session). Real compression.
+**`requests`**: The `Session` abstraction is a real generalization - every HTTP-heavy project rewrote "keep a connection alive, attach default headers, handle cookies" before `requests` existed. The library captured the pattern. `requests.get`, `requests.post`, etc. fit the dominant case (one-shot request) and the cumulative case (a session). Real generalization.
 
-**`polars`**: A re-thinking of `pandas` from a columnar-execution perspective. The patterns it abstracts (lazy query plans, column-store, streaming) were extracted from concrete experience with big-data workflows. Some abstractions feel speculative (the eager-vs-lazy split has had ergonomic issues); the core compression is real.
+**`polars`**: A re-thinking of `pandas` from a columnar-execution perspective. The patterns it abstracts (lazy query plans, column-store, streaming) were extracted from concrete experience with big-data workflows. Some abstractions feel speculative (the eager-vs-lazy split has had ergonomic issues); the core generalization is real.
 
-**`pydantic`**: Real compression of "parse JSON / validate / type-check" workflows. Earned its place because the pattern existed everywhere by hand before. Has accreted features (settings management, validators, computed fields) that drift past the original compression; the core remains useful.
+**`pydantic`**: Real generalization of "parse JSON / validate / type-check" workflows. Earned its place because the pattern existed everywhere by hand before. Has accreted features (settings management, validators, computed fields) that drift past the original generalization; the core remains useful.
 
-**`attrs`**: Predates `dataclasses` and was the canonical compression of "boilerplate class definitions." When `dataclasses` shipped in stdlib (3.7), much of `attrs`'s mandate was absorbed. `attrs` survived by adding features `dataclasses` lacked. Real compression that the stdlib eventually adopted.
+**`attrs`**: Predates `dataclasses` and was the canonical generalization of "boilerplate class definitions." When `dataclasses` shipped in stdlib (3.7), much of `attrs`'s mandate was absorbed. `attrs` survived by adding features `dataclasses` lacked. Real generalization that the stdlib eventually adopted.
 
-**A counter-example**: many "framework" packages with one major user (the author's own application) are speculative compressions. They impose abstractions that fit only the original use case; downstream users either bend their problem to fit or replace the framework.
+**A counter-example**: many "framework" packages with one major user (the author's own application) are speculative generalizations. They impose abstractions that fit only the original use case; downstream users either bend their problem to fit or replace the framework.
 
-The pattern: real compressions look inevitable in retrospect because they were extracted, not invented. Premature abstractions look clever and frustrating in practice because they were invented before the patterns they claim to compress existed.
+The pattern: real generalizations look inevitable in retrospect because they were extracted, not invented. Premature abstractions look clever and frustrating in practice because they were invented before the patterns they claim to generalize existed.

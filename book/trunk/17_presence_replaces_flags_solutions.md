@@ -19,14 +19,14 @@ Empty array. No bool column, no flag, no boolean attribute. The world starts wit
 ```python
 HUNGER_THRESHOLD = 10.0
 
-def classify_hunger(energy: np.ndarray, ids: np.ndarray) -> np.ndarray:
-    return ids[energy < HUNGER_THRESHOLD]
+def classify_hunger(energy: np.ndarray) -> np.ndarray:
+    return np.flatnonzero(energy < HUNGER_THRESHOLD)   # the slots that pass
 ```
 
-One numpy line. The system's read-set is `energy` and `ids`; the write-set is whatever the caller assigns the result to. Each tick:
+One numpy line. The system's read-set is `energy`; the write-set is whatever the caller assigns the result to. `np.flatnonzero` returns the *positions* where the mask is true - the slots - which is exactly what the `hungry` table holds. Each tick:
 
 ```python
-world.hungry = classify_hunger(world.energy, world.ids)
+world.hungry = classify_hunger(world.energy)
 ```
 
 ## Exercise 3 - Build the flag version
@@ -62,29 +62,29 @@ The Python tutorial canonical version. Every consumer of "is this creature hungr
 ## Exercise 5 - Time all three at 1M creatures
 
 ```
-classify presence:  1.41 ms  (100K hungry of 1M)
-classify flag:      0.05 ms
-classify AoS:      13.1  ms
+classify presence:  0.35 ms  (100K hungry of 1M)
+classify flag:      0.06 ms
+classify AoS:      13.2  ms
 ```
 
 | layout    | classify time | comment |
 |-----------|--------------:|---------|
-| flag (numpy bool column)    |  0.05 ms | fastest - pure C bulk op |
-| presence (numpy id array)   |  1.41 ms | extra step: scan + boolean indexing |
-| AoS (Python loop)           | 13.1  ms | interpreter-bound; ~250× slower than flag |
+| flag (numpy bool column)    |  0.06 ms | fastest - pure C bulk op |
+| presence (numpy slot array) |  0.35 ms | extra step: scan + materialise the index array (`np.flatnonzero`) |
+| AoS (Python loop)           | 13.2  ms | interpreter-bound; ~220× slower than flag |
 
 Two surprises:
 
-- **Flag is *faster* than presence at the classification step.** Building the boolean mask alone is cheap; building the *list of ids that pass the mask* needs an extra pass to materialise the index array. For one-shot classification, the flag column wins.
-- **AoS is ~10× slower than the worst numpy version.** That's the cost of the per-element interpreter loop, exactly as §13 promised.
+- **Flag is *faster* than presence at the classification step.** Building the boolean mask alone is cheap (0.06 ms); building the *list of slots that pass the mask* needs an extra pass (`np.flatnonzero`) to materialise the index array. For one-shot classification the flag column still wins - but by a ~6× gap, not the orders of magnitude the downstream story might lead you to expect.
+- **AoS is ~38× slower than the slower numpy version.** That's the cost of the per-element interpreter loop, exactly as §13 promised.
 
 The presence advantage shows up *downstream* - at the consumer step, not the classifier. Next exercise.
 
 ## Exercise 6 - The membership query
 
 ```python
-def is_hungry_p(hungry: np.ndarray, target_id: int) -> bool:
-    return bool(np.any(hungry == target_id))         # O(K)
+def is_hungry_p(hungry: np.ndarray, slot: int) -> bool:
+    return bool(np.any(hungry == slot))              # O(K)
 
 def is_hungry_f(is_hungry: np.ndarray, slot: int) -> bool:
     return bool(is_hungry[slot])                     # O(1)
@@ -97,7 +97,7 @@ presence: O(K) ms - proportional to len(hungry)
 
 The flag wins for *single-creature lookup* - direct array indexing is faster than scanning. Presence wins for *whole-table operations* (count, iterate the hungry set) because there is no scanning of the false rows. The right answer depends on the query pattern; the wrong reflex is to assume one is always faster than the other.
 
-[§23 - index maps](23_index_maps.md) is the fix that makes presence O(1) for membership too: an `id_to_slot` array lets you check membership in one read. With the index map, presence beats flag on *every* operation that matters in the simulator.
+[§23 - index maps](23_index_maps.md) is the fix that makes presence O(1) for membership too: a *sparse set* - a second array mapping a slot to its position in `hungry` - lets you check membership in one read, with no per-creature boolean. With it, presence beats flag on *every* operation that matters in the simulator.
 
 ## Exercise 7 - "How many are hungry?"
 

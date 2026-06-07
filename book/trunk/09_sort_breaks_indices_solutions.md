@@ -149,7 +149,7 @@ If the deck columns are never sorted, swapped, or compacted:
 Why this doesn't scale to 10,000 creatures (let alone the simulator's 100M):
 
 1. **Forever-growing tables.** A simulator that runs for an hour and births 10K creatures per second has 36M dead rows by the end. Reading through them costs proportionally; bandwidth is the budget; you've spent it on tombstones.
-2. **No compaction means no locality.** Live and dead rows are interleaved. Cache lines hold half-tombstones. The §28 *sort for locality* pattern is impossible.
+2. **No compaction means no locality.** Live and dead rows are interleaved. Cache lines hold half-tombstones. The §26/§28 compaction-for-locality pass is impossible.
 3. **Parallel partition is impossible.** [§31-§32](31_disjoint_writes_parallelize.md) split the table by index range; if the live data is sparse and randomly distributed across a forever-growing array, you can't carve clean ranges.
 
 The never-rearrange policy works for constant-quantity tables (52 cards, fixed grid sizes). It fails for everything that breathes - births, deaths, additions, removals. The book's simulator is variable-quantity, so the next chapter builds the fix.

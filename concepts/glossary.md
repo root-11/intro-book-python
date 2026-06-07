@@ -85,7 +85,7 @@ Each entry has four parts:
 
 **Anti-pattern.** Keeping a `list[Creature]` (AoS - Array of Structs). It works, but it sacrifices the layout reasoning of nodes 4 and 7: the inner loop reads all six fields whether it needs them or not, doubling cache pressure for systems that only touch position. *Plus a per-instance Python overhead of ~100 bytes that doesn't exist in numpy SoA.*
 
-**See also.** 5 (id is integer), 7 (SoA), 23 (index maps), 25 (ownership of tables).
+**See also.** 5 (id is integer), 7 (SoA), 23 (index maps), 25 (one writer, many readers).
 
 ---
 
@@ -121,7 +121,7 @@ Each entry has four parts:
 
 **Anti-pattern.** Saving an index across a reordering. The fix - coming next - is to save a stable id, not a slot index. *Tempting Python-specific escape hatch: hold object references to `Card` instances instead. This works only if you accept the AoS layout, giving back the §3 footprint and §7 access wins.*
 
-**See also.** 5 (id is integer), 10 (stable IDs and generations), 23 (index maps), 28 (sort for locality).
+**See also.** 5 (id is integer), 10 (stable IDs and generations), 23 (index maps), 28 (proximity).
 
 ---
 
@@ -171,7 +171,7 @@ Each entry has four parts:
 
 **Anti-pattern.** A system that touches global state, mutates input parameters, or carries cross-tick state in a closure. None of these compose, none of these parallelize, and none of these can be tested without a fixture. *Python adds: `print()` from inside a system, `logger.info(...)`, `requests.get(...)`, `os.environ[...]` - all are I/O leaks that violate the boundary rule and break determinism.*
 
-**See also.** 8 (one to many), 14 (systems compose into a DAG), 25 (ownership of tables), 31 (disjoint writes parallelize).
+**See also.** 8 (one to many), 14 (systems compose into a DAG), 25 (one writer, many readers), 31 (disjoint writes parallelize).
 
 ---
 
@@ -183,7 +183,7 @@ Each entry has four parts:
 
 **Anti-pattern.** Calling systems in the order they were written in the file. This works for the first three systems; by the tenth, the read/write dependencies are tangled and one bad ordering corrupts state in ways that are hard to find. *In Python the looks-right-but-isn't anti-shape is `asyncio.gather` over the systems - runs them concurrently with no notion of dependencies; the first to complete, completes; the rest race.*
 
-**See also.** 13 (system as function), 25 (ownership of tables), 34 (order is the contract), 31 (disjoint writes parallelize).
+**See also.** 13 (system as function), 25 (one writer, many readers), 34 (order is the contract), 31 (disjoint writes parallelize).
 
 ---
 
@@ -215,9 +215,9 @@ Each entry has four parts:
 
 **Definition.** "Is hungry" is membership in a `hungry` table, not a `bool` field on `Creature`. State is structural - a row exists or it does not - rather than a flag stored alongside other data. The change reads as small in code and turns out large in consequence: dispatch, parallelism, and persistence all simplify.
 
-*In Python the spectrum is wider than in Rust. Three representations on a continuum: per-instance bool field on `Creature` (worst - AoS plus flag), `np.bool_` column indexed in lockstep (better - SoA with the flag still O(N) bytes), and a presence index `hungry: np.ndarray[np.uint32]` of just the affected ids (disciplined - O(K) bytes when sparse). Crossover between bool column and presence index lands around 80-90% prevalence on this machine; below that, presence wins decisively.*
+*In Python the spectrum is wider than in Rust. Three representations on a continuum: per-instance bool field on `Creature` (worst - AoS plus flag), `np.bool_` column indexed in lockstep (better - SoA with the flag still O(N) bytes), and a presence index `hungry: np.ndarray[np.uint32]` of just the affected slots (disciplined - O(K) bytes when sparse). Crossover between bool column and presence index lands around 80-90% prevalence on this machine; below that, presence wins decisively.*
 
-**Example.** In the simulator, a creature becomes hungry by having its id appended to `hungry`. The system that drives hunger-related behaviour iterates `hungry` directly via `energy[hungry] -= burn * dt`; it does not scan `creatures` checking a flag. The same pattern appears in production ECS daemons: `is_admitted = peer_id in established_contacts` - O(1), no I/O, no enum.
+**Example.** In the simulator, a creature becomes hungry by having its slot appended to `hungry`. The system that drives hunger-related behaviour iterates `hungry` directly via `energy[hungry] -= burn * dt`; it does not scan `creatures` checking a flag. The same pattern appears in production ECS daemons: `is_admitted = peer_id in established_contacts` - O(1), no I/O, no enum.
 
 **Anti-pattern.** `if creature.is_hungry: ...`. The flag forces every system that cares about hunger to filter the entire creature table; the table grows linearly with population whether or not anyone is hungry. *In Python the additional cost is per-iteration `getattr` and interpreter dispatch - the AoS form runs 30-50× slower than the presence form at 1M creatures in the [`code/measurement/alive_fraction.py`](../code/measurement/alive_fraction.py) exhibit.*
 
@@ -241,7 +241,7 @@ Each entry has four parts:
 
 **Definition.** A system iterates over the table whose presence defines its applicability. There is no per-row branch checking *"does this case apply to me"*; if a row is in the table, the system runs on it.
 
-**Example.** The "process all hungry creatures" system iterates the `hungry` table directly: `energy[id_to_slot[hungry]] -= burn * dt`. There is no `for c in creatures: if c.is_hungry: ...`. The dispatcher *is* the table; iterating means processing.
+**Example.** The "process all hungry creatures" system iterates the `hungry` table directly: `energy[hungry] -= burn * dt`, where `hungry` holds slots so the gather indexes the columns with no id-to-slot hop (§26). There is no `for c in creatures: if c.is_hungry: ...`. The dispatcher *is* the table; iterating means processing.
 
 **Anti-pattern.** Iterating a master table and filtering inside the loop. *Three Python forms that all reduce to filtered iteration: `isinstance` chains over a heterogeneous list (`if isinstance(e, Hungry):`), polymorphic method dispatch via inheritance (`for c in creatures: c.update()` where each subclass overrides `update`), and list-comprehension filters (`hungry = [c for c in cs if c.is_hungry]`). Each consults the predicate per entity; each pays interpreter dispatch on every visit.*
 
@@ -263,7 +263,7 @@ Each entry has four parts:
 
 ## 21 - `swap_remove`
 
-**Definition.** Deletion in O(1) by moving the last row of a table into the deleted slot, then shrinking the active range by one. Order is sacrificed for speed; the next two nodes fix the consequences. This and the rest of the Memory & lifecycle phase only matter for *variable-quantity* tables; constant-quantity tables like the 52-card deck need none of it.
+**Definition.** Deletion in O(1) by moving the last row of a table into the deleted slot, then shrinking the active range by one. Order is sacrificed for speed; §22 and §23 fix the consequences, and §24 questions whether to move the row at all - swap_remove on death is the wrong way that earns the right one. This and the rest of the Memory & lifecycle phase only matter for *variable-quantity* tables; constant-quantity tables like the 52-card deck need none of it.
 
 *In Python the in-place form pairs a fixed-capacity numpy array with an `n_active: int` counter; the "table" is the prefix `arr[:n_active]`. Removing is `arr[i] = arr[n_active - 1]; n_active -= 1`. For batched removal - the §22 cleanup case - the bulk-mask filter `arr[keep_mask]` is even faster than per-element swap_remove because it pays the Python-numpy boundary cost once instead of K times.*
 
@@ -289,13 +289,13 @@ Each entry has four parts:
 
 ## 23 - Index maps
 
-**Definition.** When external references must survive reordering, an `id_to_slot` map maintains the mapping. It is updated on every move - whether by `swap_remove`, by sort-for-locality, or by the buffered-cleanup sweep. Looking up a creature by id is O(1) through the map; no scanning required.
+**Definition.** When external references must survive reordering, an `id_to_slot` map maintains the mapping. It is updated on every move - whether by `swap_remove`, by the §28 spatial-cell reordering, or by the buffered-cleanup sweep. Looking up a creature by id is O(1) through the map; no scanning required. The same index-map pattern appears a second time as the *sparse set* - a dense list of present slots plus a slot-indexed position array - which answers slot membership and unsubscribe in O(1) without the per-creature boolean §17 abolished.
 
 **Example.** A player holds creature id 42. The `creature` columns get sorted for locality (node 28). The `id_to_slot` map is also rewritten in lockstep - one bulk numpy assignment: `id_to_slot[ids[order]] = np.arange(n_active)`. The player's reference still works.
 
 **Anti-pattern.** Scanning the id column to find a row by id. This is O(N) per lookup, which is fine at §0 and slow at §1. *In Python there are two right shapes - `id_to_slot: np.ndarray[np.uint32]` for dense ids, `dict[int, int]` for sparse - and one wrong tool: `scipy.sparse.csr_matrix` for point lookups. The CSR form is 108× slower than dict, not because CSR is slow but because it is built for sparse-matrix-vector products, not point queries.*
 
-**See also.** 5 (id is integer), 9 (sort breaks indices), 10 (stable IDs and generations), 28 (sort for locality).
+**See also.** 5 (id is integer), 9 (sort breaks indices), 10 (stable IDs and generations), 28 (proximity).
 
 ---
 
@@ -311,7 +311,7 @@ Each entry has four parts:
 
 ---
 
-## 25 - Ownership of tables
+## 25 - One writer, many readers
 
 **Definition.** Each table has exactly one writer. Many readers are fine. This is the rule that makes parallelism possible without locks, and it is the precondition for the inspection-system pattern: read-only access to all tables, no risk of races. *Python has no borrow checker; the discipline is convention. The [§25 chapter](../book/trunk/25_ownership_of_tables.md) names the conventions: explicit `.copy()`, `arr.flags.writeable = False`, and the docstring read/write-set contract.*
 
@@ -323,15 +323,15 @@ Each entry has four parts:
 
 ---
 
-## 26 - Hot/cold splits
+## 26 - Subscription tables, keyed by slot
 
-**Definition.** Fields touched in the inner loop go in one table; metadata read rarely goes in another. The inner loop's footprint shrinks; cache works. SoA is the prerequisite - you cannot split fields you have already bundled into a struct.
+**Definition.** A system iterates a *subscription table* - a `np.ndarray` of the *slots* it cares about (the hungry, the sleeping) - and indexes the attribute columns directly: `energy[hungry]`. The columns are never split; SoA ([§7](07_structure_of_arrays.md)) already gives each field its own array, so a hot/cold field split adds nothing in numpy. Keyed by slot, not id: the gather is one fancy index, with no `id_to_slot` redirection per element.
 
-**Example.** The §2 simulator splits `creature` into `creature_hot` (`pos_*`, `vel_*`, `energy` - read every tick by `motion` and `next_event`) and `creature_cold` (`birth_t`, `species`, `name` - read only when logging or debugging). The hot table fits in L2; the cold table does not have to.
+**Example.** The starvation system holds `hungry` (slots) and runs `energy[hungry] -= burn * dt`. When cleanup compacts the columns, `hungry` is remapped through the old→new slot map; the entity id is kept only for references cleanup cannot reach - saves, the replay log, the UI ([§35](35_boundary_is_the_queue.md) boundary).
 
-**Anti-pattern.** A single fat table where every system reads all fields whether it uses them or not. The cold fields are paid for in cache traffic at every hot-path read. *In Python+numpy SoA, this lesson is gentler than in Rust AoS - columns are already physically separate allocations, so reading `pos_x` does not bring `birth_t` into cache. The split's primary value in numpy SoA is organisational (the §13 read-set and write-set contracts get shorter), not bandwidth-saving. The exception: numpy structured arrays (`np.dtype([(...)])`) are AoS in numpy clothing; the split helps there.*
+**Anti-pattern.** Keying the subscription by id and resolving `id_to_slot[hungry]` inside the hot loop - a second random gather of a 4 MB array every tick (~2x slower at 1M/10%, `ebp_partition.py`). Also: a subscription that holds the whole population, which is a scan-all with extra bookkeeping. *In numpy, compaction's locality win is modest (~1.3x) and pays back on a ~1 s cadence; compact for dead-slot reclamation, not for locality.*
 
-**See also.** 4 (cost & budget), 7 (SoA), 27 (working set vs cache), 28 (sort for locality).
+**See also.** 7 (SoA), 17 (presence replaces flags), 19 (EBP dispatch), 23 (index maps), 24 (append-only & recycling), 28 (proximity).
 
 ---
 
@@ -343,19 +343,19 @@ Each entry has four parts:
 
 **Anti-pattern.** Optimising the algorithm without measuring the working set. A 2× algorithmic speedup that doubles the working set is a slowdown.
 
-**See also.** 1 (machine model), 4 (cost & budget), 26 (hot/cold splits), 28 (sort for locality).
+**See also.** 1 (machine model), 4 (cost & budget), 26 (subscription tables), 28 (proximity).
 
 ---
 
-## 28 - Sort for locality
+## 28 - Proximity is a property of position
 
-**Definition.** Reordering rows so that frequently co-accessed entities sit together turns random access into sequential access. This is the technique that node 9 (sort breaks indices) was the prerequisite pain for: once you have stable ids and an index map (nodes 10, 23), you can sort the table without breaking external references.
+**Definition.** Proximity is a function of position, not a structure to maintain. Bin creatures into spatial cells with a counting sort, recomputed from the position stream each tick; a neighbour query reads the 3x3 cell block. No bolt-on spatial index. *In numpy the per-beast bucket read must run as one vectorised batch (candidate pairs via `np.repeat` + a cumsum range-expansion), not a Python loop - the loop is ~5x slower than scipy's cKDTree, the vectorised batch is ~2.3x faster, because the grid is O(N) where the tree is O(N log N).*
 
-**Example.** The §2 simulator sorts creatures by spatial cell so that creatures-likely-to-collide are adjacent in the column. The `next_event` system's per-creature work now reads neighbours from the same cache line. The id-to-slot map is rewritten in the same pass: `order = np.argsort(spatial_cell); for col in cols: col[:] = col[order]; id_to_slot[id_col] = np.arange(n_active)`.
+**Example.** The §2 simulator answers "which food is near each creature" by binning both into cells (`argsort` by cell, `bincount`, `cumsum`), then one vectorised distance pass over candidate pairs. The CSR is rebuilt each tick (~6% of the query); the scattered gather is made dense by the §26 GC compaction ordering survivors by cell.
 
-**Anti-pattern.** Skipping the sort because of node 9. The fear of breaking references is solved by node 10's stable ids, not by leaving the table unsorted forever.
+**Anti-pattern.** Reaching for a spatial index (quadtree, `cKDTree`) and *maintaining* it across ticks - a second copy of position with its own budget. Or writing the grid query as a Python loop over beasts (O(1) per query but interpreter-bound) and concluding the grid is slow. At the global scale, all-pairs swarm cohesion (O(N^2)) instead of an invisible pack-leader centroid the swarm subscribes to (§26, O(N)).
 
-**See also.** 9 (sort breaks indices), 10 (stable IDs and generations), 23 (index maps), 27 (working set vs cache).
+**See also.** 19 (EBP dispatch), 23 (index maps), 24 (append-only & recycling), 26 (subscription tables), 27 (working set vs cache).
 
 ---
 
@@ -403,7 +403,7 @@ Each entry has four parts:
 
 **Anti-pattern.** A `Lock` shared across processes. Even when correct, the lock serialises the write under contention; you have re-introduced the single-writer rule the long way around.
 
-**See also.** 25 (ownership), 28 (sort for locality), 31 (disjoint writes), 33 (false sharing).
+**See also.** 25 (ownership), 28 (proximity), 31 (disjoint writes), 33 (false sharing).
 
 ---
 
@@ -499,11 +499,11 @@ Each entry has four parts:
 
 **Anti-pattern.** Encoding policy decisions in the kernel - `if hungry && food_nearby: eat`. *Three Python-specific forms that bury policy in mechanism: `@property` setters that validate-and-commit (rule lives inside attribute assignment), decorators that hide control flow (`@cache_for(seconds=60)`, `@require_role("admin")` - the function's read-set and write-set are no longer derivable from its signature), `__getattr__`/`__setattr__` overrides (an arbitrary read of `creature.foo` triggers I/O - the boundary from §35 is breached at the most innocuous-looking line).*
 
-**See also.** 13 (system as function), 25 (ownership), 35 (boundary is the queue), 41 (compression-oriented).
+**See also.** 13 (system as function), 25 (one writer, many readers), 35 (boundary is the queue), 41 (deferred abstraction).
 
 ---
 
-## 41 - Compression-oriented programming
+## 41 - Deferred abstraction
 
 **Definition.** Write the concrete case three times before extracting. Don't pre-architect. The from-scratch version is also the dependency-pricing test (node 42): most packages lose the comparison because they generalise more than your case requires.
 
@@ -523,7 +523,7 @@ Each entry has four parts:
 
 **Anti-pattern.** Reaching for `pip install` reflexively, by name recognition or because a tutorial used the package. The dependency arrives with no measurement, no reading, and no appraisal of what its absence would have cost. *The Python-specific traps: pandas (between mid-size and ecosystem-scale, often unquestioned), ORMs (`sqlalchemy`, `peewee`, Django ORM - when the workload is SoA and the ORM is being used out of habit), `pickle` of complex objects (version-fragile across CPython releases), async frameworks (`asyncio`/`trio`/`anyio` each make architectural commitments that propagate through your code).*
 
-**See also.** 38 (storage systems), 41 (compression-oriented programming), 43 (tests are systems).
+**See also.** 38 (storage systems), 41 (deferred abstraction), 43 (tests are systems).
 
 ---
 
@@ -535,4 +535,4 @@ Each entry has four parts:
 
 **Anti-pattern.** Testing as a separate concern bolted on at the end. *In Python specifically: `unittest.mock` is the wrong tool for ECS-style code - the §35 boundary eliminates the things mocks exist to fake (no external services to patch, no `requests.get` to intercept, no clocks to freeze). If you find yourself reaching for `mock.patch`, the system you are testing has a leak from §35; the fix is to plumb the leaked dependency through the queue, not to mock it. The simlog's [`test_simlog.py`](../.archive/simlog/test_simlog.py) (713 lines, full coverage of the simlog's contract) uses zero mocks.*
 
-**See also.** 13 (system as function), 16 (determinism by order), 37 (the log is the world), 41 (compression-oriented).
+**See also.** 13 (system as function), 16 (determinism by order), 37 (the log is the world), 41 (deferred abstraction).

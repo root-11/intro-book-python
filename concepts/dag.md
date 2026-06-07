@@ -79,7 +79,7 @@ flowchart TB
         N22[22. mutations buffer; cleanup is batched]
         N23[23. index maps]
         N24[24. append-only & recycling]
-        N25[25. ownership of tables]
+        N25[25. one writer, many readers]
     end
     N18 --> N21
     N18 --> N22
@@ -92,14 +92,16 @@ flowchart TB
     N13 --> N25
 
     subgraph SC["Scale"]
-        N26[26. hot/cold splits]
+        N26[26. subscription tables]
         N27[27. working set vs cache]
-        N28[28. sort for locality]
+        N28[28. proximity]
         N29[29. wall: 10K to 1M]
         N30[30. wall: 1M to streaming]
     end
-    N4 --> N26
-    N7 --> N26
+    N17 --> N26
+    N19 --> N26
+    N23 --> N26
+    N24 --> N26
     N26 --> N27
     N27 --> N28
     N27 --> N29
@@ -146,7 +148,7 @@ flowchart TB
 
     subgraph D["Discipline (cross-cutting)"]
         N40[40. mechanism vs policy]
-        N41[41. compression-oriented]
+        N41[41. deferred abstraction]
         N42[42. you can only fix what you wrote]
         N43[43. tests are systems]
     end
@@ -222,15 +224,15 @@ flowchart TB
 
 24. **Append-only and recycling.** Two strategies for slot reuse, with opposite tradeoffs in memory and reference stability. The choice is decided by access pattern, not taste. *Python doesn't have GC for numpy column slots; the recycling discipline is a `free_slots: list[int]` LIFO stack plus a generation counter.*
 
-25. **Ownership of tables.** Each table has exactly one writer; many readers are fine. This is the rule that makes parallelism possible without locks, and it is the precondition for the inspection-system pattern (read-only access to all tables, no risk of races). *Python has no borrow checker; the discipline is a convention. The numpy view trap (`arr[2:5]` is a view, not a copy) is the easiest place this discipline silently breaks.*
+25. **One writer, many readers.** Each table has exactly one writer; many readers are fine. This is the rule that makes parallelism possible without locks, and it is the precondition for the inspection-system pattern (read-only access to all tables, no risk of races). *Python has no borrow checker; the discipline is a convention. The numpy view trap (`arr[2:5]` is a view, not a copy) is the easiest place this discipline silently breaks.*
 
 ### Scale (26-30)
 
-26. **Hot and cold splits.** Fields touched in the inner loop go in one table; metadata read rarely goes in another. The inner loop's footprint shrinks; cache works. *In numpy SoA this lesson is gentler than in Rust AoS - columns are already physically separated. The split is largely organisational unless you're using AoS layouts (numpy structured arrays, `list[dataclass]`).*
+26. **Subscription tables, keyed by slot.** A system iterates a subscription table - the slots it cares about - and indexes the columns directly (`energy[hungry]`), keyed by slot so there is no `id_to_slot` hop in the hot loop. The columns are never split; SoA already separates the fields, so a hot/cold split adds nothing in numpy. *Keying by slot beats id ~2x at 1M/10%; compaction's locality win is modest (~1.3x) and is a by-product of dead-slot reclamation, not its own reason.*
 
 27. **Working set vs cache.** The size of the data the inner loop touches per pass decides speed more than the algorithm. If it fits in L1/L2, the loop is fast; if it does not, no algorithm saves you. *In Python the cliff is invisible from inside pure-Python loops because interpreter dispatch dominates; it surfaces in numpy.*
 
-28. **Sort for locality.** Reordering rows so that frequently co-accessed entities sit together turns random access into sequential access. This is the technique that node 9 was the prerequisite pain for. *In numpy: `order = np.argsort(spatial_cell); for col in cols: col[:] = col[order]`. The `id_to_slot` rebuild is one bulk numpy assignment.*
+28. **Proximity is a property of position.** Proximity is a function of position, recomputed from the position stream each tick (bin into spatial cells with a counting sort), not a bolt-on index maintained across ticks. *In numpy the per-beast bucket read must be one vectorised batch, not a Python loop - the loop loses to scipy `cKDTree`, the vectorised grid beats it ~2.3x (O(N) vs O(N log N)). The §26 GC compaction orders survivors by cell to make the gather dense.*
 
 29. **The wall at 10K → 1M.** What changes when allocations cannot be casual: pre-sized buffers, no per-frame heap traffic, `swap_remove` instead of `remove`, batched cleanup, consciously chosen layouts. The design budget from node 4 starts to bind. *The pandas wall: a `DataFrame` of 10M × 20 columns occupies 1.6 GB+ before any operation. The migration from pandas → numpy SoA or sqlite is usually a one-day project that gives back days of OOM debugging per quarter.*
 
@@ -264,7 +266,7 @@ flowchart TB
 
 40. **Mechanism vs policy.** The kernel of a system exposes raw verbs. Rules - what is allowed, what triggers what - live at the edges, not in the kernel. Confusing the two is how systems calcify. *Three Python anti-shapes that bury policy in mechanism: `@property` setters that validate-and-commit; decorators that hide control flow (`@cache_for`, `@require_role`); `__getattr__`/`__setattr__` overrides.*
 
-41. **Compression-oriented programming.** Write the concrete case three times before extracting. Don't pre-architect. The from-scratch version is also the dependency-pricing test: most crates lose the comparison. *In Python the premature-abstraction shapes are inheritance hierarchies, `Protocol` interfaces, `*args, **kwargs` "for flexibility", generic helpers parameterised over `Callable`, plugin systems with no plugins.*
+41. **Deferred abstraction.** Write the concrete case three times before extracting. Don't pre-architect. The from-scratch version is also the dependency-pricing test: most packages lose the comparison. *In Python the premature-abstraction shapes are inheritance hierarchies, `Protocol` interfaces, `*args, **kwargs` "for flexibility", generic helpers parameterised over `Callable`, plugin systems with no plugins.*
 
 42. **You can only fix what you wrote.** Foreign libraries are allowed; this is not a prohibition. But every dependency is a bet that someone else will keep it working. If the bet loses, you cannot fix it - you can only replace or fork it. The discipline is to take the bet *consciously*, knowing that the from-scratch version (node 41) is the cheapest way to find out whether the dependency is worth it. *Python escalation order when single-process numpy isn't fast enough: multiprocessing (§31) → maturin (Rust + PyO3) → leave Python entirely. Not rayon, not GPU-from-Python - both keep the orchestration tax.*
 

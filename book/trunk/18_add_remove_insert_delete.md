@@ -14,13 +14,13 @@ def become_hungry_flag(is_hungry: np.ndarray, slot: int) -> None:
     is_hungry[slot] = True
 
 # presence
-def become_hungry_presence(hungry: list[int], creature_id: int) -> None:
-    hungry.append(creature_id)
+def become_hungry_presence(hungry: list[int], slot: int) -> None:
+    hungry.append(slot)
 
-def stop_being_hungry_presence(hungry: np.ndarray, creature_id: int) -> np.ndarray:
-    pos = np.where(hungry == creature_id)[0]
+def stop_being_hungry_presence(hungry: np.ndarray, slot: int) -> np.ndarray:
+    pos = np.where(hungry == slot)[0]            # O(N) scan for now; §23's sparse set makes it O(1)
     if pos.size:
-        # swap_remove: move last entry into the freed slot, drop last
+        # swap_remove: move last entry into the freed position, drop last
         hungry[pos[0]] = hungry[-1]
         return hungry[:-1]
     return hungry
@@ -32,7 +32,7 @@ The Python idiom that this chapter is asking you to abandon is older and more un
 
 The cost is real. From [`code/measurement/alive_fraction.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/alive_fraction.py), one motion update over 1,000,000 creatures at varying alive-fraction:
 
-| alive % | AoS (`for c if c.alive`) | numpy bool mask | numpy presence (ids) | mask/presence |
+| alive % | AoS (`for c if c.alive`) | numpy bool mask | numpy presence (slots) | mask/presence |
 |--------:|-------------------------:|----------------:|---------------------:|--------------:|
 |   1.0 % |                10.12 ms  |        0.684 ms |             0.067 ms |        10.2 × |
 |  10.0 % |                25.65 ms  |        3.868 ms |             0.747 ms |         5.2 × |
@@ -59,7 +59,7 @@ A useful test: can you describe the transition without naming a `bool`? *"This c
 
 ## Multi-table transitions
 
-The same pattern handles richer transitions. Imagine a creature that can be hungry, sleepy, or dead. Three tables: `hungry`, `sleepy`, `dead`. A creature transitions by moving between them. Becoming sleepy while hungry adds a row to `sleepy` (it can be in both). Dying removes the creature from `hungry` and `sleepy` (cleanup affects all relevant presence tables) and adds to `dead`. The transition is a multi-table operation, but each table is still just a numpy array of ids.
+The same pattern handles richer transitions. Imagine a creature that can be hungry, sleepy, or dead. Three tables: `hungry`, `sleepy`, `dead`. A creature transitions by moving between them. Becoming sleepy while hungry adds a row to `sleepy` (it can be in both). Dying removes the creature from `hungry` and `sleepy` (cleanup affects all relevant presence tables) and adds to `dead`. The transition is a multi-table operation, but each table is still just a numpy array of slots.
 
 This shape - state changes as inserts and removes - is the precondition for everything else EBP gives you. The dispatch in [§19](19_ebp_dispatch.md) iterates *over the table directly*, so the table's contents *being* the canonical state of the world is structurally necessary. There is no flag to consult; there is only what is in the table right now.
 
@@ -69,8 +69,8 @@ This shape - state changes as inserts and removes - is the precondition for ever
 2. **Run the alive-fraction exhibit.** `uv run code/measurement/alive_fraction.py`. Note the crossover row - the alive-fraction at which the bool mask starts beating presence. Note that the AoS column does not have a crossover; it loses at every fraction.
 3. **No bool, no setter.** Search your code for any boolean field on a creature. Replace it with a presence table. The setter and getter both disappear. Search for any `@property` decorator that wraps a state field; same fate.
 4. **A second presence state.** Add a `sleepy` table. A creature is sleepy if its energy is *high enough that it does not need to eat right now*. A creature can be in both `sleepy` and `hungry`? No - by definition the conditions are mutually exclusive. (Or: design them so they are.) Verify the invariant by checking after each tick that `np.intersect1d(hungry, sleepy).size == 0`.
-5. **Death.** Add a `dead` table. When a creature's energy drops below zero, append to `dead` *and* remove from `hungry` (and from `sleepy` if present). The cleanup logic is now multi-table; introduce a small `transition_to_dead(ids, hungry, sleepy, dead)` helper that handles all the affected presence tables.
-6. **The transition log.** Add `events: list[tuple[int, int, str]]` (tick number, creature id, event name). Every insert/remove emits a row. After 100 ticks, the events log is the *canonical history* - every state change recorded. This is a preview of [§37 - The log is the world](37_log_is_world.md).
+5. **Death.** Add a `dead` table. When a creature's energy drops below zero, append to `dead` *and* remove from `hungry` (and from `sleepy` if present). The cleanup logic is now multi-table; introduce a small `transition_to_dead(slots, hungry, sleepy, dead)` helper that handles all the affected presence tables.
+6. **The transition log.** Add `events: list[tuple[int, int, str]]` (tick number, creature id, event name). Every insert/remove emits a row. Note the entry is the entity *id*, not the slot: the membership tables move by slot, but the log is a boundary artifact replayed later ([§37](37_log_is_world.md)) - when slot positions no longer hold - so it records identity (`ids[slot]`). After 100 ticks, the events log is the *canonical history* - every state change recorded. This is a preview of [§37 - The log is the world](37_log_is_world.md).
 7. *(stretch)* **Reconstruct from the log.** Given only the events log and the initial creature ids, reconstruct the final `hungry`, `sleepy`, and `dead` tables. The reconstruction is a one-shot replay; if it produces the same tables as the live simulation, your transitions are correctly captured.
 8. *(stretch)* **The crossover, on your machine.** Re-run the exhibit varying alive-fraction more finely between 70% and 95% - say at 70, 75, 80, 85, 90, 95%. Find the alive-fraction at which mask and presence cross over on *your* hardware. The exact crossover depends on cache size, branch predictor, and the specific numpy build.
 

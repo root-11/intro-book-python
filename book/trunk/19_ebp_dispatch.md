@@ -17,8 +17,8 @@ for slot in range(len(creatures)):
 **Existence-based dispatch.** Walk the `hungry` table directly; do work for every entry:
 
 ```python
-for creature_id in hungry:
-    drive_hunger_behaviour(creature_id)
+for i in hungry:                 # i is a slot
+    drive_hunger_behaviour(i)
 ```
 
 In numpy, both shapes lift to one bulk operation:
@@ -87,15 +87,15 @@ A system that uses EBP looks like:
 ```python
 def drive_hunger(hungry: np.ndarray,
                  energy: np.ndarray,
-                 id_to_slot: np.ndarray,
                  dt: float) -> None:
-    """Read-set: hungry, id_to_slot.
-       Write-set: energy (only at slots indexed by hungry)."""
-    slots = id_to_slot[hungry]
-    energy[slots] -= HUNGER_BURN_RATE * dt
+    """Read-set: hungry.
+       Write-set: energy (only at the slots listed in hungry)."""
+    energy[hungry] -= HUNGER_BURN_RATE * dt
 ```
 
 Read-set declared. Write-set declared. No per-row branch; the table is the dispatcher. The signature is the contract - exactly the system shape from [§13](13_system_as_function.md). **EBP is not a separate idea; it is the natural shape that a system takes when its inputs are presence tables.**
+
+Because `hungry` holds slots, `energy[hungry]` indexes the columns directly - one gather, with no id-to-slot lookup inside the loop. That directness is the whole point of keying the table by slot; [§26](26_subscription_tables.md) measures what it is worth (and why the table holds slots, not ids), once the lifecycle in [§24](24_append_only_and_recycling.md) makes slots stable enough to store.
 
 EBP also composes cleanly with parallelism. A million creatures with 100,000 hungry can be split across multiple processes - each takes a slice of `hungry` and does its work. The processes never need to consult creatures that are not hungry; their reads do not interfere. [§31](31_disjoint_writes_parallelize.md) develops this under multiprocessing + shared_memory.
 
@@ -104,7 +104,7 @@ The takeaway: EBP is the dispatch that falls out of [§17](17_presence_replaces_
 ## Exercises
 
 1. **Re-read your alive-fraction numbers.** From §18 exercise 2 you have measurements for AoS, bool mask, and presence at five alive-fractions. The same numbers tell the EBP story: the presence column *is* the EBP dispatch path. Confirm by mapping the §18 row labels to the §19 vocabulary - "presence" = "EBP," "bool mask" = "filtered iteration."
-2. **Implement both, on creatures.** Implement `drive_hunger_filtered(creatures, is_hungry, dt)` (walks creatures, checks the bool column, applies the burn) and `drive_hunger_ebp(hungry, energy, id_to_slot, dt)` (walks the presence table). Run both on a 1M-creature world with 10% hungry. Time both with `timeit`. Note the ratio.
+2. **Implement both, on creatures.** Implement `drive_hunger_filtered(creatures, is_hungry, dt)` (walks creatures, checks the bool column, applies the burn) and `drive_hunger_ebp(hungry, energy, dt)` (indexes the columns by the slots in `hungry`). Run both on a 1M-creature world with 10% hungry. Time both with `timeit`. Note the ratio.
 3. **The isinstance trap.** Build a `list[Creature]` where some are `Hungry(Creature)`, some are `Sleepy(Creature)`, some are plain `Creature`. Implement dispatch via `if isinstance(c, Hungry)` chains. Time it at 1M creatures with 10% Hungry. Now implement the EBP version: three numpy presence tables, three system functions. Time it. The ratio is the cost of consulting the predicate per entity.
 4. **The polymorphic-method trap.** Convert exercise 3 to `class Hungry(Creature): def update(self): ...` and a single `for c in creatures: c.update()`. Time it. Note that the source-code complexity *fell* (the `if/elif` is gone), but the runtime cost did not - the predicate moved into Python's method resolution order, where it is still consulted on every iteration.
 5. **The list-comprehension filter.** Implement `hungry = [c for c in creatures if c.is_hungry]` followed by `for c in hungry: drive(c)`. Time it. Compare against EBP. Note that the filter pass is the cost of the filtered-iteration version *plus* a list allocation; the EBP version pays neither, because the `hungry` table was maintained at state-transition time, not at read time.

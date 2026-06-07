@@ -66,7 +66,7 @@ SoA:  226.07 µs   AoS: 12,008.3 µs   ratio:   53×
 
 The ratio widens with N because the SoA call stays bandwidth-bound (a tight C loop reading int8s sequentially) while the AoS call stays interpreter-bound (one Python step per row). Doubling N doubles both costs, but they live in different regimes - at 1M, SoA finishes in 0.2 ms, AoS in 12 ms. AoS uses 36% of a 30 Hz tick budget on a single count-by-attribute query.
 
-## Exercise 5 - The hot/cold case, Python edition
+## Exercise 5 - The unused-field case, Python edition
 
 Add `nickname: str = ""` and `dealt_at: int = -1` to `Card`, rebuild, time again:
 

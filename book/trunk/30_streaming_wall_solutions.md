@@ -28,7 +28,7 @@ RAM available to the simulator: assume 8 GB on a 16 GB laptop.
 
 The streaming threshold is in the *hundreds of millions* for hot-only data on a typical laptop, but every cold column you add chips away. Adding a `name: object` column (one Python string per creature) blows the budget at ~50M because each string is 50+ bytes.
 
-This is why the §2 dtype discipline and the §26 hot/cold split bind together. Wider dtypes pull the wall inward; the split pushes the *motion-system* wall outward by isolating the hot working set.
+This is why the §2 dtype discipline and SoA bind together. Wider dtypes pull the wall inward; SoA keeps each system's working set to the columns it reads ([§26](26_subscription_tables.md)), so motion never pays for the cold fields it ignores.
 
 ## Exercise 2 - Predict the cost
 

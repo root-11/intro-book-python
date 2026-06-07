@@ -25,28 +25,42 @@ class World:
 
 Adding the map is one extra column and one extra line in `append`. Removal updates happen in cleanup (next exercise).
 
-## Exercise 2 - O(1) presence query
+## Exercise 2 - Build the sparse set
 
 ```python
-class World:
-    hungry: np.ndarray = np.empty(0, dtype=np.uint32)
-    hungry_member: np.ndarray = np.zeros(N_max, dtype=bool)
+INVALID = np.iinfo(np.uint32).max
 
-def become_hungry(world, creature_id: int):
-    world.hungry = np.concatenate([world.hungry, [creature_id]])
-    world.hungry_member[creature_id] = True
+class SparseSet:
+    """dense list of present slots + a slot-indexed map to their position in dense."""
+    def __init__(self, n_max: int):
+        self.dense  = np.empty(n_max, dtype=np.uint32)         # present slots; walk dense[:n]
+        self.sparse = np.full(n_max, INVALID, dtype=np.uint32)  # slot -> position in dense
+        self.n = 0
 
-def stop_being_hungry(world, creature_id: int):
-    world.hungry = world.hungry[world.hungry != creature_id]
-    world.hungry_member[creature_id] = False
+    def is_member(self, i: int) -> bool:
+        return bool(self.sparse[i] != INVALID)
 
-def is_hungry(world, creature_id: int) -> bool:
-    return bool(world.hungry_member[creature_id])
+    def subscribe(self, i: int) -> None:
+        if self.sparse[i] != INVALID:
+            return
+        self.sparse[i] = self.n
+        self.dense[self.n] = i
+        self.n += 1
+
+    def unsubscribe(self, i: int) -> None:
+        p = self.sparse[i]
+        if p == INVALID:
+            return
+        last = self.dense[self.n - 1]
+        self.dense[p] = last          # backfill the hole
+        self.sparse[last] = p
+        self.sparse[i] = INVALID
+        self.n -= 1
 ```
 
-Two parallel structures: `hungry` (the iteration list - O(K) walk) and `hungry_member` (the membership map - O(1) check). The list is for iterating; the bool array is for asking "is this id in the table?". Both updated together; one read for each access pattern.
+All three are O(1), no scan, no boolean. `dense[:n]` is the iteration list the hot loop walks; `sparse` answers "present?" *and* hands back the position needed to swap_remove in O(1). A boolean column could do `is_member` but not the removal - and it is the flag §17 abolished.
 
-The cost is one byte per id ever issued (~1 MB at 1M ids), which is the memory price of constant-time membership.
+The cost is one `uint32` per slot for `sparse` plus the `dense` backing - more bytes than a boolean column, but the boolean cannot give you O(1) unsubscribe. Pay it when the membership is stable and only a few entries change per tick (maintain incrementally). When the membership churns almost completely each tick, skip `sparse` entirely and rebuild `dense` from a mask (`np.flatnonzero(predicate)`) - no index needed.
 
 ## Exercise 3 - Maintain on bulk-filter cleanup
 
@@ -82,27 +96,27 @@ The `id_to_slot[ids[:n_keep]] = np.arange(n_keep)` line is the keystone. It rewr
 import time, numpy as np
 
 world = build_world(n=1_000_000, hungry_count=100_000)
-ids = np.random.default_rng(0).choice(1_000_000, size=100_000)
+slots = np.random.default_rng(0).choice(1_000_000, size=100_000)
 
-# Linear scan version (§17 ex 6)
-def is_hungry_scan(hungry, target):
-    return bool(np.any(hungry == target))
+# Linear scan version (§17 ex 6): scan the dense list for the slot
+def is_member_scan(hungry, slot):
+    return bool(np.any(hungry == slot))
 
 t = time.perf_counter()
-for cid in ids:
-    is_hungry_scan(world.hungry, int(cid))
+for s in slots:
+    is_member_scan(world.hungry, int(s))
 print(f"linear scan × 100K: {time.perf_counter()-t:.2f} s")
 
-# Indexed version
+# Sparse-set version: O(1) membership
 t = time.perf_counter()
-for cid in ids:
-    bool(world.hungry_member[int(cid)])
-print(f"indexed × 100K: {time.perf_counter()-t:.3f} s")
+for s in slots:
+    world.hungry_set.is_member(int(s))
+print(f"sparse set × 100K: {time.perf_counter()-t:.3f} s")
 ```
 
-Typical: linear scan ~5-10 minutes (10⁵ × 10⁵ = 10¹⁰ ops). Indexed: ~30 ms (one C-level read per call, plus Python loop overhead). Ratio: ~10⁵-10⁶×.
+Typical: linear scan ~5-10 minutes (10⁵ × 10⁵ = 10¹⁰ ops). Sparse set: ~30 ms (one C-level read per call, plus Python loop overhead). Ratio: ~10⁵-10⁶×.
 
-For a real simulator that does many membership queries per tick, the index map is the difference between *workable* and *unsalvageable*. Without it, presence-replaces-flags would only be defensible for whole-table operations, not individual queries.
+For a real simulator that does many membership queries per tick, the sparse set is the difference between *workable* and *unsalvageable*. Without it, presence-replaces-flags would only be defensible for whole-table operations, not individual queries.
 
 ## Exercise 5 - Run the exhibit (honestly)
 
@@ -147,7 +161,7 @@ At ~10 GB/s memory bandwidth: ~0.6 µs to write 6 KB
 
 The cleanup map-update cost is **0.002% of the tick budget** at typical mutation rates. The id_to_slot maintenance is invisible against the rest of the work. The 4 MB total memory cost is the dominant concern at scale, not the bandwidth - which mitigates to 400 KB once recycling caps the high-water id count.
 
-## Exercise 7 - Sort-for-locality compatibility
+## Exercise 7 - Compaction compatibility
 
 ```python
 def sort_for_locality(world, key_col_name: str):

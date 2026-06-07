@@ -73,6 +73,8 @@ class SlotPool:
 
 The free list is a Python `list` used as a LIFO stack - `append` and `pop` are both O(1). The generation column is numpy because it is touched in lockstep with cleanup ([§22](22_mutations_buffer.md)) and benefits from bulk numpy ops when many slots are freed together.
 
+That generation bump on `free` is also the *dirty marker* the deferred cleanup ([§22](22_mutations_buffer.md)) runs on. A death does not have to move a row: it bumps the generation - marking the slot dead in O(1), so stale `(slot, gen)` references fail their check - and leaves the slot in place. The periodic garbage-collection compress reclaims the dead slots in one sweep and reindexes. Per tick you *mark*; on the GC cadence you *compact*. Recycling and deferred compaction are the same discipline from two sides: a freed slot is either refilled by the next birth or reclaimed by the next GC pass, and until then it sits marked and harmless - which is why a scan-all system can stride over it without special-casing ([§22](22_mutations_buffer.md) measured the waste as negligible).
+
 ## Choosing between them
 
 Match the strategy to the table's role:
@@ -102,4 +104,4 @@ Reference notes in [24_append_only_and_recycling_solutions.md](24_append_only_an
 
 ## What's next
 
-[§25 - Ownership of tables](25_ownership_of_tables.md) is the rule that makes every other discipline in the phase work: each table has exactly one writer.
+[§25 - One writer, many readers](25_ownership_of_tables.md) is the rule that makes every other discipline in the phase work: each table has exactly one writer.

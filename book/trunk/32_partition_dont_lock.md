@@ -97,7 +97,7 @@ Within the ventilator model, the *initial* partition shape is still a design cho
 
 **By entity range** (the default): each worker takes contiguous slot range `[i*N/W, (i+1)*N/W)`. Simple; works when access is uniform.
 
-**By spatial cell** (after sort-for-locality, [§28](28_sort_for_locality.md)): each worker takes a region of the world. Useful when interactions are local - neighbours-only collisions, regional behaviours. Workers at boundary cells need a small synchronisation step (or a halo region copied into each worker's input).
+**By spatial cell** (the [§28](28_proximity.md) spatial binning): each worker takes a region of the world. Useful when interactions are local - neighbours-only collisions, regional behaviours. Workers at boundary cells need a small synchronisation step (or a halo region copied into each worker's input).
 
 **By hash**: each worker takes ids whose `hash(id) % n_workers` matches its index. Useful when access is uniform but you want stable worker-to-data mapping across ticks (worker caches stay warm on the same partition tick after tick).
 

@@ -19,7 +19,7 @@ The log is a sequence of such events. The world's tables can be reconstructed fr
 
 The structural fact: **the log and the world have the same shape**.
 
-A presence table `hungry: np.ndarray` is a list of creature ids. The log of `become_hungry` and `stop_being_hungry` events is a list of (tick, creature_id) pairs that, when replayed, produces the same array. A column `energy: np.ndarray` is the result of starting from an empty array plus the events that wrote each entry. The log holds these writes; the column is the cumulative effect of replaying them.
+A presence table `hungry: np.ndarray` holds *slots* in memory, but the log that reconstructs it records entity *ids* - the boundary rule from [§18](18_add_remove_insert_delete.md)/[§26](26_subscription_tables.md), because a slot is meaningless once the columns are compacted. The log of `become_hungry` and `stop_being_hungry` events is a list of (tick, creature_id) pairs that, when replayed, rebuilds the same membership. A column `energy: np.ndarray` is the result of starting from an empty array plus the events that wrote each entry. The log holds these writes; the column is the cumulative effect of replaying them.
 
 In the most explicit form - the *triple-store* shape - the log is three parallel numpy columns:
 

@@ -55,7 +55,7 @@ The discipline pays off three ways:
 
 ## The book is closing
 
-Forty-three concepts; ten phases; one through-line simulator. The disciplines named in this last phase - mechanism vs policy, compression-oriented programming, you-can-only-fix-what-you-wrote, tests-are-systems - are the rules that hold the rest together. They are not new architecture. They are how the architecture earlier chapters built stays maintainable.
+Forty-three concepts; ten phases; one through-line simulator. The disciplines named in this last phase - mechanism vs policy, deferred abstraction, you-can-only-fix-what-you-wrote, tests-are-systems - are the rules that hold the rest together. They are not new architecture. They are how the architecture earlier chapters built stays maintainable.
 
 A simulator that respects all forty-three nodes is one whose state is in numpy columns, whose transformations are systems, whose tick is a pure function, whose history is a log, whose persistence is transposition, whose tests are systems, and whose dependencies are bets you took with your eyes open.
 

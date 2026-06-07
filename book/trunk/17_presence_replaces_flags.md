@@ -10,13 +10,13 @@ The instinct most Python programmers arrive with is a *boolean field on the obje
 
 The middle option - better than per-instance booleans, still not the disciplined choice - is a *boolean column*. `is_hungry = np.zeros(N, dtype=bool)`, indexed in lockstep with the rest of the creature table. This is what most readers will reach for after Part 2. It pays one byte per creature (numpy's bool is one byte, not one bit), but the bytes are contiguous; numpy vectorises the scan; SIMD reads forty creatures per cache line. Compared to the per-object form, it is one-to-two orders of magnitude faster. Compared to the disciplined form below, it still costs N bytes regardless of how few creatures are hungry.
 
-The data-oriented alternative is *membership*. There is a `hungry` table - a `np.ndarray` of creature ids, of length K (the number of currently-hungry creatures), no longer than it has to be. A creature is hungry if and only if its id is in `hungry`. The flag does not exist as a field; it exists as a *fact about which table the creature appears in*.
+The data-oriented alternative is *membership*. There is a `hungry` table - a `np.ndarray` of the *slots* of hungry creatures (the rows they occupy in the columns), of length K (the number of currently-hungry creatures), no longer than it has to be. A creature is hungry if and only if its slot is in `hungry`. The flag does not exist as a field; it exists as a *fact about which table the creature appears in*. (Why the slot and not the stable id from [§10](10_stable_ids_and_generations.md)? Because a system that acts on the hungry reaches straight into the columns - `energy[hungry]` - and the slot *is* that reach; an id would need a lookup first. Until a death relocates anyone a creature's slot equals its id - `ids = np.arange(N)` - so the distinction is invisible here; [§23](23_index_maps.md) makes it precise.)
 
 ```python
-# Three representations of "is this creature hungry?"
+# Three representations of "is this creature hungry?" (i is the creature's slot)
 is_hungry_attr     = creatures[i].is_hungry          # AoS bool field
 is_hungry_mask     = bool(is_hungry[i])              # SoA bool column, O(N) bytes
-is_hungry_presence = np.isin(creature_ids[i], hungry) # presence table, O(K) bytes
+is_hungry_presence = np.isin(i, hungry)              # presence table, O(K) bytes
 ```
 
 The substitution looks small: a `bool` field becomes a row in another table. The implications are not.
@@ -35,7 +35,7 @@ The substitution looks small: a `bool` field becomes a row in another table. The
 
 The clean way to phrase the move: **instead of asking each entity about its state, ask the state-table which entities have that state.** The query is reversed; the lookup is reversed; the work shrinks. Most programs spend their lives doing the wrong direction; the data-oriented mindset is to reverse it.
 
-A production example: in a real ECS daemon, an admission decision is `is_admitted = peer_id in established_contacts`. There is no `is_admitted: bool` on a peer; there is only the question "is this peer's id in the table?". With an `id_to_slot` index map ([§23](23_index_maps.md)) this is O(1), no I/O, no enum.
+A production example: in a real ECS daemon, an admission decision is `is_admitted = peer_id in established_contacts`. There is no `is_admitted: bool` on a peer; there is only the question "is this peer's id in the table?" - O(1), no I/O, no enum. (Here the table is keyed by the *id*, not a slot: peer identity outlives any row, so it is the boundary case [§23](23_index_maps.md) keeps ids for.)
 
 ## When flags are right
 
@@ -48,11 +48,11 @@ In this book, **presence is the default; flags are a tradeoff to earn**.
 These extend the §0 simulator skeleton.
 
 1. **Add a `hungry` table.** Add `hungry = np.empty(0, dtype=np.uint32)` to your world. It is empty at start.
-2. **Populate it.** Write a system `def classify_hunger(energy, ids) -> np.ndarray` that returns the ids of all creatures with `energy[i] < HUNGER_THRESHOLD`. The body is one numpy line: `ids[energy < HUNGER_THRESHOLD]`. Replace the world's `hungry` with the result each tick.
+2. **Populate it.** Write a system `def classify_hunger(energy) -> np.ndarray` that returns the *slots* of all creatures with `energy[slot] < HUNGER_THRESHOLD`. The body is one numpy line: `np.flatnonzero(energy < HUNGER_THRESHOLD)`. Replace the world's `hungry` with the result each tick.
 3. **Build the flag version.** Add a parallel `is_hungry = np.zeros(N, dtype=bool)` indexed by creature slot. Write the equivalent classification system that sets the bool column.
 4. **Build the AoS version.** Build a `list[Creature]` where `Creature` is a `@dataclass(slots=True)` with an `is_hungry: bool` field. Write the equivalent classification - a Python `for` loop. (Foreshadow: this is the version most tutorials teach.)
 5. **Time all three at 1M creatures, 10% hungry.** Time `classify_hunger` (presence), the bool-column version (flag), and the AoS version. Note the ordering and the magnitudes. Presence and flag should be within ~2-5× of each other (both numpy); the AoS version should be one to two orders of magnitude slower than either (interpreter-bound, per §1).
-6. **The membership query.** Write `def is_hungry_p(hungry, id) -> bool` (presence - `bool(np.any(hungry == id))`) and `def is_hungry_f(is_hungry_col, slot) -> bool` (flag - `bool(is_hungry_col[slot])`). Time both at 1M creatures. Note: presence is O(K) without an index map; the flag is O(1). [§23 - Index maps](23_index_maps.md) is the fix that makes presence O(1) too.
+6. **The membership query.** Write `def is_hungry_p(hungry, slot) -> bool` (presence - `bool(np.any(hungry == slot))`) and `def is_hungry_f(is_hungry_col, slot) -> bool` (flag - `bool(is_hungry_col[slot])`). Time both at 1M creatures. Note: presence is O(K) without an index map; the flag is O(1). [§23 - Index maps](23_index_maps.md) is the fix that makes presence O(1) too.
 7. **"How many are hungry?"** Write it three ways. Presence: `len(hungry)`. Flag column: `int(is_hungry.sum())`. AoS: `sum(1 for c in creatures if c.is_hungry)`. Compare wall times at 1M creatures with 10% hungry. The presence version is constant-time; the flag-column version walks all 1M as a single numpy reduction; the AoS version walks all 1M with interpreter dispatch on every step.
 8. *(stretch)* **Persist both.** Serialise the flag-column version with `np.save("is_hungry.npy", is_hungry)` and the presence version with `np.save("hungry.npy", hungry)`. Note the disk size for 1M creatures with 10% hungry. The presence file is ~400 KB; the flag-column file is ~1 MB even though 90% of the bits are `0`. (Compression closes some of this gap, but not all of it - `np.savez_compressed` will help on the flag column more than on the presence array, because the flag column has a long run of zeros to compress and the presence array is already small.)
 

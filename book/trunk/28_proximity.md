@@ -1,75 +1,103 @@
-# 28 - Sort for locality
+# 28 - Proximity is a property of position
 
-> *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 28](../../concepts/glossary.md#28--sort-for-locality).*
+> *Concept node: see the [DAG](../../concepts/dag.md) and [glossary entry 28](../../concepts/glossary.md#28--proximity-is-a-property-of-position).*
 
-<p align="center"><img src="../illustrations/optimization.jpg" alt="Optimization: minimize f(x) - sorting for locality is reordering for cost" style="max-height: 300px; max-width: 100%;"></p>
+<p align="center"><img src="../illustrations/optimization.jpg" alt="Optimization: minimize f(x) - proximity is a function of position, computed where position lives" style="max-height: 300px; max-width: 100%;"></p>
 
-In [§9](09_sort_breaks_indices.md) you learned the sort-breaks-indices bug. In [§10](10_stable_ids_and_generations.md) you fixed it with stable ids. In [§23](23_index_maps.md) you made id-to-slot lookup O(1). With those three pieces in place, the simulator can now do something it could not before: rearrange its rows for locality.
+Creatures eat the food they encounter. So `next_event` has to answer, for every creature, *which food is within reach?* At [§1](01_the_machine_model.md)'s ten thousand that is a cheap scan. At [§2](02_numbers_and_how_they_fit.md)'s million it is a wall: comparing every creature to every food is O(C×F). Measured, even twenty thousand all-pairs neighbour tests cost ~2.9 s in numpy on a modern desktop<sup>1</sup> - dozens of frames' budget spent on a fraction of the world.
 
-The principle is simple. Rows accessed near each other in time should sit near each other in memory. Two creatures that interact (collide, query a neighbour, broadphase against each other) should land on adjacent cache lines.
+The reflex is to reach for a *spatial index*: a quadtree, a grid hash, scipy's `cKDTree` - a structure that lives beside the world, that you build, query, and keep up to date as things move. It works. But stop and look at what it is: a second copy of information the world already holds - position - with its own build cost and its own query cost.
 
-The classic technique is a *spatial sort*. Each creature's position is hashed to a spatial cell; the creatures table is sorted by cell. Reading "all creatures in cell C" becomes a contiguous range read.
+Step back and ask what proximity *is*. It is a function of position. And position is already owned and streamed, every tick, by the motion system. The cell a creature falls in is one line - `cell = f(px, py)` - computed in the pass motion is already making, branchless and vectorised. The index was never necessary. The cell is a property you read off position.
+
+## Bin, don't index
+
+Compute each creature's cell, then place the creatures into per-cell buckets with a counting sort: histogram the cells, prefix-sum into offsets, scatter the indices into one dense array (a CSR layout). No dict, no per-cell allocation, no pointer-chasing - three vectorised passes over contiguous memory.
 
 ```python
-def spatial_cell(pos_x: np.ndarray, pos_y: np.ndarray,
-                 cell_size: float) -> np.ndarray:
-    """Returns a uint32 cell id for each creature. Pack (x, y) cells
-       into one integer. Z-order or Hilbert curves work too."""
-    cx = (pos_x / cell_size).astype(np.int32)
-    cy = (pos_y / cell_size).astype(np.int32)
-    return ((cx & 0xFFFF) << 16) | (cy & 0xFFFF)
-
-
-def sort_creatures_for_locality(world, cell_size: float) -> None:
-    cells = spatial_cell(world.pos_x, world.pos_y, cell_size)
-    order = np.argsort(cells, kind="stable")
-    # Apply the same permutation to every column, in lockstep - §6's rule.
-    world.pos_x[:] = world.pos_x[order]
-    world.pos_y[:] = world.pos_y[order]
-    world.vel_x[:] = world.vel_x[order]
-    world.vel_y[:] = world.vel_y[order]
-    world.energy[:] = world.energy[order]
-    world.id[:]     = world.id[order]
-    # Rebuild id_to_slot in lockstep - §23.
-    world.id_to_slot[world.id] = np.arange(world.id.size, dtype=np.uint32)
+def build_csr(px, py, cell_size):
+    ncols = int(WORLD / cell_size) + 2
+    cell = (px / cell_size).astype(np.int64) * ncols + (py / cell_size).astype(np.int64)
+    order   = np.argsort(cell, kind="stable")                 # point indices grouped by cell
+    offsets = np.zeros(ncols * ncols + 1, dtype=np.int64)
+    np.cumsum(np.bincount(cell, minlength=ncols * ncols), out=offsets[1:])
+    return order, offsets, ncols     # cell c's members are order[offsets[c] : offsets[c+1]]
 ```
 
-Two creatures in the same spatial cell are now adjacent in `pos_x` and `pos_y`. The next-event system, which checks every creature against its spatial neighbours, strides through `pos_x` and reads neighbours from the same cache line.
+A neighbour query reads the 3x3 block of cells around a point. So far this is the Rust edition's chapter. Here Python adds a catch that is worth more than the whole rest of the chapter.
 
-## Why this matters in numpy
+## The catch: read the buckets as a batch, not in a loop
 
-The locality gap is not theoretical. From [§1's `cache_cliffs.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/cache_cliffs.py), at 100M elements the gather (random-index) read is **72× slower than sequential** on this machine. That ratio is the cost of every cache-unfriendly access pattern - every iteration that visits creatures in a non-spatial order pays it. Spatial sort converts gather-shaped reads into sequential ones, **which is exactly the operation that ratio measures.**
+"Who is near me" is O(1): read my cell's bucket and its eight neighbours. That is true *per query*. The trap is how you run a million of them. Write the obvious loop -
 
-The cost is the sort itself. At 1M `uint32` keys, `np.argsort` takes ~10-30 ms depending on input distribution. Done every tick this would be too expensive - but typically the sort is done every ~100 ticks (or when accumulated motion exceeds a threshold), amortising to ~0.1-0.3 ms per tick. The savings on the inner loop dwarf the cost.
+```python
+# anti-pattern: bad!  O(1) per query, but a Python loop over a million beasts
+for i in range(n):
+    for c in neighbour_cells(i):
+        for j in order[offsets[c]:offsets[c+1]]:
+            if within(px[i], py[i], px[j], py[j], r):
+                count[i] += 1
+```
 
-## Other sort orders, when they pay off
+- and the algorithm is right but every one of those million O(1) reads pays full interpreter tax. Measured, this naive grid is **5x slower than `cKDTree`**<sup>2</sup>. That single result is what sends people back to the library convinced the grid is no good. It is not the grid that is slow; it is the Python loop.
 
-- **Sort by id.** Stable across runs; nice for debugging; but no locality benefit unless ids correlate with access patterns.
-- **Sort by access frequency.** Hot creatures first; cold last. Useful only when the inner loop respects the order - and most numpy bulk ops do not, they walk the whole column.
-- **Sort by behaviour.** All hungry creatures together; all sleepy together. Mostly redundant in a presence-based system ([§19](19_ebp_dispatch.md)) where the hungry-driver iterates `hungry` directly.
+Run the same million reads as **one vectorised batch** and the grid wins outright. Generate every (beast, candidate-neighbour) pair from the CSR with `np.repeat` and a cumulative-sum range expansion, then do one vectorised distance pass over all the pairs:
 
-Sort cadence is its own decision. Sorting every tick is wasted work if the world is mostly stationary. Sorting once at startup is wrong if the world drifts. Most simulators trigger a re-sort when accumulated motion since the last sort exceeds a fraction of the cell size.
+```python
+# for each of the 9 cell offsets, gather every beast's candidates at once
+for dx, dy in OFFSETS:                       # 9 iterations, not a million
+    nc = neighbour_cell(cx + dx, cy + dy)    # vectorised over all beasts
+    src, j = expand_ranges(offsets[nc], offsets[nc + 1])   # candidate pairs, no Python loop
+    hit = (px[src] - px[j])**2 + (py[src] - py[j])**2 <= r * r
+    counts += np.bincount(src[hit], minlength=n)
+```
 
-## The pieces this lesson assumes
+The loop now runs **nine** times (the fixed cell offsets), not a million. Everything inside is a whole-array numpy op. At a million creatures the vectorised grid answers the query in ~1.0 s against `cKDTree`'s ~2.3 s - **2.3x faster**<sup>2</sup>, and it is doing genuinely less work: the grid is O(N), the tree is O(N log N). The full implementation is in [`proximity.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/proximity.py).
 
-The sort interacts with three earlier lessons:
+The lesson generalises past this chapter: in numpy a correct O(1)-per-element algorithm can still lose to a worse one if you express it as a Python loop. **Vectorise the batch, or measure the wrong thing and draw the wrong conclusion** - which is exactly the trap the naive grid sets.
 
-- **Lockstep reordering ([§6](06_a_row_is_a_tuple.md), [§9](09_sort_breaks_indices.md)).** Every column gets the same permutation applied. The `world.pos_x[:] = world.pos_x[order]` form is in-place rebinding to the same backing array - it does not allocate, and it does not break aliases held elsewhere. Doing this column-by-column for every column is the disciplined form.
-- **Stable ids ([§10](10_stable_ids_and_generations.md)).** Code outside the sort holds *ids*, not slots; the sort moves slots, and the `id_to_slot` map (the last line of `sort_creatures_for_locality`) keeps the ids correct.
-- **Index maps ([§23](23_index_maps.md)).** The `id_to_slot` rebuild is one bulk numpy assignment that runs in O(N) once per sort, not O(N) per id. The pieces compose.
+## Recompute beats maintain
 
-This is the pattern Bevy, Unity DOTS, Unreal's Mass Entities, and most production ECS engines use under the hood. Locality is paid up front (one sort) and amortised over many cache-friendly inner loops.
+You might think to *maintain* the structure: when a creature moves to a new cell, patch its bucket - a thousand updates a tick instead of rebuilding from a million. Cheaper to build, certainly (a dict patch is fractions of a millisecond). But it buys nothing, for two reasons the measurements make plain.
+
+First, the build is not where the cost is. Rebuilding the entire CSR from scratch - the `argsort` over a million - is **~6% of the query it serves**<sup>3</sup>. Maintaining incrementally optimises that 6%.
+
+Second, and decisive: the vectorised query *needs* the sorted CSR, and a CSR is not incrementally patchable - inserting into a packed bucket shifts everything after it. The structure you *can* patch cheaply is a dict of lists, and a dict cannot feed the vectorised candidate-generation; its per-beast read is exactly the slow Python loop from the trap above. So you cannot have cheap-maintain and fast-query at once. You rebuild the CSR from the position stream each tick, pay the 6%, and the old question of "how often to re-sort the world" simply evaporates: there is no kept structure to schedule.
+
+## The gather still scatters, and that is §26's job
+
+Binning finds the *candidates* cheaply, but reading their positions still jumps around the columns. Making that gather dense is the compaction from [§24](24_append_only_and_recycling.md)/[§26](26_subscription_tables.md): the same garbage-collection pass that reclaims dead slots can reorder the survivors *by cell* (a Z-order curve keeps neighbouring cells adjacent in memory), so a cell's creatures land on adjacent cache lines. That reorder is the GC's slow-cadence pass, not a separate spatial sort with its own knob. §28 says *which cell*; §26 makes *reading the cell* stream.
+
+## The same lesson at the global scale: the pack-leader
+
+Swarming beasts look coordinated, but if every beast accounts for every other - cohesion, alignment, separation against all N - the cost is O(N²) (~0.6 s at twenty thousand in numpy). The way the old games did it: put an abstract, invisible leader at the centre of the pack. The leader does the one expensive thing, deciding where the pack goes; each beast subscribes to the leader ([§26](26_subscription_tables.md)) and steers relative to it. One centroid - `px.mean(), py.mean()` - every member reads one value: O(N), some **42000x cheaper** at the same twenty thousand on a modern desktop<sup>4</sup> (thousands of times on every machine), and the gap grows with N. Lifelike swarm behaviour, no all-pairs accounting.
+
+The meta-lesson is the one worth keeping. Twice now the cheap path was to refuse the obvious data structure - the `id_to_slot` hop in [§26](26_subscription_tables.md), the spatial index here - and instead let the system that already owns the data produce the answer in the pass it already makes. Ask what the problem *is* before reaching for a structure to make it fit. Proximity is position; position is already in hand. The Python-specific half of the lesson: having refused the structure, vectorise the batch, or the interpreter will hand the win back to the library you refused.
+
+## Measurements
+
+The prose quotes the modern-desktop figure; the spread across the reference machines is below. Reproduce any column with [`proximity.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/proximity.py).
+
+| # | measurement | Ryzen 9 (modern) | i7-3610QM (2012) | i3-5010U (2015) | Pi 4 |
+|---|---|---|---|---|---|
+| 1 | all-pairs neighbour test, N = 20 000 | 2874 ms | 2048 ms | 3438 ms | 10596 ms |
+| 2 | vectorised grid ÷ cKDTree, 1M (grid faster) | 2.28x | 2.17x | 1.76x | 1.32x |
+| 3 | grid CSR rebuild ÷ its query, 1M | 6.2 % | 7.4 % | 6.7 % | 4.8 % |
+| 4 | pack-leader vs all-pairs cohesion, N = 20 000 | 42024x | 6782x | 10456x | 14668x |
+
+(The naive Python-loop grid, the trap, is ~5x *slower* than cKDTree at 100k on the Ryzen - the measure-the-wrong-thing result, not in the table because it is what you must avoid.)
 
 ## Exercises
 
-1. **Compute spatial cells.** Write `spatial_cell(pos_x, pos_y, cell_size)` as in the prose. Apply it to a 1,000-creature world with random positions. Print `np.bincount` of the cell ids; this is the histogram of how many creatures land in each cell.
-2. **Sort by cell.** Implement `sort_creatures_for_locality` with the lockstep column reorder. Run it. Verify: print the first ten `(pos_x, pos_y)` after the sort - these should be near-neighbour positions, not random ones.
-3. **Maintain `id_to_slot`.** Confirm the `id_to_slot[world.id] = np.arange(N)` rewrite resolves correctly. Take a held id from before the sort; look up its slot after; confirm `pos_x[slot]` is the same value as before (it has just moved).
-4. **Time `next_event` before and after.** Write a `next_event` system that, for each creature, scans the next 100 entries of `pos_x, pos_y` for collisions. Time it pre-sort vs post-sort at 100,000 creatures. The post-sort version should be measurably faster - by how much depends on how much the scan happens to land in the same cache line.
-5. **Sort cadence.** Run a 100-tick simulation, sorting every tick. Run the same simulation, sorting every 10 ticks, and every 100 ticks. Compare total cost (sort cost + neighbour-scan cost). Find the cadence where sort cost equals neighbour-scan savings - that is your sweet spot.
-6. *(stretch)* **Z-order curve.** Replace the simple `(x, y)` packing with a Z-order (Morton) hash - interleave the bits of `cx` and `cy`. Compare `next_event` timings. Z-order keeps spatially close cells close in the linear order; it usually outperforms simple stripe packing because two-cell horizontal neighbours stay adjacent.
+1. **The all-pairs wall.** For N creatures in a box, count neighbours within radius `r` by testing every pair (chunked so the N×N distances fit memory). Time it at N = 1K, 10K, 20K. Confirm the O(N²) curve, and that 20K alone already exceeds a 30 Hz frame budget.
+2. **Cell as a derived column.** Write `cell_of(px, py, cell_size)` as one vectorised expression. Compute the `cell` column for a 1M-creature world. Note that it adds one cheap arithmetic op per creature to the pass motion already makes.
+3. **The CSR bin.** Build the counting-sort bucket array (`bincount`, `cumsum`, `argsort`). Read "neighbours in cell C" as `order[offsets[C]:offsets[C+1]]`. Verify the per-cell counts match `bincount`.
+4. **The trap, then the fix.** Write the neighbour query as a Python loop over creatures (read each one's 3x3 block). Time it at 100K against `cKDTree`. Confirm the loop *loses*. Now rewrite it as one vectorised batch (candidate pairs via `np.repeat` + a cumsum range-expansion, one distance pass). At 1M, confirm the vectorised grid *beats* `cKDTree` ~2x. The algorithm did not change; the interpreter tax did.
+5. **Recompute beats maintain.** Measure the CSR rebuild (`argsort`) as a fraction of the full query. Confirm it is a few percent. Then argue why maintaining a dict-of-buckets incrementally - cheap as the patch is - does not help: the dict cannot feed the vectorised query, and its per-beast read is the slow loop.
+6. **The pack-leader.** Steer N agents toward the group two ways: each averaging the other N-1 positions (all-pairs, chunked), and each reading one centroid computed in a single pass. Time both; reproduce the O(N²) vs O(N) gap. Argue why the leader gives swarm-like behaviour without any agent knowing about any other.
+7. *(stretch)* **Z-order and the compaction.** Replace the stripe-pack `cell_of` with a Z-order (Morton) hash. Then order the [§24](24_append_only_and_recycling.md) compaction by cell and re-time the query's gather (§26). How much of the remaining query cost was the scattered gather?
 
-Reference notes in [28_sort_for_locality_solutions.md](28_sort_for_locality_solutions.md).
+Reference notes in [28_proximity_solutions.md](28_proximity_solutions.md).
 
 ## What's next
 

@@ -6,7 +6,7 @@
 
 This rule has been forward-referenced through ten chapters. Time to make it concrete.
 
-Mutations during a tick do not apply immediately; they queue, and a single cleanup pass applies them all at the tick boundary. The shape:
+Mutations during a tick do not apply immediately; they queue, and a cleanup pass applies them in a batch at the boundary rather than one at a time mid-tick. (When the *compaction* part of that batch actually runs - every tick, or on a slower cadence - is the refinement in "When the compress runs" below.) The shape:
 
 ```python
 @dataclass
@@ -79,6 +79,27 @@ Every mutation is one extra entry pushed to a side list. For a simulator with 1,
 
 The cleanup pass is one additional system in the DAG. It is empty (no work) when no mutations are queued ([§20](20_empty_tables_are_free.md)); it runs the bulk filter and bulk concatenate when there are. The system is wired in once and never removed.
 
+## When the compress runs: mark dead now, compact on a cadence
+
+The cleanup above does two jobs, and they want different *cadences*. The insert side is cheap - a slice-write into the tail. The remove side is the keep-mask compress, and it *moves every surviving row* to close the holes the dead rows left. At a million creatures that compress is ~13 ms (it rewrites every column), and now that subscriptions are keyed by slot ([§26](26_subscription_tables.md)), every move also reindexes every subscription. Run every tick, it is the most expensive thing in the loop.
+
+It does not have to run every tick. A death needs two things immediately: the creature must stop being processed, and references to it must stop resolving. Neither requires moving a row. So per tick a death **marks its slot dead** - it bumps the slot's generation ([§10](10_stable_ids_and_generations.md)/[§24](24_append_only_and_recycling.md)), the dirty marker, and unsubscribes from its subscription tables ([§23](23_index_maps.md)'s sparse set, O(1)). The slot stays where it is. The compress - now a *garbage-collection* pass - runs on a slow cadence, every few dozen ticks, reclaiming all the accumulated dead slots in one sweep and reindexing `id_to_slot` and the subscriptions once. It is the same pass as [§28](28_proximity.md)'s cell-ordered compaction, at the cadence [§26](26_subscription_tables.md) recommends.
+
+Between GC passes the dead slots sit in the columns as holes. A scan-all system like motion strides over them and updates a few dead rows harmlessly - they are not rendered or scored, and the generation check rejects any reference that reaches them. Measured, that wasted work is negligible.
+
+The numbers settle the cadence. Per-tick compaction (A) against mark-dead-plus-GC (B), over GC interval `G`:
+
+| GC interval `G` | per-tick compaction (A) | mark-dead + GC (B) | winner |
+|---|---|---|---|
+| 1   | 13.5 ms/tick | 21.7 ms/tick | per-tick |
+| 10  | 13.5 ms/tick |  9.6 ms/tick | deferred |
+| 30  | 13.5 ms/tick |  8.7 ms/tick | deferred (1.55x) |
+| 100 | 13.5 ms/tick |  8.4 ms/tick | deferred |
+
+Ryzen 9 270, 1M creatures, 1,000 deaths/tick; reproduce with [`ebp_partition.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/ebp_partition.py) claim C5. At `G = 1` the two collapse to the same compress plus the extra mark-dead, so per-tick wins; from `G = 10` on, deferring the move pays. The recycle-versus-not distinction does not even show up - the dead-hole waste is too small to measure against the compress. The verdict holds on every reference machine: at `G = 30` the deferred model is cheaper by 1.55x (Ryzen 9 270), 1.27x (i7-3610QM), 1.63x (i3-5010U), and 1.53x (Pi 4).
+
+So the rule: **mark dead every tick, compact on the GC cadence.** The bulk-filter compress is not retired; it is relocated to the pass that runs every few dozen ticks instead of every one.
+
 ## What it does not fix
 
 **Dedup is the system's job.** Two systems may both push the *same* id to `to_remove` if they independently detect the same death condition. The cleanup uses `np.unique(to_remove)` to reduce to distinct ids before computing slots. The cost is one O(K log K) sort on a small array - irrelevant against the bulk filter.
@@ -97,6 +118,7 @@ The pattern itself is universal. Database transactions buffer writes and commit 
 6. **The dedup question.** Push id 42 to `to_remove` from two different systems in the same tick. Run cleanup *without* the `np.unique` step. What happens? (Hint: `id_to_slot[42]` is looked up twice; the second lookup may produce garbage if the first removal moved another row to that slot.) Now add the `np.unique` and re-run. The result is correct.
 7. **Tick-delayed visibility.** A creature inserted in tick 5 (via the `to_insert_*` lists) does not appear in the live columns during tick 5's systems - only at the end, in cleanup. Verify by adding an `age_in_ticks` column that increments at the end of each tick; the new creature's value starts at 0 in tick 6, not tick 5.
 8. *(stretch)* **A graphics pipeline analogy.** A rendering pipeline draws to a "back buffer" while the "front buffer" is being displayed. At the boundary of one frame to the next, the buffers swap. Argue why this is the same pattern as `to_remove` / `to_insert` plus `cleanup`. (Hint: it is the same atomic-commit shape; the back buffer is exactly the side table.)
+9. *(stretch)* **Cadence of the compress.** Run the cleanup compress every tick (A); then run a version that marks each death dead - bump a generation, unsubscribe from its subscriptions - and compacts only every 30 ticks (B). Time both at 1M creatures with 1,000 deaths per tick. Reproduce the C5 crossover: B should win from a GC interval near 10 onward. Confirm the dead-hole waste in a scan-all motion pass is negligible.
 
 Reference notes in [22_mutations_buffer_solutions.md](22_mutations_buffer_solutions.md).
 

@@ -14,7 +14,7 @@ Both runs do **the same total entity-ticks** (10⁷). The wall-clock ratio is th
 | ratio        | meaning |
 |--------------|---------|
 | ~1×          | Inner loop is bandwidth-bound at numpy speed across both scales. No wall. |
-| 2-3×         | L2 → L3 / L3 → RAM transitions. Working set spilled; per-element cost rose by ~3×. Hot/cold splits help. |
+| 2-3×         | L2 → L3 / L3 → RAM transitions. Working set spilled; per-element cost rose by ~3×. Narrower dtypes and reading fewer columns help. |
 | 10-30×       | A non-numpy hot loop scaled with N rather than amortising. Use cProfile to find it. |
 | 100×+        | Quadratic blow-up: a per-creature operation that scans the whole table. Use the index map. |
 
@@ -78,11 +78,11 @@ class CleanupBuffer:
 
 The Python list `append` is amortised O(1) but each doubling is an N-byte copy. At 10K inserts per tick that's a 80K-byte copy every few ticks (negligible). At 100K inserts per tick the doublings happen often enough to be one of the hottest calls in the profile. Pre-sized arrays remove the doubling entirely.
 
-## Exercise 6 - Hot/cold split
+## Exercise 6 - The unused column
 
-In pure numpy SoA (where every column is its own array), splitting the row organisationally does *not* change the profile - the bytes were already separated. §26's framing applies: the split is naming, not bandwidth.
+In numpy SoA (every column its own array), adding a column motion never reads does *not* change the profile - motion never loads bytes it does not index. There is no hot/cold split to apply ([§26](26_subscription_tables.md)): a system's working set is already just the columns it reads. The levers are narrower dtypes and fewer columns per system.
 
-If the simulator uses *numpy structured arrays* (one combined dtype for the whole row), the split shows up immediately. Motion's `arr['pos_x'] += arr['vel_x'] * dt` runs at structured-array stride; splitting into `hot_arr['pos_x'] += hot_arr['vel_x'] * dt` runs at SoA speed. Expect ~8× improvement at 1M creatures.
+The one layout where an unused field costs you is a numpy *structured array* (one combined dtype for the whole row): `arr['pos_x'] += arr['vel_x'] * dt` strides past every other field's bytes on every read. The fix is not a split; it is moving to SoA columns, which this book has used since [§7](07_structure_of_arrays.md).
 
 ## Exercise 7 - Use index maps
 
