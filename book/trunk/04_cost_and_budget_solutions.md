@@ -194,3 +194,17 @@ For 10M `int64` reads:
 - **Random gather (mostly RAM misses)**: 10⁷ × 30 nJ = 300 mJ.
 
 300× more energy. Convert: 1 mJ = 0.28 µWh; 300 mJ = 83 µWh. As a fraction of a 50 Wh battery: 5.6 × 10⁻⁹ vs 1.7 × 10⁻⁶ - both tiny in absolute terms. The *ratio* is what compounds across millions of ticks per day across millions of laptops, or across the lifetime power bill of a data centre. The disciplined layout is also the cheap one, twice over: faster *and* cooler per useful operation.
+
+## Exercise 11 - The budget is a curve
+
+Hold the per-element cost fixed and the tick time is linear in the count: `tick = c · N`, so the sustainable rate is `1 / (c · N)` - it falls as one over N, a hyperbola. At the interpreter-bound `c ≈ 5 ns`:
+
+| entities | tick | rate |
+|---------:|-----:|-----:|
+|  100,000 | 0.5 ms | 2000 Hz |
+| 1,000,000 | 5 ms | 200 Hz |
+| 3,000,000 | 15 ms | 67 Hz |
+
+The rate crosses 30 Hz at `33.3 ms / 5 ns ≈ 6.7M` entities and 15 Hz at `≈ 13M`. In the bandwidth-bound numpy regime (`c ≈ 0.2 ns`) the same crossings move out to ~166M and ~333M: leaving the interpreter slides the curve roughly 25× rightward without changing its shape. That is the Python lesson in one number - the curve is the same hyperbola whatever the regime; the regime decides how far out it crosses.
+
+Two honest caveats. The per-element cost here is a single bookkeeping loop; the simulator's real tick does far more per entity (a forage query, motion, the lifecycle), so its crossing sits at a much smaller N - hundreds of thousands, not millions. And `c` is your machine's, not a universal constant. The shape is the durable claim; the crossing scale is something you measure.

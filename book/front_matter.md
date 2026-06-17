@@ -5,7 +5,12 @@ _updated: 2026-06-07_
 
 > **Read online:** [Codeberg](https://root-11.codeberg.page/intro-book-python/) · [GitHub Pages](https://root-11.github.io/intro-book-python/)
 >
-> **Clone source** (the public default branch is the rendered book; the runnable code lives on `main`): `git clone --branch main https://codeberg.org/root-11/intro-book-python.git` · `git clone --branch main https://github.com/root-11/intro-book-python.git`
+> **Clone source** (the public default branch is the rendered book; the runnable code lives on `main`): 
+```
+git clone --branch main https://codeberg.org/root-11/intro-book-python.git
+or
+git clone --branch main https://github.com/root-11/intro-book-python.git
+```
 >
 > **Issues:** [Codeberg](https://codeberg.org/root-11/intro-book-python/issues) · [GitHub](https://github.com/root-11/intro-book-python/issues)
 
@@ -79,4 +84,4 @@ From the simulator chapters onward (§11+), the exercises stop being self-contai
 
 ## The companion edition
 
-If you already know Python well and want compile-time enforcement of the discipline this book teaches by convention, the [Rust edition](https://root-11.codeberg.page/intro-book/) covers the same forty-four sections in Rust. The architecture is identical; the language differs. Many readers find that watching the borrow checker enforce in Rust what this edition asks for as discipline is a useful calibration in the other direction too.
+If you already know Python well and want compile-time enforcement of the discipline this book teaches by convention, the **Rust edition** ([codeberg](https://root-11.codeberg.page/intro-book/), [github](https://root-11.github.io/intro-book)) covers the same forty-four sections in Rust. The architecture is identical; the language differs. Many readers find that watching the borrow checker enforce in Rust what this edition asks for as discipline is a useful calibration in the other direction too.

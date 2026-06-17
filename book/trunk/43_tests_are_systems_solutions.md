@@ -201,3 +201,11 @@ For real-world use, pytest is still the right outer wrapper (discovery, reportin
 This is the final connection. *Every concept in the book - systems, DAGs, single-writer ownership, determinism, ECS, EBP - applies to tests without translation, because tests are systems.* You have not learned a separate testing framework; you have learned that the simulator and its tests are one shape, instantiated twice with different system lists.
 
 The trunk is closed. Forty-three concepts; one through-line; one shape applied at every scale.
+
+## Exercise 9 - The scale sweep (a test for cost)
+
+The minimum of repetitions, not the mean: interference - a scheduler tick, a GC pause, a thermal blip - only ever *adds* time, so the smallest sample is the closest you get to the machine's intrinsic cost. In Python the GC is a real source of this noise, which is exactly why the minimum (not the mean) is the statistic that compares across runs.
+
+Laying the budget across the curve, the crossing scale is the system's ceiling. It is a curve to read, not a threshold to pass: the only one-sided, falsifiable claim a wall-clock number supports is that *even the unimpeded minimum is over budget* - then it is definitively too slow. Anything where the minimum is under and the mean is over is a measurement under variance, not a failure.
+
+Making it lie is the lesson, and it is one this project actually hit. Hold the foragers fixed and grow only the targets, and forager density stays constant, so the binned neighbourhood stays small and the curve looks linear - while the real system, growing both, was quadratic. The axis a sweep must grow on is the one production grows on; a sweep on any other axis reports a confident, precise, wrong number, and you believe it because it came with a chart. A benchmark that does not scale the way the system scales is worse than none. (Profile, too, before optimising: a `cProfile`/`line_profiler` pass on the slow function will usually point somewhere other than where you guessed - here, a sort that was never needed rather than the distance arithmetic.)

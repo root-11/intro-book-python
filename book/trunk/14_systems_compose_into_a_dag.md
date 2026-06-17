@@ -59,6 +59,12 @@ Eight function calls, in topological order. Adding a system means adding a line 
 
 A cycle is a contradiction. Suppose system A writes table T, system B reads T and writes U, system A reads U. Now A both produces T (which B reads) and consumes U (which B writes). A and B cannot both run before each other in the same tick.
 
+```mermaid
+flowchart LR
+    A -->|"T (A writes, B reads)"| B
+    B -->|"U (B writes, A reads)"| A
+```
+
 A cycle in the system graph is a design bug; it must be broken - usually by buffering one system's write so it is consumed *next* tick instead of *this* tick. That buffering is exactly what [§15 - State changes between ticks](15_state_changes_between_ticks.md) names. Cycles do not disappear when you write a simulation; they get a name and a discipline.
 
 ## Parallelism for free

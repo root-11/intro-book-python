@@ -43,20 +43,36 @@ The list version is the dangerous one - it fails *silently* and hands you a wron
 The disciplined Python equivalent in numpy is one boolean mask per buffer:
 
 ```python
-def apply_starve(energy: np.ndarray, to_remove: list[int]) -> None:
-    starvers = np.where(energy <= 0)[0]      # read-only scan
-    to_remove.extend(starvers.tolist())       # buffered write
+def apply_starve(energy: np.ndarray, ids: np.ndarray, to_remove: list[int]) -> None:
+    starvers = np.where(energy <= 0)[0]          # read-only scan -> slots
+    to_remove.extend(ids[starvers].tolist())      # buffer the *ids*, not the slots
 
 def cleanup(world: World, to_remove: list[int], to_insert: list[CreatureRow]) -> None:
     # apply removals first (swap_remove pattern, §21), then inserts
     ...
 ```
 
-The starvation system *only* writes to `to_remove`. It never touches `creatures`. The `creatures` columns are unchanged when `apply_starve` returns - they are unchanged when `apply_eat` and `apply_reproduce` return. They are mutated *exactly once per tick*, by `cleanup`, after every other system is done. There is no window in which a system could see an inconsistent world.
+`to_remove` holds *ids*, not slots. Slots move when rows are deleted or sorted; ids do not, so the buffer stays valid for cleanup to resolve through `id_to_slot` ([§22](22_mutations_buffer.md), [§23](23_index_maps.md)). The starvation system *only* writes to `to_remove`. It never touches `creatures`. The `creatures` columns are unchanged when `apply_starve` returns - they are unchanged when `apply_eat` and `apply_reproduce` return. They are mutated *exactly once per tick*, by `cleanup`, after every other system is done. There is no window in which a system could see an inconsistent world.
 
-## The simlog is what this looks like in production
+## What this looks like in code
 
-The reference implementation at [`.archive/simlog/logger.py`](https://github.com/root-11/intro-book-python/blob/main/.archive/simlog/logger.py) is a 700-line columnar logger built on exactly this pattern. It maintains *two* `Container`s - pre-allocated numpy arrays plus a write pointer. The simulation writes into one container; when that container fills, the simlog atomically swaps containers and a background thread dumps the full one to disk. The simulation never observes a half-flushed buffer; the disk-flushing thread never observes a half-written row. Read it when this chapter clicks; it is the same idea this chapter teaches, sized up for production.
+The removal case buffered *which slots* to drop. The far more common case, a value that changes every tick, buffers *how much* it changed - and when several systems change the same value, each writes its own buffer and `cleanup` combines them in one commit:
+
+```python
+energy                  = np.array([1, 2, 3, 4, 5])     # world_t: every system reads this
+energy_used             = np.array([-1, -1, 0, 0, -1])  # motion + apply_starve write here
+energy_gained_from_food = np.array([1, 2, 0, 0, 3])     # apply_eat writes here
+
+# ... the systems run during the tick. Each reads `energy` and writes only
+#     its own buffer - never `energy`, never another system's buffer ...
+
+# tick boundary - one atomic commit:
+energy += energy_used + energy_gained_from_food         # energy is now world_{t+1}
+```
+
+No system reads a half-updated `energy`, because no system writes to it. `motion` and `apply_starve` write only `energy_used`; `apply_eat` writes only `energy_gained_from_food`. The buffers are separate, so the systems never collide and can run in parallel ([§14](14_systems_compose_into_a_dag.md)); `cleanup` sums them into `energy` in one step at the boundary. That is the whole rule: each system owns a buffer, structural edits go in `to_remove`/`to_insert`, value edits go in a delta column, and the writes combine exactly once.
+
+When the commit must read the old values *while* computing the new ones - a diffusion step, an averaging filter, anything where element `i` depends on its neighbours - the in-place `+=` is unsafe, and you write into a second array and swap the two names at the boundary instead. That swap is the literal double buffer the production logger (exercise 8) is built on: read one array, write the other, exchange them between ticks. The delta-add above is its cheapest special case, for when each element's change is independent of the rest.
 
 ## Costs and trade
 
@@ -74,7 +90,7 @@ These build on the simulator skeleton. Your `to_remove: list[int]` and `to_inser
 
 1. **The list bug.** Build a list of 100 creatures where 30 have `energy <= 0`. Iterate the list, calling `creatures.remove(c)` whenever `c.energy <= 0`. Count how many starvers survive. Why did the bug only affect *some* of them? (Hint: every removal shifts the iterator past one extra element.)
 2. **The dict bug.** Build a `dict[int, Creature]` of 100 with the same 30 starvers. Iterate `creatures.items()`, calling `del creatures[cid]` whenever `c.energy <= 0`. Note the `RuntimeError`. Now "fix" it locally with `for cid in list(creatures.keys()):` - does the simulation now produce the right answer? Yes, but only because the local fix accidentally makes a complete copy first; you have papered over the structural problem at the cost of an O(N) allocation per tick.
-3. **The buffered fix.** Rewrite the function to compute `starvers = np.where(energy <= 0)[0]` (read-only scan) and append the result to `to_remove`. After the loop completes, apply all removals in one pass using the swap_remove pattern (preview of [§21](21_swap_remove.md)). Verify all 30 starvers die.
+3. **The buffered fix.** Rewrite the function to compute `starvers = np.where(energy <= 0)[0]` (read-only scan) and append the starvers' *ids* (`ids[starvers]`) to `to_remove` - the buffer holds ids, not slots, so it survives the rows moving during cleanup (§22/§23). After the loop completes, apply all removals in one pass using the swap_remove pattern (preview of [§21](21_swap_remove.md)). Verify all 30 starvers die.
 4. **The cleanup pass.** Write `def cleanup(world, to_remove, to_insert)`. Apply removals first (using swap_remove on each affected column), then insertions. Why this order, and not the other? (Hint: insertions may reuse slots freed by removals - see [§24](24_append_only_and_recycling.md).)
 5. **Show two ticks.** Run the loop for two ticks. After tick 1, log the population. After tick 2, log it again. Confirm that creatures killed in tick 1's `apply_starve` *do not* appear in tick 2's input - they were removed at the tick boundary, between the two ticks.
 6. **Insertions are tick-delayed.** A creature reproduces in tick 5: parent in `creatures`, two offspring in `to_insert`. After cleanup, the offspring are in `creatures`. In tick 6 the offspring receive their first system pass. Confirm by adding an `age_in_ticks` column and watching offspring start at 0 in tick 6, not in tick 5.

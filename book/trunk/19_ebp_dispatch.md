@@ -85,17 +85,17 @@ All three anti-shapes consult the predicate at iteration time. EBP arranges the 
 A system that uses EBP looks like:
 
 ```python
-def drive_hunger(hungry: np.ndarray,
-                 energy: np.ndarray,
+def drive_hunger(hungry: np.ndarray,      # slots (column positions), not entity ids
+                 energy_used: np.ndarray,
                  dt: float) -> None:
-    """Read-set: hungry.
-       Write-set: energy (only at the slots listed in hungry)."""
-    energy[hungry] -= HUNGER_BURN_RATE * dt
+    """Read-set: hungry (the slots of the hungry creatures).
+       Write-set: energy_used, at those slots."""
+    energy_used[hungry] -= HUNGER_BURN_RATE * dt
 ```
 
 Read-set declared. Write-set declared. No per-row branch; the table is the dispatcher. The signature is the contract - exactly the system shape from [§13](13_system_as_function.md). **EBP is not a separate idea; it is the natural shape that a system takes when its inputs are presence tables.**
 
-Because `hungry` holds slots, `energy[hungry]` indexes the columns directly - one gather, with no id-to-slot lookup inside the loop. That directness is the whole point of keying the table by slot; [§26](26_subscription_tables.md) measures what it is worth (and why the table holds slots, not ids), once the lifecycle in [§24](24_append_only_and_recycling.md) makes slots stable enough to store.
+Because `hungry` holds slots, `energy_used[hungry]` indexes the columns directly - one gather, with no id-to-slot lookup inside the loop. An entity-id list would not work here: it would need the [§10](10_stable_ids_and_generations.md) `id_to_slot` hop, and worse, it would read the wrong rows after any sort or `swap_remove` ([§9](09_sort_breaks_indices.md)). That directness is the whole point of keying the table by slot; [§26](26_subscription_tables.md) measures what it is worth (and why the table holds slots, not ids), once the lifecycle in [§24](24_append_only_and_recycling.md) makes slots stable enough to store.
 
 EBP also composes cleanly with parallelism. A million creatures with 100,000 hungry can be split across multiple processes - each takes a slice of `hungry` and does its work. The processes never need to consult creatures that are not hungry; their reads do not interfere. [§31](31_disjoint_writes_parallelize.md) develops this under multiprocessing + shared_memory.
 
