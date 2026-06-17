@@ -56,6 +56,8 @@ Field types are indicative; the book may sharpen them as it goes. Some fields an
 | `vel`     | f32×2 | §0   | direction × speed                              |
 | `energy`  | f32   | §1   | *fuel*: tanks at food, burns in motion         |
 | `birth_t` | f64   | §1   | μs since simulation start                      |
+| `alive`   | bool  | §1   | dirty marker: live row, or dead hole (§22/§24) |
+| `herd`    | u32   | §28  | which herd the creature follows (pack-leader cohesion) |
 
 ### `food` (variable-quantity, from §1)
 
@@ -91,6 +93,10 @@ Field types are indicative; the book may sharpen them as it goes. Some fields an
 `to_remove: Vec<u32>` - creature ids slated for removal.
 `to_insert: Vec<CreatureRow>` - fresh creatures from reproduction.
 
+### Index map (§23; maintained only by cleanup)
+
+`id_to_slot: u32[]` - maps a stable creature id to its current slot, with a sentinel for "absent". The EBP appliers hold ids (from `pending_event` and `to_remove`) and *read* this map to reach the columns; no hot-path system writes it. Only `cleanup` writes it: an append adds one entry, a death drops one entry, and the GC compaction rewrites every survivor's entry in one bulk pass.
+
 ### Population log (visualisation; from §0)
 
 `population: Vec<(t, count_creatures, count_food)>` - one row per tick, written by `inspect`. The basis for the canonical population graph below.
@@ -99,7 +105,8 @@ Field types are indicative; the book may sharpen them as it goes. Some fields an
 
 | Name              | Read-set                                          | Write-set                                              | Shape       | From |
 |-------------------|---------------------------------------------------|--------------------------------------------------------|-------------|------|
-| `motion`          | `creature.pos`, `creature.vel`, `creature.energy` | `creature.pos`, `creature.energy`                      | operation   | §0 (energy from §1) |
+| `herding`         | `creature.pos`, `creature.herd`, `creature.birth_t` | `creature.vel`, `creature.herd` (on a split)         | operation   | §28  |
+| `motion`          | `creature.pos`, `creature.vel`                    | `creature.pos`, `creature.vel`, `d_energy_burn`        | operation   | §0 (energy from §1) |
 | `food_spawn`      | `food_spawner`, `food`                            | `food`                                                 | operation (policy) | §1   |
 | `next_event`      | `creature`, `food`                                | `pending_event`                                        | operation   | §1   |
 | `apply_eat`       | `pending_event` (kind=eat), `food`                | `to_remove`(food), `creature.energy`, `eaten`          | filter      | §1   |
@@ -122,6 +129,24 @@ food_spawn
 ```
 
 In §0, only `motion` and `inspect` exist; `inspect` runs last and reads only.
+
+## Final architecture (reference implementation)
+
+The reference implementation is a single commented script, [`sim.py`](https://github.com/root-11/intro-book-python/blob/main/code/sim/sim.py) (`uv run code/sim/sim.py`). It is the endpoint the Part 2-5 chapters build toward, and it fixes the following decisions.
+
+- **SoA, fixed capacity, live prefix.** Every field is its own typed column, allocated once at capacity. The live table is the prefix `[0:n_active]`; the `alive` dirty marker distinguishes live rows from dead holes awaiting compaction (§7, §21, §24).
+- **Ids, not slots, for anything that outlives a tick.** Creatures carry a stable `id`; buffers and events reference creatures by id. Slots move under `swap_remove` and compaction; ids do not (§9, §10). A slot-only design (no surrogate id) was considered and rejected: it makes every buffered reference brittle at the first compaction.
+- **The index map is read in the hot path, written only by cleanup.** `id_to_slot` turns an id into a slot in one bulk gather. The EBP appliers read it; the GC pass maintains it (§23).
+- **Mutations buffer; cleanup commits.** Systems append to `to_remove` (ids) and the parallel insert columns; nothing mutates a live table mid-tick. Cleanup applies the batch at the boundary (§15, §22).
+- **Deferred GC.** A death marks its slot dead every tick (bump generation, drop the `id_to_slot` entry, flip `alive`); the columns are compacted on a slower cadence, and only that compaction rewrites `id_to_slot` (§22, §24).
+- **Food earns less machinery than creatures.** No reference to a food row survives the tick it is eaten in, so food has no surrogate id, no generation, and no index map; it is bulk-filtered every tick. Reference lifetime decides which machinery a table earns (§10).
+- **Deterministic.** One seeded RNG plus the fixed system order give a reproducible run (§16); `sim.py --check` asserts two runs are identical.
+- **Energy is multi-writer, so it buffers.** `motion` burns and `apply_eat` refuels, so neither writes `energy` in place; each writes a delta buffer and `cleanup` commits `energy += burn + gain` at the boundary (§15). `pos`/`vel` have `motion` as sole writer, so they are written in place (the §15 exception).
+- **Proximity is a pack-leader, not all-pairs (§28).** `herding` steers each creature toward its herd's eldest (one position read per creature, O(N)), and splits a herd past `max_herd`. The naive O(C×F) eat query remains for clarity; binning is §28's other half.
+- **Persistence is serialization (§36).** `save_world`/`load_world` write the SoA columns with `np.savez` and read them back bit-for-bit. No ORM, no schema migration.
+- **The log is the world (§37).** Births/deaths/meals append to logs; replaying births minus deaths reconstructs the live population bit-for-bit. `sim.py --log DIR` routes the log through the production columnar logger and replays from disk.
+- **Event time is separate from tick time (§12).** Events carry sub-tick timestamps: a starvation is logged at `energy / burn_rate` seconds into the tick, not at the 33 ms boundary, so the recorded time is independent of the loop rate. Eat and reproduce are instantaneous (t = 0), so eating beats starving by the clock, not by a hand-picked priority.
+- **Tests are systems (§43).** `tests.py` runs `check_invariants` - a read-only pass over the tables, the same shape as a system - after *every* tick, plus behaviour tests for determinism, replay, save/load, sub-tick event time, GC reclamation, and the herd split. `uv run code/sim/tests.py`.
 
 ## Visualisation: the population graph
 
