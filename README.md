@@ -345,10 +345,10 @@ Take the same data - N rows, K integers per row - and lay it out five ways. The 
 
 | layout                                          | what it is                              |
 |-------------------------------------------------|-----------------------------------------|
-| 1. `[(i, i+1, …) for i in range(N)]`            | list of tuples - AoS, default           |
-| 2. `[[i, i+1, …] for i in range(N)]`            | list of lists - AoS, mutable inner      |
-| 3. `tuple([i+k for i in range(N)] for k …)`     | tuple of lists - SoA, stdlib            |
-| 4. `tuple(array.array('q', …) for k …)`         | tuple of `array.array` - SoA, stdlib typed |
+| 1. `[(i, i+1, ...) for i in range(N)]`            | list of tuples - AoS, default           |
+| 2. `[[i, i+1, ...] for i in range(N)]`            | list of lists - AoS, mutable inner      |
+| 3. `tuple([i+k for i in range(N)] for k ...)`     | tuple of lists - SoA, stdlib            |
+| 4. `tuple(array.array('q', ...) for k ...)`         | tuple of `array.array` - SoA, stdlib typed |
 | 5. `tuple(np.arange(...) for k in range(K))`    | tuple of numpy columns - SoA, typed + C |
 
 [`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so resident set size (RSS) readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
@@ -370,7 +370,7 @@ The five rows separate three independent decisions that the four-row version con
 
 **Step one - AoS → SoA - is the speed flip.** Tuple-of-lists is the same code an intermediate Python programmer might write without ever touching numpy. It saves only ~12% on memory but sums column 0 about **10× faster** than the AoS forms. The win is the access pattern: walking *one* contiguous list of 1M `PyLong` pointers instead of walking 1M tuple objects and dereferencing through each one to reach `row[0]`. Storage is barely better; the loop is dramatically better.
 
-**Step two - boxed list → typed bytes - is the memory flip.** Going from `list[int]` to `array.array('q', …)` shrinks each column from ~38 MB of pointers-and-`PyLong`-objects to ~8 MB of contiguous int64 bytes. The whole structure drops to **~77 MB total**, smaller than numpy in this run (numpy carries ~20 MB of one-off import overhead). But the column-sum *slows down* - 2.5 ms → 11.6 ms - because Python has to *unbox* each `int64` into a temporary `PyLong` before adding it. The unboxing tax buys back about a third of the SoA speed win. **Typed storage saves bytes; it does not save the inner loop.**
+**Step two - boxed list → typed bytes - is the memory flip.** Going from `list[int]` to `array.array('q', ...)` shrinks each column from ~38 MB of pointers-and-`PyLong`-objects to ~8 MB of contiguous int64 bytes. The whole structure drops to **~77 MB total**, smaller than numpy in this run (numpy carries ~20 MB of one-off import overhead). But the column-sum *slows down* - 2.5 ms → 11.6 ms - because Python has to *unbox* each `int64` into a temporary `PyLong` before adding it. The unboxing tax buys back about a third of the SoA speed win. **Typed storage saves bytes; it does not save the inner loop.**
 
 **Step three - Python loop → C loop - is the order-of-magnitude move.** `np.sum` walks the same typed bytes that `array.array` stored, but the loop is in C and the interpreter is stepped out of the way. 11.6 ms → 0.4 ms; about **30× speedup** on the same bytes, no further memory saving (and a small import-overhead cost). This is the layout the simulator (§11+) and every system after it depends on.
 
@@ -2602,6 +2602,7 @@ The prose quotes the modern-desktop figure; the spread across the reference mach
 5. **Recompute beats maintain.** Measure the CSR rebuild (`argsort`) as a fraction of the full query. Confirm it is a few percent. Then argue why maintaining a dict-of-buckets incrementally - cheap as the patch is - does not help: the dict cannot feed the vectorised query, and its per-beast read is the slow loop.
 6. **The pack-leader.** Steer N agents toward the group two ways: each averaging the other N-1 positions (all-pairs, chunked), and each reading one centroid computed in a single pass. Time both; reproduce the O(N²) vs O(N) gap. Argue why the leader gives swarm-like behaviour without any agent knowing about any other.
 7. *(stretch)* **Z-order and the compaction.** Replace the stripe-pack `cell_of` with a Z-order (Morton) hash. Then order the [§24](#24---append-only-and-recycling) compaction by cell and re-time the query's gather (§26). How much of the remaining query cost was the scattered gather?
+8. **The density wall and the representative.** Take your vectorised grid query from exercise 4. Grow the population in a *fixed* world (100K, 300K, 1M) and confirm the per-query cost grows faster than 3x per step - the 3x3 block is filling, the grid is quadratic again. Now answer the one-nearest query by keeping a single representative per cell (the first occupant scattered in) and matching the nine neighbour representatives; re-time the sweep and confirm it holds linear. Then measure how often the representative differs from the true nearest, and confirm every difference lies within one cell - the approximation is bounded by the grid's own resolution.
 
 ## What's next
 
@@ -4133,6 +4134,8 @@ The first act is the harder problem, and the book finishes it. The second act - 
 
 # 45 - Living with it
 
+<p align="center"><img src="book/illustrations/opex_capex.png" alt="Two mice at a blackboard weighing OPEX against CAPEX - operating cost paid forever versus capital paid once." style="max-height: 300px; max-width: 100%;"></p>
+
 [§44](#44---what-you-have-built) closed the first act. The simulator runs: deterministic, scaled past the 1M wall, parallel across processes on disjoint writes, persisted to disk and replayable from its log. On your machine, today, with you watching, it works.
 
 That sentence has three load-bearing qualifiers. *On your machine. Today. With you watching.* The first act earns the verb "works" and stops exactly where those qualifiers bite. The second act is what it costs to remove them - to run the thing on a machine you have never seen, a year from now, while you are asleep.
@@ -4186,6 +4189,8 @@ The first chapter of the second act takes the unattended question head-on: [§46
 
 # 46 - The log survives power loss
 
+<p align="center"><img src="book/illustrations/logs_no_lie.png" alt="A mouse and a system log surviving a power loss - the log does not lie." style="max-height: 300px; max-width: 100%;"></p>
+
 [§37](#37---the-log-is-the-world) made the load-bearing claim of the persistence story: the log is the world, and the world is the log replayed. [§45](#45---living-with-it) took away the human who used to be watching. Put those two together and a crack opens that the first act never had to look at. "The log is the world" carries an unstated precondition: *the log is intact*. On a clean shutdown it always is - the program flushes its buffers and exits in its own time. Unattended, the program does not get to choose how it stops. A power loss, an out-of-memory kill, a `kill -9`, a kernel panic: each halts the process between one instruction and the next, buffers half-flushed and the last write half-done. If the log is the world, a torn log is a torn world.
 
 This chapter earns the precondition. The property it builds has a name once it is built: **crash consistency** - the guarantee that after *any* stop, at *any* instant, the system recovers to a world that actually existed, never to a corrupt halfway state.
@@ -4235,6 +4240,8 @@ The log now survives the stop. The next unattended question is the next thing th
 
 # 47 - Observation is a read-only system
 
+<p align="center"><img src="book/illustrations/observation.png" alt="A mouse at a microscope - observation is a read-only system." style="max-height: 300px; max-width: 100%;"></p>
+
 [§46](#46---the-log-survives-power-loss) made the log survive the stop: the system comes back from a crash to a world that existed. The next thing the missing human took with them is softer and just as fatal - knowing what the system is *doing*. [§13](#13---a-system-is-a-function-over-tables) said the data is visible: `print()` any column and look. That is true and useful, and it is a *debugger's* answer - you, at your desk, world paused, stepping through one moment. At 2 AM the world is not paused, you are not at your desk, and there is no `print()` you can add to a process that is already running and already wrong.
 
 The reflex is to reach for the `logging` module and scatter strings onto the hot path. Resist it. Observability is not a thing you sprinkle on a system; *it is a system*, in the exact sense the book has used the word since [§13](#13---a-system-is-a-function-over-tables). A function over tables. Its read-set is the world; its write-set is a small set of tables it owns and nothing else touches. Everything built for simulation systems applies to it unchanged, and that reuse is the whole trick. The simulator's `inspect` is already one of these: it reads the subscriptions and writes only the population time series.
@@ -4283,6 +4290,8 @@ The system now survives the stop and reports what it is doing. The next unattend
 
 # 48 - Reductions don't parallelize freely
 
+<p align="center"><img src="book/illustrations/floats.png" alt="A mouse puzzling over 0.1 + 0.2 - floats are tricky, and the order of the additions decides the answer." style="max-height: 300px; max-width: 100%;"></p>
+
 [§31](#31---disjoint-write-sets-parallelize-freely) earned a strong claim: systems with disjoint write-sets parallelise freely - across processes, since the GIL rules out CPU-bound threads - with no locks and no coordination. [§16](#16---determinism-by-order) earned another: same seed, same system order, same world, every run. Both are true. Put them under one stress the first act never applied - *a different number of workers* - and a seam opens between them. The world that hashed identically on your four-worker laptop hashes differently on the thirty-two-worker server. Same code, same seed, same log. Different machine, different world.
 
 This is the worst class of bug, because it passes. It passes every test you ran, because you ran them at one worker count on one machine. It surfaces only after the move to the hardware you have never seen - the unattended server of [§46](#46---the-log-survives-power-loss) and [§47](#47---observation-is-a-read-only-system), where you cannot attach a debugger and the only symptom is that two nodes that should agree do not. The determinism survived everything except the deployment.
@@ -4313,10 +4322,10 @@ The divergence is a demonstration, not a benchmark. Measured (`reduction_diverge
 
 | workers | racy (partition = workers) | fixed-order (64 partitions) | integer |
 |---|---|---|---|
-| 1 | `…1df0d6` | `…1df271` | `…025a920c` |
-| 2 | `…1df2a6` | `…1df271` | `…025a920c` |
-| 4 | `…1df2c6` | `…1df271` | `…025a920c` |
-| 8 | `…1df234` | `…1df271` | `…025a920c` |
+| 1 | `...1df0d6` | `...1df271` | `...025a920c` |
+| 2 | `...1df2a6` | `...1df271` | `...025a920c` |
+| 4 | `...1df2c6` | `...1df271` | `...025a920c` |
+| 8 | `...1df234` | `...1df271` | `...025a920c` |
 
 The racy column is a different result at every worker count; the fixed-order and integer columns are bit-identical across all four. (The fixed-order value differs from the racy one-worker value in the low bits, because a 64-partition grouping rounds differently from index order - it is *reproducible*, not more accurate, exactly the exclusion named above.) The cost of the fix is the serial fold over the partition count - a few dozen values against the parallel work it guards, a rounding error on the [§31](#31---disjoint-write-sets-parallelize-freely) speedup. The divergence and both fixes are machine-independent facts (IEEE-754 non-associativity and integer associativity), not measurements that vary by box.
 
@@ -4338,6 +4347,8 @@ Three of the four unattended questions are answered: the system survives the sto
 
 
 # 49 - The worst case is the only case
+
+<p align="center"><img src="book/illustrations/budget.png" alt="A mouse with a budget sheet and a contingency line - planning for the worst case." style="max-height: 300px; max-width: 100%;"></p>
 
 [§4](#4---cost-is-layout---and-you-have-a-budget) gave the tick a budget: 33 ms at 30 Hz, and you spend it wisely. Most of the book has been **soft** real-time. A missed deadline costs *quality* - a dropped frame, a coarser answer - and the system keeps running. For almost everything you will build, soft is the right and sufficient discipline.
 
@@ -4374,6 +4385,8 @@ That answers the last of the four unattended questions: the system survives the 
 
 # 50 - It runs without you
 
+<p align="center"><img src="book/illustrations/runs_without_you.png" alt="A mouse with its feet up under 'ALL SYSTEMS OK' - it runs without you." style="max-height: 300px; max-width: 100%;"></p>
+
 [§45](#45---living-with-it) opened the second act with five questions. The four chapters since answered the first one - *can you run it unattended* - and it is worth stopping to see that they were not four tricks. They were one move, made four times.
 
 [§46](#46---the-log-survives-power-loss): the system survives the stop. [§47](#47---observation-is-a-read-only-system): it says what it is doing. [§48](#48---reductions-dont-parallelize-freely): it gives the same answer on every machine. [§49](#49---the-worst-case-is-the-only-case): you know the deadline it can and cannot promise. Listed flat they look unrelated. They are not. Each one removed a dependency on the human who used to stand next to the machine.
@@ -4388,16 +4401,624 @@ The walls are not all the same kind of failure, and that is what makes the map w
 
 That conversion is the whole economic point from [§45](#45---living-with-it), paid down. A system that needs a human in the loop costs a salary for as long as it runs; a system that runs without one costs almost nothing to operate. Each chapter in this group retired a recurring cost - not a feature added, a person's standing attention no longer required. That is operating cost falling straight through to margin, and it is why the unattended question was worth four chapters.
 
-It is also the hardest of the second act's five promises to keep, which is why it came first. The system now survives, reports, agrees, respects its deadlines, and knows where its walls are. It is still, though, frozen in the shape you shipped it in, and it has been handed one rule hard: lay the data out flat in numpy columns and stream it. The remaining questions press on exactly that - where the flat-and-stream default stops paying, what to reach for when numpy on one box is not enough, how the schema drifts the moment the world does, and the day someone who is not you comes to own it. Those are the rest of the [horizon](#44---what-you-have-built) this book charted; some you can already walk with what you have, and some wait for a later volume. The book names them rather than pretending the second act is only its first leg.
+It is also the hardest of the second act's five promises to keep, which is why it came first. The system now survives, reports, agrees, respects its deadlines, and knows where its walls are. It is still, though, frozen in the shape you shipped it in, and it has been handed one rule hard: lay the data out flat in numpy columns and stream it. The remaining questions press on exactly that - where the flat-and-stream default stops paying, what to reach for when numpy on one box is not enough, how the schema drifts the moment the world does, and the day someone who is not you comes to own it. Those are the rest of the [horizon](#44---what-you-have-built) this book charted. The next part takes up the first two directly - where the flat-and-stream default stops paying, and what to reach for when one box is not enough; the schema-drift and ownership questions wait for a later volume. The book names them rather than pretending the second act is only its first leg.
 
 The operations leg is done. The machine in the next room is running, nobody is watching it, and that is precisely the point.
 
+## What's next
+
+[§51](#51---knowing-the-limits) opens the last part: five small projects, each built on purpose to reach a place where the flat-and-stream default stops paying, and to measure exactly where. It is how you come to own the advice instead of merely repeating it - and [§57](#57---what-cannot-happen) closes the book by naming what all of it was for.
+
+
+# 51 - Knowing the limits
+
+<p align="center"><img src="book/illustrations/software_limits.png" alt="A professor mouse lecturing on the limits of software." style="max-height: 300px; max-width: 100%;"></p>
+
+[§45](#45---living-with-it) put five questions to a system that has to survive, and the fourth was the one that turns the book on itself: do you know where your own advice stops? For most of this book the advice was to lay the data out flat in numpy columns and stream it, and on the simulator it has been right every time. This part is where you find the edge of it, and finding that edge is the whole job.
+
+The simulator itself cannot show you the edge, because its world is the one shape columns-and-vectorise was built for: rows of positions and a few scalars, read in bulk. Put the question to it and it answers, honestly, that flat-and-stream never breaks down, because for that shape it does not. The limits live on shapes the simulator never has, so the only way to reach them is to go and build those shapes on purpose.
+
+That is what the five chapters here do. Each one leaves the simulator for a small, self-contained project in a domain the trunk never visited - a weekend's work, with its own reference module - and each was chosen because it is a place the flat-and-stream default meets a genuine limitation.
+
+| The project | Where the default meets a limit |
+|---|---|
+| An expression evaluator | A recursive structure is all shape and no rows. Flat storage on its own buys nothing; the win is the order you walk the data, not the array it sits in - and walking it node by node in Python is the interpreter tax the trunk kept warning about. |
+| A scenegraph | A hierarchy whose shape changes every frame. Recomputing only the part that moved beats recomputing all of it, but only up to a point, and only when the moved part is packed together. |
+| A spreadsheet | Dependencies that form a graph rather than a tree. The stale set becomes a cone you have to compute, and an aggregate stays expensive even when a single cell changed. |
+| A floating-point ledger | A column ill-conditioned enough that the total comes out wrong. The order of the additions decides the answer; no layout corrects it, and `numpy.sum`'s cleverer order is still just a different order, not the right one. |
+| A bandwidth wall | Work that outgrows one core. The ceiling is the memory channel, not the core count, and in Python "more cores" is a process boundary before it is ever a speed-up. |
+
+Every chapter has the same shape. You take something small enough to hold in your head - an expression, a jointed arm, a five-cell sheet, three numbers, one pass over memory - work it through by hand, and then measure where it bends. The project is the experiment and the measurement is the verdict, so you end up watching the limit happen rather than taking it on trust.
+
+What the measurement gives back is a crossover. The columnar layout wins up to some size, or some rate of change, and past that point it stops winning; each chapter finds where, and prints the number. A default you can bound that way is one you can keep trusting. Knowing where "lay it out flat and stream it" stops paying is the rest of what it means to own the advice instead of merely repeating it.
+
+The five build on one another. The expression evaluator shows that flattening a structure is really compiling it, which holds until the structure starts to change; the scenegraph picks up what happens when it changes a little; the spreadsheet, when that little runs through a graph; the ledger, when the sums underneath all of it were wrong to begin with; and the last, when the work finally outgrows the single machine. Each one closes on the difficulty the next one opens with.
+
+## What's next
+
+[§52](#52---flattening-a-tree-is-compiling-it) begins with the smallest of the five: one arithmetic expression, three ways to hold it in memory, and the discovery that the layout you choose matters far less than the order you read it in.
+
+
+<!-- DRAFT, §52, first project chapter of the "Knowing the limits" arc (§52-§56), Python edition,
+built on code/exprtree/exprtree.py. Concept-node line, glossary entry, DAG node are placeholders to be
+filled. Numbers are the dev-box (Ryzen 9 270, CPython 3.14.5, numpy 2.4.4) figures; cross-machine
+capture (Pi/i7/i3) is pending, so the Measurements table has one column. The mouse art ast.png needs
+copying into book/illustrations/ from the arc's source crops. -->
+
+# 52 - Flattening a tree is compiling it
+
+<p align="center"><img src="book/illustrations/ast.png" alt="A mouse with an expression tree - the same tree as boxes-and-arrows, as columns of indices, and written out in order to run straight through." style="max-height: 300px; max-width: 100%;"></p>
+
+[§3](#3---the-npndarray-is-a-table) said your columns are a table, and the trunk took it as a default: lay the data out flat in numpy columns and stream it. That earned its place across the simulator's rows of scalars. But the simulator's world is unusually kind to columns, and the honest question this arc asks is where the default stops paying. Start with the structure that looks least like a table: a tree.
+
+Take a small arithmetic expression, `(x + 2) * 3`. It is a tree:
+
+```
+        ( * )
+       /     \
+    ( + )    [ 3 ]
+   /     \
+ [ x ]   [ 2 ]
+```
+
+To evaluate it you work from the bottom up, because every node needs its children's values before it can do its own bit of arithmetic. At `x = 4`: the `x` is 4, the `2` is 2, the `+` makes 6, the `3` is 3, the `*` makes 18.
+
+There are three honest ways to store that tree and walk it, and the differences between them are the chapter. Take them one at a time.
+
+**Boxes and arrows.** Each node is a little object sitting wherever the allocator happened to put it, holding *references* to its children.
+
+```python
+# a node is [tag, left, right]; a leaf carries its value in place of a child
+['*', ['+', ['var'], ['const', 2.0]], ['const', 3.0]]
+```
+
+To evaluate the `*`, you recurse into the `+` node - some other object on the heap - evaluate that (which recurses into `x` and `2`), then read `3`. You hop from object to object following references. This is the representation most people reach for, and the one the trunk taught you to be wary of.
+
+**The same shape, in columns.** Put all the nodes in parallel arrays - a tag column, two child-index columns, a value column - and let each node name its children by their *position* instead of by a reference.
+
+```python
+tag = [...]; lhs = [...]; rhs = [...]; val = [...]   # children are indices
+```
+
+The nodes now live in columns, which is the layout the trunk prefers. But evaluating still hops from a node to its children in tree order, jumping around the arrays by index. The references became indices; the hopping stayed.
+
+**The steps, written in the order you do them.** Here is the different idea. Instead of storing the tree and walking it, write the nodes down in the order you would actually compute them, every child before its parent:
+
+```
+x   2   +   3   *
+```
+
+Now you do not walk a tree at all. You read that list straight through, left to right, with a scratch pad - a *stack*, which just means you add to the top and take from the top:
+
+```
+x  ->  push its value           pad: [4]
+2  ->  push                     pad: [4, 2]
++  ->  pop two, add, push        pad: [6]
+3  ->  push                     pad: [6, 3]
+*  ->  pop two, multiply, push   pad: [18]
+```
+
+The answer is what is left on the pad. No hopping: you touched the list once, front to back. If you have ever used a calculator with an "Enter" key, you have run a list like this; it has a name, but the mechanic is the point.
+
+All three compute 18 - and so does a fourth form, coming shortly. That they agree, bit for bit, on every input is the floor this whole chapter stands on.<sup>1</sup>
+
+## The columns on their own buy nothing - and in Python, neither does the layout
+
+In the Rust edition this is where the flat post-order walk pulls away from the pointer tree: once the tree outgrows cache, reading the program front to back beats hopping between scattered nodes, and the win widens with size. The index-arena buys nothing there, because its walk still hops in tree order - it just hops by index.
+
+In Python that cache crossover never appears, because the thing you are paying for is not the memory hop. It is the interpreter. Every node, in every form, is a handful of Python bytecodes - a tag check, two dispatches, one arithmetic op - on the order of a hundred nanoseconds of work that has nothing to do with where the node sits. That tax swamps the cache effect entirely.
+
+Measured across tree sizes, the three scalar forms stay within about a factor of two of each other, and there is no band where the layout picks the winner:<sup>2</sup>
+
+| nodes | boxed (ns/eval) | arena (ns/eval) | flat (ns/eval) |
+|---:|---:|---:|---:|
+| 255 | 11,200 | 12,200 | 10,900 |
+| 4,095 | 187,000 | 215,000 | 175,000 |
+| 65,535 | 4,150,000 | 4,160,000 | 3,210,000 |
+| 262,143 | 26,700,000 | 20,100,000 | 12,900,000 |
+
+The flat form is consistently the fastest, but not for the cache reason: it is the only one that drops the per-node *function call*, running one `for` loop over a list instead of recursing once per node. Its lead grows with size - about 2x at the largest tree - as the boxed tree's scattered objects finally start costing real cache misses on top of the interpreter. The index-arena is no better than the pointer tree, and often slightly worse, because its evaluator still recurses in tree order and now indexes four columns to read each node. Putting the nodes in arrays bought nothing. The trunk's lesson about access patterns is still true underneath, but in Python it is hidden behind a larger, flatter cost: the interpreter charges per node whatever the layout.
+
+## The win is to stop paying per node at all
+
+Here is the move the trunk has made in every chapter, applied to the tree. The flat form is a *program* - a list of operations run over a value stack. Run that program scalar and you pay the interpreter per op, per evaluation. Run it once over a whole numpy array of inputs - the stack holds arrays, each op is one whole-array operation - and you pay the interpreter per op *once*, amortised across the entire batch.
+
+```python
+def eval_vec(code, xs):              # xs is a numpy array of inputs
+    stack = []
+    for tag, val in code:
+        if tag == CONST:  stack.append(val)              # numpy broadcasts the scalar
+        elif tag == VAR:  stack.append(xs)
+        elif tag == ADD:  b = stack.pop(); a = stack.pop(); stack.append(a + b)
+        elif tag == SUB:  b = stack.pop(); a = stack.pop(); stack.append(a - b)
+        else:             b = stack.pop(); a = stack.pop(); stack.append(a * b)
+    return stack[-1]
+```
+
+The op count is unchanged; what changed is that each op now does the arithmetic for a hundred thousand inputs in one numpy call instead of for one input in one Python statement. Measured, the vectorised stack machine evaluates the expression **about 90 to 180 times faster per input** than the fastest scalar form, across every tree size.<sup>3</sup>
+
+That is the chapter's real result, and it is the trunk's lesson wearing the tree's clothes. Flattening the tree into a run-straight program was step one; the win came from running that program over a batch, so the per-op interpreter cost is paid once for a whole column of inputs rather than once per input. The Rust edition takes its speed-up from the memory layout; the Python edition takes a larger one from leaving per-element Python behind. Same structural move - compile the tree into a linear program - cashed out through the bottleneck that actually binds.
+
+## That flat form is compiled code
+
+Look again at the run-in-order form. Nodes in compute order, run straight through with a scratch stack: that is a *stack machine*, and the list is its program. Writing a tree out as a run-it-straight list is **compiling** it, turning something you walk into something you run - and the vectorised version above is that same compiled program fed a column at a time.
+
+Compiled code has a famous weakness: you cannot edit it in place. Change the tree and the boxes-and-arrows form swings a single child reference, in time set by how deep the changed node sits plus the size of the graft - about 800 nanoseconds here. The arena repoints one index for about the same. The run-in-order form has no cheap edit: any change to the shape breaks the linear order, so you write the whole program out again - O(N), about 11 microseconds at eight thousand nodes, roughly fourteen times the pointer edit, and the gap widens with the tree.<sup>4</sup>
+
+| rep | ns / edit (8,191 nodes) |
+|---|---:|
+| boxed | 830 |
+| arena | 970 |
+| flat | 11,500 |
+
+So the choice turns on what you *do* with the tree: **how often do you change its shape, versus how often do you just compute it?**
+
+## The crossover
+
+Put a number on it. Any real workload is some edits and some evaluations. The pointer tree has the cheap edit and the slow walk; the compiled list has the slow edit and the fast walk. They break even where the list's faster walks stop repaying its expensive rebuilds. On this machine, at eight thousand nodes, that break-even sits at an edit fraction of about **0.82**<sup>5</sup> - the compiled form wins unless you are restructuring the tree more than four times for every time you evaluate it. That is the opposite emphasis from the Rust edition, where the compiled form barely edges ahead and only in the compute-many corner. In Python the pointer tree's per-node recursion is so expensive that the compiled loop wins across almost the whole range; pointers only win when you are doing almost nothing but editing.
+
+And the vectorised form removes the last doubt. Its O(N) re-linearisation is paid once per shape-change and then amortised over the whole column of inputs the next evaluation processes. A spreadsheet column recomputed over thousands of rows, a query plan run over a million records, a feature transform applied to a dataset: all sit far out at the compute-many end, and "many" in Python means many values per call, not just many calls. That is exactly where compiling pays, and exactly why those systems compile.
+
+That is the first place the column default does not simply carry over. The flat arrays on their own buy nothing - the interpreter charges per node whatever the layout - but compiling the tree into a linear program and running it over a batch buys a lot, as long as you recompile only when the shape changes. The reference module is [`code/exprtree/exprtree.py`](https://github.com/root-11/intro-book-python/blob/main/code/exprtree/exprtree.py); the prose here is the shape of its output, and the exercises are how you make it yours.
+
+The catch is the word "recompile." It assumes the shape changes rarely, and all at once. The next chapter is what happens when it changes a little, and constantly.
+
+## Measurements
+
+Dev box: Ryzen 9 270, CPython 3.14.5, numpy 2.4.4, median of 3. Cross-machine capture (the Pi 4 / i7 / i3 columns the rest of `code/` carries) is pending, so treat the shape as the claim, not the digits.
+
+| # | what | measured |
+|---|---|---|
+| 1 | all four forms agree, bit for bit | contract check passes |
+| 2 | three scalar forms across sizes | within ~2x; flat fastest (no per-node call); no cache crossover |
+| 2 | index-arena vs pointer tree | no better, often slightly worse |
+| 3 | vectorised stack machine vs fastest scalar form, per input | ~90x to ~180x faster |
+| 4 | one shape-change: boxed / arena / flat (8,191 nodes) | 830 ns / 970 ns / 11,500 ns |
+| 5 | edit-fraction break-even (flat vs boxed, 8,191 nodes) | ~0.82; shifts further toward compile as N grows |
+
+## Exercises
+
+1. **Four forms, one number.** Build the boxes-and-arrows tree, the column-arena, the written-in-order list, and the vectorised evaluator for the same small expression. Check all four return the same value, bit for bit - the three scalar forms at many values of `x`, the vectorised one elementwise against an array of `x`. Every later exercise leans on this agreement; if it ever breaks, you are timing four different sums.
+2. **Trace the stack by hand.** For `(x + 2) * 3`, write out the run-in-order list and trace the scratch pad step by step, as in the chapter. Then do it for an expression of your own with at least one subtraction, and convince yourself the list never needs to look back. (Watch the order of the two pops: subtraction is not commutative.)
+3. **The size sweep, and the flat interpreter floor.** Evaluate each scalar form in bulk across tree sizes from a few dozen nodes to a few hundred thousand. Plot nanoseconds per evaluation. Confirm the three stay within about a factor of two, with no cache-resident band where the pointer tree wins - and say, in one sentence, what they are all paying for that hides the layout.
+4. **The vectorised win.** Take the run-in-order program and evaluate it over a numpy array of a hundred thousand inputs in one pass, the stack holding arrays. Measure nanoseconds per input and compare to the scalar flat form. Reproduce the ~90x-to-180x gap. Explain, in terms of where the interpreter cost is paid, why batching is the win rather than the layout.
+5. **The cost of editing compiled code.** Implement the same shape-change - swap out a subtree - on each form, and time it at eight thousand nodes. Reproduce the reference-swing, the index-repoint, and the full rewrite. Explain why the run-in-order form has no cheap edit, and why its cost is O(N) where the others are O(depth).
+6. **The break-even.** From your edit and evaluation timings, work out the edit fraction where the run-in-order form stops being worth it. Reproduce the ~0.82 figure, and explain why it is so much higher than the Rust edition's (~0.2): what is so expensive about the pointer tree's evaluation in Python that compiling wins across almost the whole range?
+7. *(stretch)* **Find the regime in the wild.** Name three real things made of expression trees (a spreadsheet column, a database query, a vectorised feature transform) and place each on the change-it-versus-compute-it line. For one, compile it once and evaluate it over a million-row column; confirm you are far out at the compute-many end, where the one-time cost of writing the program out - and re-linearising on a shape change - has long since paid for itself.
+
+## What's next
+
+The run-in-order form assumes the shape changes rarely and all at once. [§53](#53---staleness-flows-downhill) is what happens when it changes a little and often: a hierarchy where one node moves and only the nodes beneath it go stale. Recomputing everything is the compiled form's only move; recomputing *just the stale part* is the next discipline - and it has a break-even of its own.
+
+
+<!-- DRAFT, §53, second chapter of the "Knowing the limits" arc (§52-§56), Python edition,
+built on code/scenegraph/scenegraph.py. Concept-node line, glossary entry, DAG node are placeholders.
+Numbers are the dev-box (Ryzen 9 270, CPython 3.14.5, numpy 2.4.4) figures; cross-machine capture
+is pending. The mouse art dirty_markers.png needs copying into book/illustrations/. -->
+
+# 53 - Staleness flows downhill
+
+<p align="center"><img src="book/illustrations/dirty_markers.png" alt="A mouse marking the stale nodes below a moved joint - staleness flowing downhill through a hierarchy." style="max-height: 300px; max-width: 100%;"></p>
+
+[§52](#52---flattening-a-tree-is-compiling-it) left on a catch: compiling a tree is worth it only when the shape changes rarely and all at once. This chapter is the other case, the common one - the shape changes a little, and constantly.
+
+Picture a jointed arm: a shoulder, an elbow hanging off it, a hand hanging off the elbow. Each joint knows only where it sits *relative to its parent* - its *local* offset. Where it actually is in the room - its *world* position - is its parent's world position plus its own local offset. Lay it out and compute it from the top of the chain down:
+
+```
+shoulder   local 0    world 0
+  elbow    local +2    world 2     (0 + 2)
+    hand   local +1    world 3     (2 + 1)
+```
+
+Now swing the elbow out: change its local offset from +2 to +5.
+
+```
+shoulder   local 0    world 0      (unchanged)
+  elbow    local +5    world 5      (0 + 5)   <- moved
+    hand   local +1    world 6      (5 + 1)   <- dragged along
+```
+
+The elbow moved, and the hand moved with it, because the hand hangs off the elbow. The shoulder did not move at all. **A change flows downhill to everything beneath it, and stops there.** That is the whole idea of this chapter. (Real scenes compose full rotate-scale-translate transforms instead of adding offsets, but the shape is identical: a node's world position depends only on itself and the chain of parents above it.)
+
+Every frame, things move, and the world positions below them go stale. There are two ways to set them right.
+
+**Recompute everything.** Recompute every world position from scratch, top-down. In Python you cannot do this as one numpy call, because each node needs its parent's world *before* it can compute its own - a dependency chain, not an independent column. But you can do it one **depth level** at a time: every node at depth `d` has a parent at depth `< d`, already final, so a whole level composes in a single vectorised batch. The number of Python-level iterations is the tree's *depth*, not its node count - a few dozen passes over wide arrays, not a million passes over scalars.
+
+**Recompute only the stale part.** When the elbow moves, mark the elbow and everything beneath it as *dirty*, and recompute only those, again level by level. The pre-order layout has a gift here: lay the nodes out so a node is immediately followed by all of its descendants, and a whole subtree becomes a *contiguous slice* - "everything beneath the elbow" is a range of array positions, packed together in memory.
+
+Which one wins? It depends on how much went stale, and the answer is a crossover, not a rule.
+
+## Vectorise by level, or pay the interpreter per node
+
+[§52](#52---flattening-a-tree-is-compiling-it)'s lesson reappears first, and in Python it is stark. Recompute *everything* the per-node way - a Python loop composing one node at a time - and you pay the interpreter once per node. Recompute it level by level, each level one vectorised batch, and the level-vectorised sweep beats the scalar loop by **26x to 51x** from ten thousand to a hundred thousand nodes, on identical work and bit-identical answers.<sup>1</sup> The Rust edition gets 2.3x-2.8x from laying the same tree out flat; Python gets an order of magnitude more, for the same reason as last chapter - the cost it removes is the interpreter, not the cache. Even the dumb option, recompute-all, is cheap *once it is vectorised*. Hold that as the baseline.
+
+## Recompute-only-what-moved has a ceiling
+
+Now mark a fraction of the tree dirty - a joint and everything below it - and recompute only that part, against the vectorised recompute-all. When little has moved, recomputing only the stale part wins enormously: at a tenth of a percent dirty it is about **510x** faster, at one percent about **180x**, at ten percent about **18x**, at twenty percent about **5x**.<sup>2</sup>
+
+It does not win forever. The advantage shrinks as more goes stale - about 1.6x at forty percent, barely ahead at sixty - and past roughly **two-thirds dirty** the vectorised recompute-all takes the lead. At a hundred percent dirty the incremental version is *slower* than the full sweep: it does all the same work, plus it cannot reuse the clean level arrays the full sweep keeps, so its gather and scatter run over a worse-ordered index set. **Recompute only what changed is a default with a ceiling** - when most of it changed, stop being clever and sweep. (The ceiling sits higher than the Rust edition's ~40-50%, because a vectorised recompute of a contiguous dirty subtree stays cheap deeper into the tree than a scalar one does.)
+
+## Whether it pays depends on whether the stale set is packed
+
+A second axis matters more for the next chapter. Take the *same number* of dirty nodes and arrange them two ways: as one contiguous subtree (a joint and everything below it), and scattered all over the tree (a dirty leaf here, a dirty leaf there).
+
+The contiguous subtree recomputes about **4.4x faster** than the same count of scattered nodes, at identical work.<sup>3</sup> The dirty *count* was the same; only the *packing* differed. Both paths gather each node's parent transform and scatter the result, but for the contiguous subtree those gathers and scatters stay inside one local range of memory, while the scattered set hops the whole array and misses cache on every access. (The Rust edition measures this gap at ~10x; in numpy it is smaller, because the fixed overhead of fancy indexing dilutes it - but the locality still decides.) Recomputing the stale part pays best when the stale part is packed together, so the recompute streams instead of hopping. That sharpens [§28](#28---proximity-is-a-property-of-position)'s "recompute beats maintain": recompute beats maintain *when the thing you recompute is local*.
+
+A scenegraph is kind to this. It is a tree: every node has exactly one parent, so "everything beneath a node" is one packed slice, and the common edit - move a joint - dirties exactly such a slice. The reference module is [`code/scenegraph/scenegraph.py`](https://github.com/root-11/intro-book-python/blob/main/code/scenegraph/scenegraph.py).
+
+But that kindness is the tree's, not the world's. The moment a thing can feed *many* things instead of hanging off one parent - the moment your dependencies form a graph rather than a tree - there is no single "everything beneath it," no contiguous slice to recompute, and the packing you just relied on is gone. That graph is a spreadsheet, and it is the next chapter.
+
+## A note on layout: this is the arc's point
+
+The transform here is a six-number affine, and a node always reads *all* of its parent's world to write *all* of its own. So the right grain is six arrays composed together as a unit - not, say, splitting each number into its own independently streamed column, which would buy nothing because they are never touched apart. Columns are a default, not a law: the SoA reflex serves you when fields are read independently and gets in the way when they move as a unit. The win in this chapter was never "more columns"; it was *vectorise the level* and *keep the dirty set packed*.
+
+## Measurements
+
+Dev box: Ryzen 9 270, CPython 3.14.5, numpy 2.4.4, median of 3. Cross-machine capture is pending; treat the shape as the claim.
+
+| # | what | measured |
+|---|---|---|
+| 1 | full recompute: level-vectorised vs scalar per-node (10K-100K) | 26x - 51x |
+| 2 | recompute-dirty vs recompute-all, by dirty fraction (1M) | ~510x at 0.1%, 18x at 10%, 5x at 20%, **loses past ~2/3** |
+| 2 | recompute-dirty at 100% dirty | 0.6x (slower than the sweep: bookkeeping plus worse index order) |
+| 3 | same dirty count: contiguous subtree vs scattered (1M) | 4.4x apart |
+
+## Exercises
+
+1. **Move a joint by hand.** Take the three-node arm from the chapter. Pick local offsets, compute the world positions, then change one joint's local offset and recompute by hand. Write down which world positions changed and which did not, and state the rule in one sentence.
+2. **Flat, top-down, by level.** Store a hierarchy as arrays with each node's parent and depth recorded, laid out so every parent comes before its children. Group the node indices by depth. Write the full recompute as one vectorised batch per level, and confirm each node's parent is always already final by the time its level runs.
+3. **The vectorised sweep vs the per-node loop.** Write the full recompute a second way, as a Python loop composing one node at a time. Recompute both at ten thousand and a hundred thousand nodes and reproduce the 26x-to-51x gap. Say in one line why it appears, in the words of [§52](#52---flattening-a-tree-is-compiling-it).
+4. **The subtree is a slice.** With the pre-order layout, show that a subtree occupies a contiguous range of positions (record each node's subtree size as you build). Given a node, find "everything beneath it" as a slice, with no tree-walking.
+5. **The dirty crossover.** Mark a contiguous subtree dirty, recompute only it (level by level), and compare against the full vectorised sweep. Sweep the dirty fraction and find where recompute-everything takes over. Explain why the incremental version is slower than the sweep when everything is dirty, even though it does the same arithmetic.
+6. **Packed versus scattered.** Hold the dirty count fixed and compare one contiguous subtree against the same number of scattered single nodes. Reproduce the ~4.4x gap. State the condition under which recomputing the stale part is worth doing at all, and say why numpy narrows the gap the Rust edition sees at ~10x.
+7. *(stretch)* **Break the tree.** Let one node be read by two parents (so it is no longer a tree). Show that "everything beneath a node" is no longer a single contiguous slice, and that the packed recompute you relied on no longer applies. You have just discovered the next chapter's problem.
+
+## What's next
+
+In a tree, the stale set is always one packed slice, because everything has exactly one parent. [§54](#54---a-spreadsheet-is-a-dependency-graph) is what happens when that is no longer true: a spreadsheet, where one cell feeds many, the dependencies form a graph, and "what went stale" is a shape you have to compute rather than a slice you can point at.
+
+
+<!-- DRAFT, §54, third chapter of the "Knowing the limits" arc (§52-§56), Python edition,
+built on code/spreadsheet/spreadsheet.py. Concept-node line, glossary node, DAG node are placeholders.
+Numbers are dev-box (Ryzen 9 270, CPython 3.14.5, numpy 2.4.4); the >RAM disk-seconds pivot is
+deferred (needs a file larger than RAM to measure honestly), so it is given as the Rust-measured
+shape. The mouse art oom_spreadsheet.png needs copying into book/illustrations/. -->
+
+# 54 - A spreadsheet is a dependency graph
+
+<p align="center"><img src="book/illustrations/oom_spreadsheet.png" alt="A mouse and a spreadsheet too big for memory - a dependency graph recomputed in dirty cones, streamed in pegged tiles." style="max-height: 300px; max-width: 100%;"></p>
+
+[§53](#53---staleness-flows-downhill) ended where the tree did: in a hierarchy, "everything beneath a node" is one packed slice, because each thing has exactly one parent. Take that away - let one thing feed *many* - and you have a spreadsheet.
+
+Here is a tiny one. Two inputs and three formulas:
+
+```
+A1 = 2            (an input you type)
+A2 = 3            (an input you type)
+B1 = A1 * A2      = 6
+B2 = B1 + A1      = 8
+T  = B1 + B2      = 14
+```
+
+Draw who-reads-whom and it is not a tree: `A1` feeds *both* `B1` and `B2`, `B1` feeds both `B2` and `T`. It is a graph - a *dependency graph*. Now edit `A1` from 2 to 10. What has to be recomputed?
+
+```
+A1  changed
+B1  uses A1   -> stale
+B2  uses B1 and A1   -> stale
+T   uses B1 and B2   -> stale
+A2  uses nothing that changed   -> still correct
+```
+
+Three of the four formulas go stale. Not because they sit "below" `A1` in some layout - there is no below in a graph - but because the change *reaches* them along the feeds-into edges. That reachable set is the **cone** of the edit. And you must recompute it in the right order: `B1` before `B2` before `T`, because each needs the fresh value of the ones it reads. Recomputing a spreadsheet is exactly that - sorting the cells so every cell comes after the ones it depends on, then computing them in that order. ([§14](#14---systems-compose-into-a-dag) called this a topological sort and said the program *is* one; a recalc engine is that sentence made literal.)
+
+So the move from [§53](#53---staleness-flows-downhill) survives: recompute only the stale part. But "the stale part" is no longer a slice you point at. It is a cone you compute.
+
+## The change has a shape the UI gives you
+
+[§53](#53---staleness-flows-downhill) could scatter dirt anywhere across the tree. A spreadsheet cannot. The only edits a person can make are a single cell, or a *fill-down* - drag a formula down a contiguous run of cells. So the dirty set is never random; it is the cone of one of those edits, and its size is set by how the formulas are wired, not by chance.
+
+That is what to sweep: a fill-down of `k` cells, a real action, growing the cone. The result is the familiar shape - recomputing the cone wins big when `k` is small and shrinks as the fill-down covers more of the sheet, until near "most of it" the plain full recompute takes over. Measured on a 200,000 by 50 sheet, recomputing the cone runs about **1680x** faster than a full recompute at a ten-cell fill-down, **50x** at twenty thousand, and converges to the full recompute (1.08x) once the fill-down covers the whole sheet.<sup>1</sup> Same crossover as the scenegraph, driven this time by how much you actually edited. (A uniform fill-down vectorises per column, so both sides are numpy here - the win is doing less work, not leaving the interpreter.)
+
+## "Incremental" does not make a sum incremental
+
+The cone hides a twist, and it is the most useful thing in the chapter. Add one ordinary feature, a column total `=SUM(B1:B1000000)`, and edit *one* cell in that column.
+
+The cone is tiny: the one cell, the total, and whatever reads the total. Recomputing it should be almost free, but recomputing the total means reading the **entire** column again, because a sum keeps no memory of its old value - one changed cell forces a million additions. Measured, recomputing the sum after editing one cell costs the same as recomputing it after editing a hundred thousand: about 0.16 ms either way, because both re-read the whole column.<sup>2</sup> The cone was small in *count* and fixed in *work*.
+
+This is why "just recompute what changed" is not the end of the story for aggregates. A real engine either keeps the sum up to date by hand as cells change (add the new value, subtract the old - and watch [§55](#55---the-same-numbers-a-different-total) for why that is dangerous), or it accepts the re-scan and makes the re-scan cheap (the streaming patch at the end of this chapter). Either way: **an aggregate is not incremental just because you only touched one input.** A cone can be cheap to find and expensive to pay.
+
+## Early cutoff: do not push a change that did not happen
+
+The sharpest version replaces the sum with a `MAX`. Suppose the formula downstream is a `MAX` over a column, feeding a dashboard of a hundred thousand cells that each read that maximum, and you edit a cell that is *not* the maximum, to a value still below it.
+
+Walk the cone the obvious way and you recompute the `MAX`, find it feeds the dashboard, and recompute all hundred thousand dashboard cells. But the `MAX` *did not change* - you edited a number below it. None of the dashboard needed touching. So add one check: when you recompute a cell, if its new value equals its old value, **stop** - do not mark its dependents stale, because nothing reached them.
+
+Measured on exactly that sheet, recomputing the dashboard cell by cell - as a recalc engine must, since each is its own formula - the obvious cone takes about 11 ms; with the cutoff it takes 3 microseconds, about **4000x faster**.<sup>3</sup> The gap is far larger than the Rust edition's 54x, and for a Python-specific reason: the saved work is a hundred thousand *per-cell* recomputes, which is exactly the interpreter-bound loop the trunk warns about, so not doing it saves the most expensive thing in the language. The principle has a name worth keeping: **validation is cheaper than recomputation.** Checking "did this actually change?" costs almost nothing; recomputing everything downstream on the assumption that it did costs everything.
+
+## At a billion cells, the program goes flat
+
+A million cells is small. A billion is where this gets honest, and it forces a change that is itself the lesson.
+
+The natural way to hold a formula is as a little object of its own (it is a [§52](#52---flattening-a-tree-is-compiling-it) expression, after all), one per cell. A representative per-cell formula object in Python - a tuple naming an operator and two cell references - is about 172 bytes. At a billion cells that is roughly **170 GB** of formula objects before a single value, more than the Rust edition's 160 GB because Python objects carry more overhead - it cannot be built. So you do what a real big sheet already is: you notice that a billion cells are not a billion different formulas. They are a *handful of formulas stamped across huge ranges* - a fill-down is one formula, repeated. Store the formula once per column - a *template* - and the cells become plain numpy columns of numbers. A billion-cell sheet's entire "program" is then a few hundred templates, about **50 KB**.<sup>4</sup>
+
+That is the arc's whole thesis turning up one level higher than expected. [§52](#52---flattening-a-tree-is-compiling-it) flattened the *data*; at scale you flatten the *program* too - the formula graph collapses from an object-per-cell into a template-per-column, and the dependency graph from a stored list of edges into an implicit rule ("this column reads that one, row by row"). Columns are the default for the program, not just the data - and in Python that collapse is also what makes the recompute vectorisable, because a template over a column is one numpy expression, not a million interpreted ones.
+
+## Leave the RAM, and peg the memory
+
+A billion `float32` values is four gigabytes; bigger sheets are bigger than RAM. So the data lives on disk, laid out one column after another, and read back with `numpy.memmap`. Now the column total from earlier is the whole game, told in bytes moved.
+
+Recompute every total and you read the **entire file**. After a real edit, only a few columns are dirty - so read only *those* columns back (each is a contiguous stretch of the file) and re-sum them. On a fifty-column sheet that is two columns instead of fifty: about **25x less data moved**, a layout fact independent of the machine.<sup>5</sup> The Rust edition measures the wall-clock at a 36 GB sheet on a 30 GB machine - about sixteen seconds for the whole file versus a tenth of a second for the dirty columns; the Python wall-clock at that scale is deferred, because measuring it honestly needs a file larger than this box's RAM (otherwise the page cache answers instead of the disk).
+
+Few programs are built for the next part. Re-summing a column does not need the whole column in memory at once; read it in fixed-size **tiles** and add as you go. Measured, the tiled sum's peak Python heap does not grow with the column at all - a hundred-million-element column sums with a peak of a fraction of a megabyte, because each tile is a zero-copy view the reduction streams over.<sup>6</sup> The program's memory is *pegged*: it never holds more than a tile, no matter how tall the column or how large the sheet. Running out of memory stops being something you hope to avoid and becomes something that **cannot happen** - the loop has no way to ask for more than a tile. That is the move in its purest form, and you will meet it again as a named idea in the finale: an entire class of failure made structurally impossible, not merely unlikely.
+
+To size such a thing for your own machine, the rule is the arithmetic: each gigabyte of RAM is 250 million `float32` cells, so choose a sheet a little bigger than your RAM and smaller than your free disk. RAM < problem < disk. The reference module is [`code/spreadsheet/spreadsheet.py`](https://github.com/root-11/intro-book-python/blob/main/code/spreadsheet/spreadsheet.py).
+
+The cone, the cutoff, the templates, the pegged tiles - all of it rests on a quiet assumption: that adding the numbers up gives the right answer. The next chapter is where that assumption breaks.
+
+## Measurements
+
+Dev box: Ryzen 9 270 + tmpfs, CPython 3.14.5, numpy 2.4.4, median of 3. Cross-machine and the >RAM disk-seconds pivot are pending; treat the shape as the claim.
+
+| # | what | measured |
+|---|---|---|
+| 1 | recompute the cone vs full, by fill-down size (200k x 50) | 1680x at 10 cells, 50x at 20k rows, 1.08x at full |
+| 2 | one-cell vs 100k-cell edit under a column SUM (1e6) | same cost (~0.16 ms): re-reads the whole column |
+| 3 | edit absorbed by a MAX, per-cell dashboard, with vs without cutoff | 11 ms vs 3 µs; ~4000x |
+| 4 | the "program" for 1e9 cells: objects vs templates | ~170 GB (cannot allocate) vs ~50 KB |
+| 5 | dirty-columns patch vs whole file (50-column sheet) | 25x less data moved; wall-clock at >RAM deferred |
+| 6 | tiled streaming sum, peak heap | constant in column height (pegged) |
+
+## Exercises
+
+1. **The cone by hand.** Take the five-cell sheet from the chapter. Edit `A1` and list exactly which cells go stale and in what order they must be recomputed. Then edit `A2` instead and do the same. Explain why the two cones differ.
+2. **Recompute in order.** Store cells so every cell comes after the ones it reads, and recompute a whole sheet as one forward pass. Then, given an edited cell, compute its cone (the cells it reaches) and recompute only those, in order. Check the result matches a full recompute.
+3. **The fill-down crossover.** Sweep a fill-down from one cell to the whole column and compare cone-recompute against full-recompute. Find where full takes over. Note that you cannot make a *random* dirty set with real edits - the cone's shape comes from the formulas.
+4. **The sum that is not incremental.** Put a `SUM` over a million-row column. Edit one cell and measure the cone recompute; then edit a hundred thousand and measure again. Show the cost is the whole column either way, and explain why a sum cannot be patched by touching only what changed - without keeping a running total.
+5. **Early cutoff.** Build a `MAX` over a column feeding many downstream cells, recomputed one at a time. Edit a below-maximum cell. Recompute the cone with and without the "stop if the value did not change" check. Reproduce the large gap and state the principle in one line - and say why the gap is so much larger in Python than in Rust.
+6. **The program goes flat.** Estimate the memory of one formula-object per cell at a billion cells (use `sys.getsizeof`). Then represent the same sheet as one template per column and report its size. Say what collapsed, and into what - and why the collapse is also what lets the recompute vectorise.
+7. *(stretch)* **Peg the memory.** Take a column sum and rewrite it to read the column in fixed-size tiles from a `numpy.memmap`, summing as it goes. Prove the peak memory is a constant you set: feed it ten times the data and watch `tracemalloc`'s peak not move. Then size a sheet for your machine with RAM < problem < disk and confirm the patch reads only the dirty columns.
+
+## What's next
+
+Every total in this chapter trusted that adding the numbers gives the right total. [§55](#55---the-same-numbers-a-different-total) is where that trust fails: floating-point addition is not associative, so the order you add in changes the answer, a naive sum of a real column can lose its small terms entirely, and no layout - and no `numpy.sum` - fixes it.
+
+
+<!-- DRAFT, §55, fourth chapter of the "Knowing the limits" arc (§52-§56), Python edition,
+built on code/fpfragility/fpfragility.py. Concept-node line, glossary node, DAG node are placeholders.
+The error figures are properties of IEEE-754 and portable; the timings are dev-box (Ryzen 9 270,
+CPython 3.14.5, numpy 2.4.4). The mouse art fp_err.png needs copying into book/illustrations/. -->
+
+# 55 - The same numbers, a different total
+
+<p align="center"><img src="book/illustrations/fp_err.png" alt="A mouse and a floating-point error - the same numbers adding up to a different total." style="max-height: 300px; max-width: 100%;"></p>
+
+[§54](#54---a-spreadsheet-is-a-dependency-graph) made the spreadsheet incremental, took it past RAM, and pegged its memory. Every total along the way trusted one thing: that adding the numbers gives the right answer. This chapter is where that trust breaks, and the unsettling part is that no layout fixes it. A perfectly columnar sum can still be wrong.
+
+Add three numbers by hand, in two different orders.
+
+```
+  1e16  +  (-1e16)  +  1
+= ( 1e16 + -1e16 ) + 1   =  0 + 1   =  1      (the giants cancel, then the 1 lands)
+
+  1e16  +  1  +  (-1e16)
+= ( 1e16 + 1 ) + -1e16   =  1e16 + -1e16  =  0   (the 1 is lost, then the giants cancel)
+```
+
+Same three numbers. Two answers. The middle step is the culprit: `1e16 + 1` cannot be stored, because a `float` near ten quadrillion has no room left for a difference of one - the gap between representable numbers there is larger than 1. So the `1` is rounded away, and by the time the `-1e16` arrives there is nothing left of it. **Floating-point addition is not associative: the order you add in changes the sum.** This is not a bug in CPython; it is how every conforming machine works, and it is the same hazard every total in the last chapter was quietly exposed to.
+
+## A real column, added naively, loses everything
+
+Picture a ledger column, the kind any business has: a few million small entries, and one big matching pair, a large credit and the debit that cancels it. The true total is the sum of the small entries; the giants cancel out.
+
+Add it left to right with a hand-written accumulator - `acc = 0.0; for x in col: acc += x` - and the running total climbs to the big number, sits there while every small entry is added and *lost* under it, then the big debit cancels the big credit back to zero. The naive loop reports **0** where the true answer was about a million.<sup>1</sup> Reverse the column and you get a wrong answer again, because a different set of small entries is swallowed. The order decided the result, and the hand-written loop got nothing.
+
+Here Python is kinder than the bare machine, and it is worth knowing exactly how. Three of the obvious ways to add a column are already better than that hand loop:
+
+| method | result | note |
+|---|---|---|
+| `acc = 0.0; for x in col: acc += x` | 0 (lost it) | the only one that loses everything |
+| builtin `sum(col)` | correct to ~1e-8 | CPython 3.12+ sums floats with Neumaier compensation |
+| `numpy.sum` / `arr.sum()` | off by ~2 | pairwise summation: close, not exact |
+| `math.fsum(col)` | exact | correctly rounded, any order |
+
+The builtin `sum()` was quietly upgraded to a compensated sum, so it stays accurate where the hand loop does not; `numpy.sum` adds in a *tree* (pairwise), which keeps small entries near each other and recovers almost everything; and `math.fsum` is exact. So in Python you have to work to lose the whole answer - you have to write the naive loop by hand. But "almost everything" is not "everything": `numpy.sum` is still off by about two here, and its tree shape still depends on the array's length, so it is order-dependent in the low bits exactly as [§48](#48---reductions-dont-parallelize-freely) warned. Accurate-enough is a decision, not a default.
+
+The timings give a bonus. Summing five million values, `numpy.sum` (the pairwise tree) is about **26x faster** than the per-element Python loop,<sup>1</sup> because it runs in C over a contiguous array and adds independent pieces at once rather than one dependent chain. The accurate-and-fast method is the same one the trunk has pointed at all along: do the reduction in numpy, not in a Python loop - and it is the same tree-shaped reduction the next chapter leans on.
+
+## Maintaining a total quietly drifts
+
+Recall [§54](#54---a-spreadsheet-is-a-dependency-graph)'s temptation: rather than re-read a whole column to recompute a sum, keep a running total and patch it on each edit - add the new value, subtract the old. It is cheap. It also drifts.
+
+Start a running total from the exact sum and maintain it only by those add-the-new, subtract-the-old steps. After two million edits it no longer matches a fresh `math.fsum` recompute - off in the last few digits, and the gap never closes.<sup>2</sup> The absolute error stays small, but as a *fraction* of the answer it is worst exactly when the true total is itself near zero from cancellation. The maintained total is never quite the recomputed one, and you cannot tell by looking. This is why a real system periodically re-anchors its aggregates with a fresh recompute instead of trusting the running patch forever: the incremental total buys speed by spending correctness, a little at a time.
+
+## Layout cannot make it correct - but Python makes the fix easy
+
+Columns are a default, not a law - and this is the version of that with nothing to do with speed at all.
+
+Ask a simple geometric question: given three points, does the third lie to the left or the right of the line through the first two? It is one subtraction-and-multiply formula (the sign of a cross product), and it is the atom under every triangulation, every convex hull, every "is this point inside" test in CAD and mapping and path planning.
+
+Lay the points out in perfect columns and compute that formula in `float`. For three points that are *nearly* in a straight line - large coordinates, a true answer of only one or two - the two big products that should almost cancel are each rounded first, and the rounded difference is dominated by noise. Measured on a hundred thousand near-collinear triples with coordinates around 2^30, the `float` sign is **wrong 98.6% of the time**.<sup>3</sup> A flawless columnar layout changed nothing: the bug was in the arithmetic, not the storage. **Correctness is orthogonal to layout** - you can lay the data out perfectly and still compute the wrong thing.
+
+And here, for once, Python is the *easy* place to be correct. The exact predicate needs integer arithmetic wide enough not to overflow; the Rust edition reaches for a 128-bit integer to get it. Python's `int` is already arbitrary-precision, so the exact determinant is the same one line with no wide-type juggling and no overflow, ever - and it is right every time, at about the same cost. The reference module is [`code/fpfragility/fpfragility.py`](https://github.com/root-11/intro-book-python/blob/main/code/fpfragility/fpfragility.py).
+
+The fixes are real arithmetic, not real layout: add in a defined order, compensate, use a smarter library reduction, or compute the predicate exactly in `int`. None of them is what this book has been selling, and that is the point of putting them here.
+
+So the totals are correctable, and once corrected and incremental the spreadsheet is honest. It is still, though, adding its numbers on a single core. The last chapter asks the question that finishes the arc: when do you actually need more hardware?
+
+## Measurements
+
+Error figures are IEEE-754 and portable; timings are dev-box (Ryzen 9 270, CPython 3.14.5, numpy 2.4.4). Cross-machine capture is pending.
+
+| # | what | measured |
+|---|---|---|
+| 1 | ill-conditioned column: hand-loop `acc += x` vs the true total | loses the whole answer (0 vs ~1e6); reversing gives a wrong answer too |
+| 1 | builtin `sum()` / `numpy.sum` / `math.fsum` vs naive | sum() accurate (Neumaier 3.12+); numpy pairwise (off ~2); fsum exact |
+| 1 | `numpy.sum` vs per-element Python loop (5e6 values) | ~26x faster *and* more accurate |
+| 2 | running total maintained by deltas vs fresh recompute | never matches; gap permanent, worst in relative terms near cancellation |
+| 3 | left/right-of-line, near-collinear, `float` vs exact `int` | float wrong 98.6%; bignum int correct, ~same cost |
+
+## Exercises
+
+1. **Two orders, two answers.** Add `1e16`, `-1e16`, and `1` in both orders by hand, as in the chapter. Then find a triple of your own where the order changes the result, and explain which addition loses information and why.
+2. **Lose a column.** Build a column of many small values with one large offsetting pair. Sum it with a hand-written `acc += x` loop, then reversed. Show both miss the true total (the sum of the small values). Then sum it with builtin `sum()`, `numpy.sum`, and `math.fsum`, and report which recover it - and by how much.
+3. **Pairwise is fast and accurate.** Time `numpy.sum` against a per-element Python loop on five million values. Reproduce the ~26x gap, and explain it in terms of dependent versus independent additions and the interpreter - then say why `numpy.sum` is still not a license to stop thinking ([§48](#48---reductions-dont-parallelize-freely)).
+4. **Watch it drift.** Start a running total from `math.fsum` of a column, then maintain it through millions of random edits by adding the new value and subtracting the old. Compare against a fresh `math.fsum` periodically. Show the gap never closes, and that as a fraction it is worst when the true total is near zero.
+5. **The wrong side of the line.** Implement "is the third point left or right of the line through the first two" in `float`, and again in Python `int`. Feed both many near-collinear triples with ~2^30 coordinates and count how often they disagree. Confirm the `int` version needs no special wide type and costs about the same.
+6. *(stretch)* **A layout cannot save you.** Take any one of the above and store the inputs in perfect numpy columns. Confirm the wrong answer is exactly as wrong as before. Write one sentence on why the arc's usual move - fix the layout - does nothing here, and what does.
+
+## What's next
+
+The numbers are correct now, and the sum is still one core reading memory in order. [§56](#56---the-ceiling-is-bandwidth-not-cores) finishes the arc with the question the whole second act has been circling: when the work outgrows one core, what actually helps - and what only looks like it does.
+
+
+<!-- DRAFT, §56, last chapter of the "Knowing the limits" arc (§52-§56), Python edition,
+built on code/heterogeneous/heterogeneous.py. Concept-node line, glossary node, DAG node are
+placeholders. CPU numbers are dev-box (Ryzen 9 270, 16 cores, CPython 3.14.5, numpy 2.4.4);
+cross-machine capture is pending. The GPU figures are a labelled cost model with assumed constants -
+there is no GPU on the dev box; a real GPU run is pending a GPU host. The CAP sidebar is Bjorn's to
+write (flagged against framing-overclaim); left as a placeholder. The mouse art bandwidth.png needs
+copying into book/illustrations/. -->
+
+# 56 - The ceiling is bandwidth, not cores
+
+<p align="center"><img src="book/illustrations/bandwidth.png" alt="A mouse at the memory channel - the ceiling that more cores cannot raise." style="max-height: 300px; max-width: 100%;"></p>
+
+[§55](#55---the-same-numbers-a-different-total) left the work correct and incremental, and still being done by one core reading memory in order. The reviewer's instinct at this point is loud and common: a simulation this size *needs* a GPU. This chapter is the honest answer, and it is mostly "no, and here is exactly why."
+
+Start with the simplest pass there is - advance some particles: each new position is the old position plus the velocity, times a timestep. Two multiply-adds per particle. Almost no arithmetic; the cost is entirely in moving the numbers - read a position and a velocity, write a position back. So the speed of this pass is the speed of *memory*, not the speed of the *core*.
+
+Run it on one core (`px += vx * dt`, vectorised by numpy) across sizes and you can watch the memory hierarchy in the numbers: while the data fits in cache it runs near **80 GB/s**; once it spills to main memory it settles to about **7 GB/s**.<sup>1</sup> That floor - main-memory bandwidth - is the thing that matters, because real working sets do not fit in cache.
+
+(A Python wrinkle worth seeing: `px += vx * dt` quietly allocates a whole temporary array for `vx * dt` before the add, so the idiomatic one-liner moves more memory than the arithmetic strictly needs. Fusing it - `np.multiply(vx, dt, out=tmp); px += tmp`, or a single expression with `out=` - recovers some of that bandwidth. The pass is memory-bound either way; numpy just makes the temporary easy to forget.)
+
+## More cores stop helping
+
+The obvious move is more cores - which in Python means more *processes*, because the GIL rules out using threads for CPU-bound work. Put the four columns in shared memory so no data is copied, split the particles across worker processes, and measure:
+
+```
+ 1 process    5.4 GB/s    1.0x
+ 2 processes   9.8 GB/s    1.8x
+ 4 processes  16.8 GB/s    3.1x
+ 8 processes  23.9 GB/s    4.4x
+16 processes  23.5 GB/s    4.4x
+```
+
+Sixteen cores do no better than eight, and the whole machine tops out around **4.4x**, at about 24 GB/s.<sup>2</sup> The reason is the one above: this pass is limited by the memory channel, and a single channel feeds all the cores. Past about eight processes they are not computing in parallel; they are queueing for memory. **The ceiling is bandwidth, not core count.** You cannot out-core a memory-bound pass, and - the next section - you cannot out-accelerator it either. The way to go faster is to *touch less data*, not to add compute, which is exactly what [§53](#53---staleness-flows-downhill) and [§54](#54---a-spreadsheet-is-a-dependency-graph) spent their chapters doing. The whole arc has been pulling this way, and now you can see why it had to.
+
+## How much can one box keep current?
+
+Turn the bandwidth into the number that actually decides things. In a 33-millisecond frame (30 per second), one core can bring about **10 million** particles up to date; all cores together, about **33 million**.<sup>3</sup> That is the budget: how big an *active set* one box keeps current per frame.
+
+Now the GPU argument falls apart on its own terms. The claim is that a billion-node world needs the GPU, but you never recompute a billion nodes: [§53](#53---staleness-flows-downhill) and [§54](#54---a-spreadsheet-is-a-dependency-graph) taught you to recompute only the part that changed, the active cone, and a cone of a few million cells fits one box's frame budget. The GPU answers "how do I recompute *everything*, fast?", a question the incremental discipline already stopped asking. The GPU is not slow; it is solving a problem you arranged not to have.
+
+## When the bus is the bottleneck
+
+And when the active set genuinely is too big for one box - when you really do have more work than one machine's memory can feed in time - is reaching off the box the answer even then? For a pass like this one, often not, and Python lets you measure exactly why, without a GPU at all.
+
+To run the pass somewhere else - another process, another machine, a GPU - you must first ship the data there and read the result back. Shipping ten million particles to a worker process and back, the way a non-shared offload would, takes about **12 times** as long as just doing the pass in place.<sup>4</sup> The transfer moved about the same bytes the computation needs, and moving them cost far more than the two multiply-adds saved. That is the GPU round-trip argument in Python's own terms: offloading a memory-bound pass loses, because the bus is slower than not using it. Offloading pays only when the data already lives on the far side, or when there is enough arithmetic per byte that the compute, not the transfer, dominates. For a memory-bound elementwise pass, neither holds.
+
+(A real GPU adds its own host-to-device bus and launch latency; those figures are a cost model with assumed constants, not a measurement, because there is no GPU on the reference machine - plug your hardware's numbers into the same model. The shared-memory-process result above is the part that is measured, and it already shows the shape. The reference module is [`code/heterogeneous/heterogeneous.py`](https://github.com/root-11/intro-book-python/blob/main/code/heterogeneous/heterogeneous.py).)
+
+<!-- Sidebar (Bjorn to write; flagged against framing-overclaim): fixate on the conditions
+under which a problem occurs, not the problem itself. The "you must choose" tradeoffs often
+dissolve once you arrange the conditions so the hard case cannot arise - the same move the
+active-set budget just made against the GPU. -->
+
+So the answer to "do you need the accelerator" is a measurement, not a reflex: you reach for more hardware only when the *active set itself* outgrows one box, not to brute-force away staleness an incremental design already avoids. Columns were the precondition for numpy's vectorisation, for multiple processes, for a GPU - but they are a default, not a law, and so is the accelerator.
+
+That closes the arc. Five chapters of where the column default does not simply transfer: a recursive structure that makes you choose access pattern over storage; a hierarchy whose stale set has a ceiling and a shape; a graph whose aggregates are not incremental and whose memory you peg; arithmetic a layout cannot make correct; and a memory channel no core or bus can outrun. The honest counterweight to fifty chapters of "lay it out flat and stream it" is that you now know, with numbers, where that stops being the answer.
+
+## Measurements
+
+CPU figures: dev box (Ryzen 9 270, 16 cores, CPython 3.14.5, numpy 2.4.4), median of 5. Cross-machine pending. GPU figures are a labelled cost model, not a measurement.
+
+| # | what | measured |
+|---|---|---|
+| 1 | one core's pass, in cache vs in main memory | ~80 GB/s vs ~7 GB/s (numpy materialises the temporary) |
+| 2 | the same pass across processes (shared memory, RAM-resident) | 1/2/4/8/16 -> 1.0x/1.8x/3.1x/4.4x/4.4x; plateaus at the memory channel |
+| 3 | active set kept current per 33 ms frame | ~10 M (one core), ~33 M (all cores) |
+| 4 | ship a memory-bound pass to a worker process and back | ~12x slower than the in-place pass; the bus is the tax |
+
+## Exercises
+
+1. **Watch the hierarchy.** Run the advance-the-particles pass on one core across sizes from a few thousand to tens of millions. Plot the bandwidth. Find the step down from cache speed to main-memory speed, and say roughly where your machine's last cache level ends. Then fuse the temporary (`out=`) and note how much bandwidth you get back.
+2. **More cores, less help.** Split the same pass across 1, 2, 4, 8, and all your cores using processes and a shared-memory array. Plot the speedup and find where it plateaus. Explain, in one sentence, why a memory-bound pass stops scaling well before you run out of cores - and why you had to use processes, not threads.
+3. **The frame budget.** From your single-core and all-core bandwidth, work out how many particles each can bring up to date in a 33 ms frame. This is your box's active-set budget. Compare it to the size of the *active* part of a large simulation (the part that changed this frame), not the whole thing.
+4. **The argument against the GPU.** Using the budget from exercise 3, argue whether a million-cell active cone needs an accelerator. Then state precisely the case in which it would: when the active set itself, not the whole world, exceeds what the box can feed in a frame.
+5. **The bus is the tax.** Measure the cost of shipping the pass's arrays to a worker process and back (pickle/IPC), versus doing the pass in place. Reproduce the order-of-magnitude gap. Then write the GPU cost model - bytes to the device, bytes back, at an assumed bus speed, versus the CPU time per element - and find the arithmetic intensity at which offload would break even. Confirm two multiply-adds per element is far below it.
+6. *(stretch)* **Touch less, not more.** Take any pass from an earlier chapter and make it faster two ways: throw processes at it, and shrink the working set it touches (compute only the active part). Compare. Argue which lever the rest of this arc has been pulling, and why it beats the hardware lever for the workloads here.
+
+## What's next
+
+That is the last technique. What remains is to say what all of it was *for* - and it is not speed. [§57](#57---what-cannot-happen) collects the whole book into a single claim: that the structure you have been building does not merely run fast, it makes whole categories of failure impossible to write. The arc's pegged memory was the freshest instance; the finale names the rest.
+
+
+<!-- DRAFT FINALE (§57), Python edition, the book's true last chapter: it generalises §50 (the
+operations closer) and the §52-§56 limits arc to the whole book. The "Where to go next" reading list
+moved here from §50, which now hands off to §51. The mouse art err_category.png needs copying into
+book/illustrations/. -->
+
+# 57 - What cannot happen
+
+<p align="center"><img src="book/illustrations/err_category.png" alt="A mouse and a whole category of errors crossed out - failures the structure makes impossible to write." style="max-height: 300px; max-width: 100%;"></p>
+
+[§50](#50---it-runs-without-you) closed the operations leg with a single observation: its four chapters were not four tricks but one move made four times - take a failure that used to need a person's vigilance, and turn it into a property the system holds. The limits arc that followed ([§52](#52---flattening-a-tree-is-compiling-it) to [§56](#56---the-ceiling-is-bandwidth-not-cores)) made a sharper version of the same move and left it fresh in your hands: a working set *pegged* to a tile, so running out of memory cannot happen - not "is unlikely," cannot. Step back from the whole book and that move is everywhere, and at its limit it is always the same. The weak version is "turn the failure into a property you assert." The strong version, the one worth ending on, is "choose a structure in which the failure cannot be written."
+
+That is the quiet thesis of everything you have built, and the book has never stopped to say it plainly: not fewer bugs through care, but whole categories of bug *absent from the design space*, because the shape you chose has no room for them. You have met each one in passing, stated locally and left there. Here is the sum.
+
+## The roll-call
+
+Each line below is the same trade. On the left is what most systems do: meet the error at runtime and defend against it, on every request, for the life of the system. A lock around the shared write. A retry when the run will not reproduce. A check that a handle is still valid. A review comment asking where that `print` came from. A restart loop for the process that ran out of memory. The defenses are real work, they run forever, and they fail - a lock you forgot to take, a retry that hides the bug instead of fixing it, the one code path the check missed.
+
+On the right is what you did instead: pay once, in the structure, and the error class is gone.
+
+| What can go wrong | The usual defense, paid every run | Why it cannot happen here |
+|---|---|---|
+| Two writers race the same data | locks, careful review, a process pool's hope | a table has exactly one writer ([§25](#25---one-writer-many-readers)) - there is no second writer to race |
+| The run will not reproduce | retries, "works on my machine" | order is defined, not incidental ([§16](#16---determinism-by-order), [§48](#48---reductions-dont-parallelize-freely)) - same seed, same bits |
+| A function writes where you cannot see it | code review, grepping for `print` | systems declare their read and write sets, and I/O lives only at the boundary ([§13](#13---a-system-is-a-function-over-tables), [§35](#35---the-boundary-is-the-queue)) - there is nowhere to hide one |
+| A stale id reads the wrong entity | "is this handle still valid?" | the id carries a generation ([§23](#23---index-maps)) - a recycled slot fails the check instead of answering wrongly |
+| "Done" that was never saved; a torn write | hope, and a later incident review | acknowledge only once the write is durable; atomic rename and idempotent replay ([§46](#46---the-log-survives-power-loss)) |
+| Out of memory | a `try`/`except MemoryError` that cannot really recover; restart | the working set is pegged to a tile you choose ([§54](#54---a-spreadsheet-is-a-dependency-graph)) - the loop cannot ask for more |
+
+Six classes of failure that, in the structure this book builds, are absent rather than merely handled well.
+
+## Capex, not opex - for correctness this time
+
+This is the book's frame, leverage not virtue, in its last and sharpest form. [§45](#45---living-with-it) argued that operating cost is capital paid once set against rent paid forever, and that the single-node in-memory discipline is, read off the balance sheet, a way to buy low rent. The roll-call is that argument made about *correctness*.
+
+Defending against an error class at runtime is rent. It costs work on every request and a person's attention for as long as the system runs, and you never stop paying. Removing the error class in the structure is capital: bought once, and then free. You did not out-discipline the people fighting these bugs. You stopped paying the tax they pay, by choosing a shape where the bill never arrives. That is the same move [§45](#45---living-with-it) made for the cost of *running* the system, now made for the cost of *trusting* it - the second act's economics, finishing their own sentence.
+
+## The price, named exactly
+
+None of this is magic, and an impossibility you cannot bound is advice you cannot trust, so be exact about what it costs. Each guarantee holds only while you hold its discipline.
+
+Determinism is structural while the order is defined; let one `set` iteration, one randomised string hash, or one undefined numpy reduction order slip in and "same seed, same bits" reverts to a coin you flip. Out-of-memory is impossible only in the part of the pipeline you actually pegged - [§54](#54---a-spreadsheet-is-a-dependency-graph) pegs the read and leaves the rest as an exercise on purpose, so you feel exactly where the guarantee starts and stops. The list of disciplines is short: one writer per table, a defined order, I/O at the boundary, a generation on every id, durable-before-acknowledged, a pegged working set. The leverage is that the same columns-and-event-batch structure hands you all of them at once, for one decision. But they are disciplines, not defaults the language enforces for you - and Python enforces even less of them than most, which is exactly why naming them matters here. Drop one and its impossibility quietly becomes an ordinary bug again.
+
+That is the honest shape of the claim: *these bugs cannot be written here, as long as you keep these six disciplines, and the structure makes keeping them the path of least resistance.*
+
+## What you own
+
+The book opened by promising you would build things you own. This is what that turned out to mean.
+
+Not only that you wrote the code instead of renting it, though you did. The thing you own is the set of impossibilities: the bugs that cannot occur in the structure you chose, the failures you will never debug because there is no path to them. A framework gives you features and keeps the impossibilities for itself - you cannot see what it has ruled out, or where it has not, until the night it has not. You can see exactly what yours holds, because you can name each exclusion and the single discipline that buys it. That list - short, exact, and yours - is the asset. The code is only where it lives.
+
+The simulator in the next room is still running. Nobody is watching it; it cannot run out of memory; it will give tomorrow the answer it gave today; and there is no version of it that quietly corrupts itself at 3 AM - not because you are vigilant, but because you built it where those things have no room to happen. That is the leverage this book was always about. Keep the discipline, and it keeps the promise.
+
+## A last audit
+
+1. **Take the roll-call to your own system** - or to the simulator, if it is the largest thing you own. For each of the six classes, write one sentence: is it *excluded by structure*, *defended at runtime*, or *still open*? Be ruthless about the difference between "we hold a lock" and "there is no second writer to race."
+2. **Pick one row where you are defending at runtime.** Name the discipline that would turn the defense into an exclusion, and the cost of adopting it. Decide, on paper, whether that capital is worth the rent it retires. Sometimes it is not - and now you can say so in those words.
+3. **Find one place where order is incidental** - a `set` iterated, a numpy reduction left unshaped, a sum that changes with the worker count. Either define the order, or write down why nondeterminism is acceptable there. There is no third option that is honest.
+4. *(stretch)* **Peg something.** Take one unbounded buffer in code you own - a read, a batch, an accumulation - and convert it to a fixed-size tile, so its peak memory is a constant you set rather than a function of the input. Then prove it: feed it ten times the data and watch the footprint not move.
+
 ## Where to go next
 
-- **Read Mike Acton's "Data-Oriented Design and C++"** (CppCon 2014). Forty-five minutes; the most concentrated case for this approach you will find.
+- **Read Mike Acton's "Data-Oriented Design and C++"** (CppCon 2014). Forty-five minutes; the most concentrated case for this approach you will find, and it is language-agnostic.
 - **Read Casey Muratori's *Handmade Hero*** episodes on grid storage and cache locality. Another route to the same conclusions.
-- **Open Bevy's `bevy_ecs` crate** (Rust) or any production ECS in the language of your choice. You will recognise every pattern. The names will differ; the shapes are identical.
-- **Read the Rust edition of this book.** Same architecture, different enforcement. Watching the borrow checker enforce what this edition asks you to do by discipline is a genuinely useful calibration.
+- **Open a production ECS** - Bevy's `bevy_ecs` (Rust), or any data-oriented engine in the language of your choice. You will recognise every pattern; the names will differ, the shapes are identical.
+- **Read the Rust edition of this book.** Same architecture, different enforcement. Watching the borrow checker enforce what this edition asks you to keep by discipline is a genuinely useful calibration - and its §51-§57 measure the same limits arc against a compiler that fuses what numpy materialises.
 - **Extend the simulator.** The genetics and predator-prey extensions flagged in the [simulator spec](code/sim/SPEC.md) break new ground without leaving the framework you have already built; `sim2b.py`'s predator is the worked example.
 - **Apply the architecture beyond simulators.** §35 + §37 is event-sourced architecture with a deterministic reducer; the same pattern works for request handlers, control loops, agent systems, anything with state that has to evolve under load. The simulator was the worked example; the architecture is the lesson.
 

@@ -18,10 +18,10 @@ Take the same data - N rows, K integers per row - and lay it out five ways. The 
 
 | layout                                          | what it is                              |
 |-------------------------------------------------|-----------------------------------------|
-| 1. `[(i, i+1, …) for i in range(N)]`            | list of tuples - AoS, default           |
-| 2. `[[i, i+1, …] for i in range(N)]`            | list of lists - AoS, mutable inner      |
-| 3. `tuple([i+k for i in range(N)] for k …)`     | tuple of lists - SoA, stdlib            |
-| 4. `tuple(array.array('q', …) for k …)`         | tuple of `array.array` - SoA, stdlib typed |
+| 1. `[(i, i+1, ...) for i in range(N)]`            | list of tuples - AoS, default           |
+| 2. `[[i, i+1, ...] for i in range(N)]`            | list of lists - AoS, mutable inner      |
+| 3. `tuple([i+k for i in range(N)] for k ...)`     | tuple of lists - SoA, stdlib            |
+| 4. `tuple(array.array('q', ...) for k ...)`         | tuple of `array.array` - SoA, stdlib typed |
 | 5. `tuple(np.arange(...) for k in range(K))`    | tuple of numpy columns - SoA, typed + C |
 
 [`code/measurement/aos_vs_soa_footprint.py`](https://github.com/root-11/intro-book-python/blob/main/code/measurement/aos_vs_soa_footprint.py) builds each, in a fresh subprocess so resident set size (RSS) readings don't bleed, with N=1,000,000 and K=10. Values past the small-int cache so `PyLong` objects aren't shared singletons across rows. Three numbers per layout: peak RSS, construction time, time to sum column 0.
@@ -43,7 +43,7 @@ The five rows separate three independent decisions that the four-row version con
 
 **Step one - AoS → SoA - is the speed flip.** Tuple-of-lists is the same code an intermediate Python programmer might write without ever touching numpy. It saves only ~12% on memory but sums column 0 about **10× faster** than the AoS forms. The win is the access pattern: walking *one* contiguous list of 1M `PyLong` pointers instead of walking 1M tuple objects and dereferencing through each one to reach `row[0]`. Storage is barely better; the loop is dramatically better.
 
-**Step two - boxed list → typed bytes - is the memory flip.** Going from `list[int]` to `array.array('q', …)` shrinks each column from ~38 MB of pointers-and-`PyLong`-objects to ~8 MB of contiguous int64 bytes. The whole structure drops to **~77 MB total**, smaller than numpy in this run (numpy carries ~20 MB of one-off import overhead). But the column-sum *slows down* - 2.5 ms → 11.6 ms - because Python has to *unbox* each `int64` into a temporary `PyLong` before adding it. The unboxing tax buys back about a third of the SoA speed win. **Typed storage saves bytes; it does not save the inner loop.**
+**Step two - boxed list → typed bytes - is the memory flip.** Going from `list[int]` to `array.array('q', ...)` shrinks each column from ~38 MB of pointers-and-`PyLong`-objects to ~8 MB of contiguous int64 bytes. The whole structure drops to **~77 MB total**, smaller than numpy in this run (numpy carries ~20 MB of one-off import overhead). But the column-sum *slows down* - 2.5 ms → 11.6 ms - because Python has to *unbox* each `int64` into a temporary `PyLong` before adding it. The unboxing tax buys back about a third of the SoA speed win. **Typed storage saves bytes; it does not save the inner loop.**
 
 **Step three - Python loop → C loop - is the order-of-magnitude move.** `np.sum` walks the same typed bytes that `array.array` stored, but the loop is in C and the interpreter is stepped out of the way. 11.6 ms → 0.4 ms; about **30× speedup** on the same bytes, no further memory saving (and a small import-overhead cost). This is the layout the simulator (§11+) and every system after it depends on.
 

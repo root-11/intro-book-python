@@ -1,5 +1,7 @@
 # 48 - Reductions don't parallelize freely
 
+<p align="center"><img src="../illustrations/floats.png" alt="A mouse puzzling over 0.1 + 0.2 - floats are tricky, and the order of the additions decides the answer." style="max-height: 300px; max-width: 100%;"></p>
+
 [§31](31_disjoint_writes_parallelize.md) earned a strong claim: systems with disjoint write-sets parallelise freely - across processes, since the GIL rules out CPU-bound threads - with no locks and no coordination. [§16](16_determinism_by_order.md) earned another: same seed, same system order, same world, every run. Both are true. Put them under one stress the first act never applied - *a different number of workers* - and a seam opens between them. The world that hashed identically on your four-worker laptop hashes differently on the thirty-two-worker server. Same code, same seed, same log. Different machine, different world.
 
 This is the worst class of bug, because it passes. It passes every test you ran, because you ran them at one worker count on one machine. It surfaces only after the move to the hardware you have never seen - the unattended server of [§46](46_log_survives_power_loss.md) and [§47](47_observation_is_a_system.md), where you cannot attach a debugger and the only symptom is that two nodes that should agree do not. The determinism survived everything except the deployment.
@@ -30,10 +32,10 @@ The divergence is a demonstration, not a benchmark. Measured (`reduction_diverge
 
 | workers | racy (partition = workers) | fixed-order (64 partitions) | integer |
 |---|---|---|---|
-| 1 | `…1df0d6` | `…1df271` | `…025a920c` |
-| 2 | `…1df2a6` | `…1df271` | `…025a920c` |
-| 4 | `…1df2c6` | `…1df271` | `…025a920c` |
-| 8 | `…1df234` | `…1df271` | `…025a920c` |
+| 1 | `...1df0d6` | `...1df271` | `...025a920c` |
+| 2 | `...1df2a6` | `...1df271` | `...025a920c` |
+| 4 | `...1df2c6` | `...1df271` | `...025a920c` |
+| 8 | `...1df234` | `...1df271` | `...025a920c` |
 
 The racy column is a different result at every worker count; the fixed-order and integer columns are bit-identical across all four. (The fixed-order value differs from the racy one-worker value in the low bits, because a 64-partition grouping rounds differently from index order - it is *reproducible*, not more accurate, exactly the exclusion named above.) The cost of the fix is the serial fold over the partition count - a few dozen values against the parallel work it guards, a rounding error on the [§31](31_disjoint_writes_parallelize.md) speedup. The divergence and both fixes are machine-independent facts (IEEE-754 non-associativity and integer associativity), not measurements that vary by box.
 

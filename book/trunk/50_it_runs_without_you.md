@@ -1,5 +1,7 @@
 # 50 - It runs without you
 
+<p align="center"><img src="../illustrations/runs_without_you.png" alt="A mouse with its feet up under 'ALL SYSTEMS OK' - it runs without you." style="max-height: 300px; max-width: 100%;"></p>
+
 [§45](45_living_with_it.md) opened the second act with five questions. The four chapters since answered the first one - *can you run it unattended* - and it is worth stopping to see that they were not four tricks. They were one move, made four times.
 
 [§46](46_log_survives_power_loss.md): the system survives the stop. [§47](47_observation_is_a_system.md): it says what it is doing. [§48](48_reductions_dont_parallelize_freely.md): it gives the same answer on every machine. [§49](49_worst_case_is_the_only_case.md): you know the deadline it can and cannot promise. Listed flat they look unrelated. They are not. Each one removed a dependency on the human who used to stand next to the machine.
@@ -14,19 +16,10 @@ The walls are not all the same kind of failure, and that is what makes the map w
 
 That conversion is the whole economic point from [§45](45_living_with_it.md), paid down. A system that needs a human in the loop costs a salary for as long as it runs; a system that runs without one costs almost nothing to operate. Each chapter in this group retired a recurring cost - not a feature added, a person's standing attention no longer required. That is operating cost falling straight through to margin, and it is why the unattended question was worth four chapters.
 
-It is also the hardest of the second act's five promises to keep, which is why it came first. The system now survives, reports, agrees, respects its deadlines, and knows where its walls are. It is still, though, frozen in the shape you shipped it in, and it has been handed one rule hard: lay the data out flat in numpy columns and stream it. The remaining questions press on exactly that - where the flat-and-stream default stops paying, what to reach for when numpy on one box is not enough, how the schema drifts the moment the world does, and the day someone who is not you comes to own it. Those are the rest of the [horizon](44_closure.md) this book charted; some you can already walk with what you have, and some wait for a later volume. The book names them rather than pretending the second act is only its first leg.
+It is also the hardest of the second act's five promises to keep, which is why it came first. The system now survives, reports, agrees, respects its deadlines, and knows where its walls are. It is still, though, frozen in the shape you shipped it in, and it has been handed one rule hard: lay the data out flat in numpy columns and stream it. The remaining questions press on exactly that - where the flat-and-stream default stops paying, what to reach for when numpy on one box is not enough, how the schema drifts the moment the world does, and the day someone who is not you comes to own it. Those are the rest of the [horizon](44_closure.md) this book charted. The next part takes up the first two directly - where the flat-and-stream default stops paying, and what to reach for when one box is not enough; the schema-drift and ownership questions wait for a later volume. The book names them rather than pretending the second act is only its first leg.
 
 The operations leg is done. The machine in the next room is running, nobody is watching it, and that is precisely the point.
 
-## Where to go next
+## What's next
 
-- **Read Mike Acton's "Data-Oriented Design and C++"** (CppCon 2014). Forty-five minutes; the most concentrated case for this approach you will find.
-- **Read Casey Muratori's *Handmade Hero*** episodes on grid storage and cache locality. Another route to the same conclusions.
-- **Open Bevy's `bevy_ecs` crate** (Rust) or any production ECS in the language of your choice. You will recognise every pattern. The names will differ; the shapes are identical.
-- **Read the Rust edition of this book.** Same architecture, different enforcement. Watching the borrow checker enforce what this edition asks you to do by discipline is a genuinely useful calibration.
-- **Extend the simulator.** The genetics and predator-prey extensions flagged in the [simulator spec](../../code/sim/SPEC.md) break new ground without leaving the framework you have already built; `sim2b.py`'s predator is the worked example.
-- **Apply the architecture beyond simulators.** §35 + §37 is event-sourced architecture with a deterministic reducer; the same pattern works for request handlers, control loops, agent systems, anything with state that has to evolve under load. The simulator was the worked example; the architecture is the lesson.
-
-The book ends here. The simulator does not - it runs as long as you keep the discipline.
-
-<p align="center"><img src="../illustrations/model_real_world.jpg" alt="Model the real world." style="max-height: 300px; max-width: 100%;"></p>
+[§51](51_knowing_the_limits.md) opens the last part: five small projects, each built on purpose to reach a place where the flat-and-stream default stops paying, and to measure exactly where. It is how you come to own the advice instead of merely repeating it - and [§57](57_what_cannot_happen.md) closes the book by naming what all of it was for.
