@@ -5,8 +5,6 @@ is pending. The mouse art dirty_markers.png needs copying into book/illustration
 
 # 53 - Staleness flows downhill
 
-> *Concept node: DAG and glossary entry to be added.*
-
 <p align="center"><img src="../illustrations/dirty_markers.png" alt="A mouse marking the stale nodes below a moved joint - staleness flowing downhill through a hierarchy." style="max-height: 300px; max-width: 100%;"></p>
 
 [§52](52_flattening_is_compiling.md) left on a catch: compiling a tree is worth it only when the shape changes rarely and all at once. This chapter is the other case, the common one - the shape changes a little, and constantly.

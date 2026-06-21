@@ -6,8 +6,6 @@ shape. The mouse art oom_spreadsheet.png needs copying into book/illustrations/.
 
 # 54 - A spreadsheet is a dependency graph
 
-> *Concept node: DAG and glossary entry to be added.*
-
 <p align="center"><img src="../illustrations/oom_spreadsheet.png" alt="A mouse and a spreadsheet too big for memory - a dependency graph recomputed in dirty cones, streamed in pegged tiles." style="max-height: 300px; max-width: 100%;"></p>
 
 [§53](53_dirty_propagation.md) ended where the tree did: in a hierarchy, "everything beneath a node" is one packed slice, because each thing has exactly one parent. Take that away - let one thing feed *many* - and you have a spreadsheet.

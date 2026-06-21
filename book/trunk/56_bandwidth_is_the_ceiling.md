@@ -8,8 +8,6 @@ copying into book/illustrations/. -->
 
 # 56 - The ceiling is bandwidth, not cores
 
-> *Concept node: DAG and glossary entry to be added.*
-
 <p align="center"><img src="../illustrations/bandwidth.png" alt="A mouse at the memory channel - the ceiling that more cores cannot raise." style="max-height: 300px; max-width: 100%;"></p>
 
 [§55](55_floating_point_fragility.md) left the work correct and incremental, and still being done by one core reading memory in order. The reviewer's instinct at this point is loud and common: a simulation this size *needs* a GPU. This chapter is the honest answer, and it is mostly "no, and here is exactly why."

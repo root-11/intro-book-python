@@ -6,8 +6,6 @@ copying into book/illustrations/ from the arc's source crops. -->
 
 # 52 - Flattening a tree is compiling it
 
-> *Concept node: DAG and glossary entry to be added.*
-
 <p align="center"><img src="../illustrations/ast.png" alt="A mouse with an expression tree - the same tree as boxes-and-arrows, as columns of indices, and written out in order to run straight through." style="max-height: 300px; max-width: 100%;"></p>
 
 [§3](03_the_vec_is_a_table.md) said your columns are a table, and the trunk took it as a default: lay the data out flat in numpy columns and stream it. That earned its place across the simulator's rows of scalars. But the simulator's world is unusually kind to columns, and the honest question this arc asks is where the default stops paying. Start with the structure that looks least like a table: a tree.

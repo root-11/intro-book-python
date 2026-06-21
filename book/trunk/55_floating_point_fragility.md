@@ -5,8 +5,6 @@ CPython 3.14.5, numpy 2.4.4). The mouse art fp_err.png needs copying into book/i
 
 # 55 - The same numbers, a different total
 
-> *Concept node: DAG and glossary entry to be added.*
-
 <p align="center"><img src="../illustrations/fp_err.png" alt="A mouse and a floating-point error - the same numbers adding up to a different total." style="max-height: 300px; max-width: 100%;"></p>
 
 [§54](54_recompute_the_cone.md) made the spreadsheet incremental, took it past RAM, and pegged its memory. Every total along the way trusted one thing: that adding the numbers gives the right answer. This chapter is where that trust breaks, and the unsettling part is that no layout fixes it. A perfectly columnar sum can still be wrong.
