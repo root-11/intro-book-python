@@ -1,7 +1,7 @@
 # An Introduction to Programming *using entity-component-systems & existence-based processing in `python`*
 
 _written by [Bjorn Madsen](mailto:dr.bjorn.madsen@gmail.com)_
-_updated: 2026-06-07_
+_updated: 2026-06-21_
 
 > **Read online:** [Codeberg](https://root-11.codeberg.page/intro-book-python/) · [GitHub Pages](https://root-11.github.io/intro-book-python/)
 >
