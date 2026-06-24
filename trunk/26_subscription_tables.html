@@ -1,0 +1,309 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Subscription tables, keyed by slot - An Introduction to Programming, using ECS &amp; EBP in Python</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-0392ca55.css">
+        <link rel="stylesheet" href="../css/chrome-fc474251.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "ayu";
+            window.path_to_searchindex_js = "../searchindex-22f29ef1.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-3add3fe6.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">An Introduction to Programming, using ECS &amp; EBP in Python</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="26---subscription-tables-keyed-by-slot"><a class="header" href="#26---subscription-tables-keyed-by-slot">26 - Subscription tables, keyed by slot</a></h1>
+<p align="center"><img src="../covers/phase_scale.jpg" alt="Scale phase" style="max-height: 380px; max-width: 100%;"></p>
+
+<blockquote>
+<p><em>Concept node: see the <a href="../concepts/dag.html">DAG</a> and <a href="../concepts/glossary.html#26--subscription-tables-keyed-by-slot">glossary entry 26</a>.</em></p>
+</blockquote>
+<p>A system rarely touches every entity. Motion moves all of them, but starvation only reads the hungry, reproduction only the well-fed, a sleep timer only the sleeping. <a href="17_presence_replaces_flags.html">§17</a> gave the tool for “which entities are in this set”: a membership table. <a href="19_ebp_dispatch.html">§19</a> measured the payoff: walk the 100,000 hungry instead of scanning 1,000,000 and masking, and the work is proportional to the subset, not the population.</p>
+<p>Call that membership table a <em>subscription table</em>, and the loop that walks it a system’s <em>hot loop</em>. A creature <em>subscribes</em> to <code>hungry</code> when its energy drops; it <em>unsubscribes</em> when it eats. The subscription is the system’s input; the hot loop is the system. This section settles a question <a href="17_presence_replaces_flags.html">§17</a> left open: what does a subscription table store, and how fast is the hot loop that reads it?</p>
+<h2 id="a-wrong-turn-first-splitting-fields"><a class="header" href="#a-wrong-turn-first-splitting-fields">A wrong turn first: splitting fields</a></h2>
+<p>The instinct many readers arrive with - and the one this chapter used to teach - is to split the <em>fields</em> of a creature into hot and cold: put the columns an inner loop touches in one group, the rarely-read ones in another, so a load does not drag in bytes the loop ignores. In a row-oriented (array-of-objects) world this is a real technique: reading <code>c.pos_x</code> pulls the whole <code>Creature</code> object into cache, <code>c.birth_t</code> and <code>c.id</code> and all.</p>
+<p>But this book has been structure-of-arrays since <a href="07_structure_of_arrays.html">§7</a>, and in numpy SoA the split is already done for you, more completely than a hot/cold grouping would manage. Every column is its own <code>np.ndarray</code>, its own allocation. Reading <code>pos_x</code> touches <code>pos_x</code>’s memory and nothing else; <code>birth_t</code> is a different array entirely. There is no row to drag a cold field along with, so there is nothing to split. The bandwidth win that motivates a field split in array-of-objects is the same win SoA already banked back in <a href="07_structure_of_arrays.html">§7</a>; it is not a separate technique to apply here.</p>
+<p>So the attribute columns are never split. They stay whole: every column, every slot, reachable by index <code>i</code>. What a system changes is not the columns but how it <em>reaches into</em> them. Rather than scan the whole column and mask, a system keeps a subscription table - the slots <code>i</code> it cares about - and indexes straight in: <code>energy[hungry]</code>, no scan, no field split. The rest of this section is about making that direct access fast.</p>
+<h2 id="what-a-subscription-stores-slots-or-ids"><a class="header" href="#what-a-subscription-stores-slots-or-ids">What a subscription stores: slots or ids</a></h2>
+<p>A creature has a stable <a href="10_stable_ids_and_generations.html">id</a> and a current <a href="23_index_maps.html">slot</a>, its position in the columns. <code>id_to_slot</code> maps one to the other. A subscription table could hold either, and in numpy the choice is a measurable cost, not a style preference.</p>
+<ul>
+<li>Hold <em>slots</em>. The hot loop is one fancy-index gather: <code>energy[hungry]</code>. No redirection. But when <a href="24_append_only_and_recycling.html">cleanup</a> moves entities, every slot in every subscription is stale and must be rewritten.</li>
+<li>Hold <em>ids</em>. The hot loop is two gathers: <code>energy[id_to_slot[hungry]]</code> - resolve each id to its slot, then gather the columns. The table survives relocation untouched; only <code>id_to_slot</code> changes.</li>
+</ul>
+<p>The redirection is paid every tick. The rewrite is paid once per cleanup interval. Which loses?</p>
+<p><strong>Measured.</strong> At 1,000,000 creatures with a tenth subscribed, the id-keyed hot loop runs about twice as slow as the slot-keyed one on a modern desktop<sup>1</sup>. The extra cost is the inner gather: <code>id_to_slot</code> is a four-megabyte array and the subscribed ids are scattered through it, so <code>id_to_slot[hungry]</code> is a hundred-thousand-element random read before the column gather has even started. The slot key skips that gather entirely - <code>energy[hungry]</code> indexes the columns once. (In a compiled language the same gap is a scattered cache miss per element; numpy turns it into a second fancy-index pass, but the verdict is the same.)</p>
+<p>The rewrite the slot key pays in return is small and bounded: when cleanup compacts, remap each subscription’s <code>dense</code> array through the old→new slot map (<a href="23_index_maps.html">§23</a>), once per cleanup interval, not once per tick. Across the realistic range - a handful of subscriptions, cleanup every few dozen ticks - the per-tick saving buries the per-interval rewrite. The benchmark is <a href="https://github.com/root-11/intro-book-python/blob/main/code/measurement/ebp_partition.py"><code>ebp_partition.py</code></a>; numbers below.</p>
+<p>So <strong>subscription tables hold slots.</strong> This is also <em>why</em> the lifecycle keeps <a href="24_append_only_and_recycling.html">stable slots</a> and lets cleanup own the reindex: slot keys are only safe when one system is responsible for rewriting them when entities move. The cleanup can do that for any reference it owns - a subscription, or a cross-entity link stored in a column - remapping them all in one pass.</p>
+<h2 id="so-what-is-the-id-for"><a class="header" href="#so-what-is-the-id-for">So what is the id for?</a></h2>
+<p>For every reference cleanup <em>cannot</em> reach to rewrite. A save file (<a href="36_persistence_is_serialization.html">§36</a>), a replay log (<a href="37_log_is_world.html">§37</a>) whose events are <code>(tick, id, name)</code> - exactly the <a href="18_add_remove_insert_delete.html">§18</a> boundary - a packet on the wire, an entity the UI has selected, a snapshot a slow background system is still reading (<a href="39_system_of_systems.html">§39</a>): a slot is meaningless to all of them, because the next compaction moves it. They hold the id and resolve it through <code>id_to_slot</code> once, at the boundary (<a href="35_boundary_is_the_queue.html">§35</a>), never per element. Slots are an internal, momentary fact; the id (with its generation, <a href="10_stable_ids_and_generations.html">§10</a>) is the identity that survives a relocation, a save, and a network hop.</p>
+<h2 id="locality-a-slot-keyed-gather-is-fast-only-when-its-slots-are-dense"><a class="header" href="#locality-a-slot-keyed-gather-is-fast-only-when-its-slots-are-dense">Locality: a slot-keyed gather is fast only when its slots are dense</a></h2>
+<p>A slot-keyed hot loop gathers columns at the slots the subscription lists. If those slots are scattered through the column - which is what churn produces as deaths and births leave holes - <code>energy[hungry]</code> is a random-access gather. If they are contiguous, it streams. Compacting the live, subscribed entities to the front of the columns turns the scattered gather into a sequential one.</p>
+<p>How much that buys depends on the machine, and the spread is wide. In numpy the gather’s per-element machinery - bounds-check, dereference, copy into the output - is large, and on a fast desktop it dominates the cache-miss difference, so compaction buys only about 1.3x on the hot loop<sup>2</sup>. On hardware where memory latency dominates that machinery instead - the Pi 4 - the win is several-fold (4.9x; see Measurements). The reorder pass is about a millisecond at a million rows on the desktop, so on hot-loop locality <em>alone</em> it pays back in tens of ticks, on the order of a second at 30 Hz<sup>3</sup>; on the memory-bound machines the per-tick saving is larger and the payback shorter.</p>
+<p>That payback sounds slow until you notice you were going to pay it anyway. The same pass reclaims dead slots (<a href="24_append_only_and_recycling.html">§24</a>), which the simulator must do regardless as births and deaths leave holes, and the locality gain rides along on a move you already owed. So the rule for Python is: <strong>compact on the GC cadence; the locality it also delivers ranges from a modest desktop bonus to a real win on memory-bound hardware.</strong> <a href="28_proximity.html">§28 - Proximity is a property of position</a> is that pass.</p>
+<h2 id="the-one-case-a-split-would-help-in-full-view"><a class="header" href="#the-one-case-a-split-would-help-in-full-view">The one case a split would help, in full view</a></h2>
+<p>There is a single scenario where grouping columns would still pay. A hot loop that gathers several columns at <em>scattered</em> slots issues one fancy-index per column, each its own random walk; interleaving those columns into one structured array would gather once. That case is real, and worth stating plainly rather than hiding behind the principle.</p>
+<p>We keep the columns separate anyway. The book’s answer to scatter is to remove it: compaction (<a href="28_proximity.html">§28</a>) makes the subscribed slots dense, a dense gather streams each column, and the per-column cost the structured array would have saved is gone. A structured array would also forfeit what SoA bought in <a href="07_structure_of_arrays.html">§7</a> - whole-column vectorised ops, and the per-column single-writer parallelism of <a href="31_disjoint_writes_parallelize.html">§31</a> - on every loop that is <em>not</em> scattered, to win the one that is. So the rule stands with its exception in the open: keep the columns separate, and compact when the gather scatters.</p>
+<h2 id="name-the-subscription-before-you-build-it"><a class="header" href="#name-the-subscription-before-you-build-it">Name the subscription before you build it</a></h2>
+<p>A subscription is earned by a system that genuinely processes a subset. “Most creatures are not hungry on most ticks, so <code>hungry</code> is far smaller than the population” is a sound reason to build one. “Every creature is always in <code>alive</code>, but other engines keep an alive-set” is not. A subscription that holds the whole population is a scan-all with extra bookkeeping, and the measurement says so: at full participation the gather is <em>slower</em> than a plain vectorised pass over the column - it is the same crossover <a href="19_ebp_dispatch.html">§19</a> measured, where presence loses to the bool mask once nearly everyone is a member. The subscription wins in proportion to how much it excludes, and not otherwise.</p>
+<h2 id="the-payoff-is-not-only-speed-it-is-extensibility"><a class="header" href="#the-payoff-is-not-only-speed-it-is-extensibility">The payoff is not only speed; it is extensibility</a></h2>
+<p>An entity’s character is just the set of subscriptions that hold it - a grazer is “the herd-motion table plus the graze-forage edge,” no more - so a new <em>kind</em> of entity is a new subscription, not a new class threaded through the code. The reference simulator adds a predator exactly this way: name a <code>predators</code> subscription in the registry, seed it, and wire two systems (herd-motion and a forage edge onto grazers). The join that maintains subscriptions never learns a predator exists, because it loops the registry and maintains every entry the same way. Diff <code>sim2b.py</code> against <code>sim1b.py</code> and a whole trophic level costs a handful of lines, with nothing existing edited. Composition, not surgery - the extensibility the architecture keeps promising, made literal and measurable in a <code>diff</code>.</p>
+<h2 id="measurements"><a class="header" href="#measurements">Measurements</a></h2>
+<p>The prose quotes the modern-desktop figure; the spread across the reference machines is below. The keying verdict (row 1, slot beats id) holds on every machine. The locality win (row 2) varies widely - modest on the desktop, several-fold on the Pi - because it depends on how much memory latency dominates numpy’s fixed gather overhead. Reproduce any column by running <code>ebp_partition.py</code> on that machine.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>#</th><th>measurement</th><th>Ryzen 9 (modern)</th><th>i7-3610QM (2012)</th><th>i3-5010U (2015)</th><th>Pi 4</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>id-keyed ÷ slot-keyed hot loop, 1M @ 10%</td><td>2.08x</td><td>3.45x</td><td>2.11x</td><td>1.97x</td></tr>
+<tr><td>2</td><td>scattered ÷ compacted gather, 1M @ 10%</td><td>1.31x</td><td>1.62x</td><td>2.79x</td><td>4.86x</td></tr>
+<tr><td>3</td><td>compaction payback, hot-loop locality alone</td><td>~30 ticks</td><td>~20 ticks</td><td>~12 ticks</td><td>~7 ticks</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
+<p>These extend the simulator’s <code>creature</code> columns and the <code>id_to_slot</code> map from <a href="23_index_maps.html">§23</a>.</p>
+<ol>
+<li><strong>Build a slot-keyed subscription.</strong> Add <code>hungry = np.empty(0, dtype=np.uint32)</code> holding the <em>slots</em> of hungry creatures. Build it each tick with <code>np.flatnonzero(energy &lt; HUNGER_THRESHOLD)</code>. Write the hot loop: <code>energy[hungry] -= burn * dt</code>. Verify it touches only the subscribed creatures.</li>
+<li><strong>Key it by id instead, and time both.</strong> Build a second version where <code>hungry</code> holds entity ids and the hot loop resolves each through <code>id_to_slot[hungry]</code> before the gather. At 1M creatures with 10% subscribed, time both hot loops with <code>timeit</code>. Reproduce the ~2x gap. Where does the id version’s time go? Compare <code>id_to_slot</code>’s size with one cache line.</li>
+<li><strong>Unsubscribe in O(1).</strong> When a creature stops being hungry, remove its slot from <code>hungry</code>. What do you need alongside <code>hungry</code> to find the slot’s <em>position in the table</em> without scanning it? (It is the <a href="23_index_maps.html">§23</a> sparse set, one level up.)</li>
+<li><strong>Reindex on compaction.</strong> Relocate the live creatures to the front of the columns (a stand-in for the <a href="24_append_only_and_recycling.html">§24</a>/<a href="28_proximity.html">§28</a> cleanup), producing an <code>old_to_new</code> slot map. Rewrite the slot-keyed <code>hungry</code> with <code>hungry = old_to_new[hungry]</code>; confirm the hot loop still processes the same creatures. Now do the same for the id-keyed version: what has to change? Time both reindex passes.</li>
+<li><strong>Dense vs scattered.</strong> Time the slot-keyed hot loop with the subscription’s slots scattered through the column, then again after sorting them to the front. Reproduce the ~1.3x speedup. How many ticks of hot-loop saving pay back one compaction pass? (Answer near 30 - and note this is <em>not</em> the reason to compact; reclaiming dead slots is.)</li>
+<li><strong>The subscription that holds everyone.</strong> Subscribe every creature and time the hot loop against a plain <code>energy -= burn * dt * mask</code> scan. The subscription should be no faster, and at full participation slower. Explain why, and state the rule for when a subscription is worth building.</li>
+<li><em>(stretch)</em> <strong>Two subscriptions, one entity.</strong> Put creatures in both <code>hungry</code> and <code>sleepy</code>. On compaction, both <code>dense</code> arrays need remapping through <code>old_to_new</code>. Measure how the reindex cost grows with the number of subscriptions an entity sits in, and argue why it stays cheaper than the id key’s per-tick redirection for any realistic cleanup interval.</li>
+</ol>
+<p>Reference notes in <a href="26_subscription_tables_solutions.html">26_subscription_tables_solutions.md</a>.</p>
+<h2 id="whats-next"><a class="header" href="#whats-next">What’s next</a></h2>
+<p><a href="27_working_set_vs_cache.html">§27 - Working set vs cache</a> puts numbers on the question this section kept leaning on: how big <em>is</em> the hot loop’s footprint, and what cache level does it fit in?</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../trunk/25_ownership_of_tables_solutions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../trunk/26_subscription_tables_solutions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../trunk/25_ownership_of_tables_solutions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../trunk/26_subscription_tables_solutions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+        <script>
+            window.playground_line_numbers = true;
+        </script>
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+        <script src="../ace-2a3cd908.js"></script>
+        <script src="../mode-rust-2c9d5c9a.js"></script>
+        <script src="../editor-16ca416c.js"></script>
+        <script src="../theme-dawn-4493f9c8.js"></script>
+        <script src="../theme-tomorrow_night-9dbe62a9.js"></script>
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-c22b7243.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid-eefea253.min.js"></script>
+        <script src="../mermaid-init-ccf746f1.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
